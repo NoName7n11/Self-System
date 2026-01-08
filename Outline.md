@@ -79,12 +79,59 @@ A **personal knowledge management system** that intelligently captures, classifi
 - "Quantum Computing in Finance" → Could be Tech OR Finance (prompt user)
 - "Underwater Basket Weaving" → No existing category (prompt to create)
 
-#### User Behavior Prediction
-The system builds a **User Interest Profile** based on:
-- Frequency of sources in each category
-- Recency of interactions
-- Depth of engagement (just saved vs. revisited multiple times)
+**Major Category vs Subcategory:**
+- **Major Category:** Where the resource is actually saved (one per resource)
+- **Subcategory:** Metadata tags indicating related topics (multiple allowed)
+- Subcategories only create visual edges if a corresponding categorical node exists
 
+**Example: "AI in Healthcare" Article**
+```
+AI Analysis:
+  ├─ Major Category: "AI" (resource saved here)
+  └─ Subcategories: ["Healthcare", "Medicine"]
+
+Visual Graph:
+  ├─ [AI] ←──── strong edge ────→ [Resource Node]
+  ├─ [Healthcare] ←── weak edge ──→ [Resource Node]  (if Healthcare node exists)
+  └─ (No edge for "Medicine" if no Medicine node exists)
+```
+
+#### User Behavior Prediction: GBUS (Generalized Behavioral Understanding System)
+
+The system uses a **sophisticated behavioral model** that avoids simplistic assumptions. Key principles:
+
+**Not Single-Minded:**
+- Saving a Python article → "Highly likely" interested in Python (not 100% certain)
+- Deleting a Python article ≠ No interest in Python
+  - Could mean: Resource utilized, content consumed, goal achieved
+- Uses **weighted learning** with potential deep learning models for pattern recognition
+
+**Weighted Signal System:**
+```
+┌──────────────────────────────────────────────────────────────┐
+│               WEIGHTED LEARNING MECHANISM                    │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Event Type                    Weight    Impact              │
+│  ─────────────────────────────────────────────────────────   │
+│  User manual classification     1.0      Strongest signal    │
+│  User correction/move           1.0      Override system     │
+│  System auto-classification     0.5      Weaker signal       │
+│  Resource shared (no confirm)   0.3      Mild interest       │
+│  Resource deleted               0.1      Ambiguous (maybe    │
+│                                          completed/unused)   │
+│  Resource revisited            +0.4      Strong interest     │
+│  Counter increment             +0.2      Reaffirmed value    │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Example Scenario:**
+1. System classifies "Startup Funding Guide" → Finance (weight: 0.5)
+2. User moves to Entrepreneurship (weight: 1.0)
+3. **Result:** User judgment prioritized; future similar content biased toward Entrepreneurship
+
+**User Interest Profile (Built from Weighted Signals):**
 ```
 User Interest Profile Example:
 ┌────────────────────────────────────┐
@@ -202,6 +249,49 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 - Higher counter = Higher priority in search results
 - Higher counter = More prominent in graph visualization
 - Can be used for "Most Important Resources" view
+
+### 3.6 Archive System for Stale Resources
+
+#### Auto-Archive Logic
+```
+┌─────────────────────────────────────────────────────────────┐
+│              RESOURCE STALENESS DETECTION                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Triggers for Auto-Archive:                                 │
+│  ┌────────────────────────────────────────┐                │
+│  │ 1. Dead Links (404, domain expired)    │                │
+│  │ 2. Event dates passed (e.g., old       │                │
+│  │    hackathons, expired internships)    │                │
+│  │ 3. Content marked as time-sensitive    │                │
+│  │    and deadline exceeded               │                │
+│  └────────────────────────────────────────┘                │
+│                    │                                        │
+│                    ▼                                        │
+│        [Archive Resource]                                   │
+│                    │                                        │
+│                    ▼                                        │
+│        [Remove from 3D Graph Visualization]                 │
+│                    │                                        │
+│                    ▼                                        │
+│        [Notify User: "X resources archived"]                │
+│                    │                                        │
+│           ┌────────┴────────┐                               │
+│           ▼                 ▼                               │
+│      [User: Keep]     [User: Delete]                        │
+│           │                 │                               │
+│           ▼                 ▼                               │
+│    [Restore to      [Permanently                            │
+│     Graph]          Delete]                                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Archive Section Features:**
+- Separate view in UI for archived resources
+- Resources remain searchable in archive
+- Can be bulk restored or bulk deleted
+- Archive is synced across devices
 
 ### 3.5 User Interaction Layer
 - **Chat Interface** - Natural language queries against the knowledge base
@@ -421,9 +511,11 @@ User notified before deadline
 │  url:           "https://..."                               │
 │  title:         "Hackathon 2026"                            │
 │  source_type:   "hyperlink" | "pdf" | "image" | "document"  │
-│  primary_category: "Internships"                            │
-│  related_categories: ["Technology", "AI"]                   │
+│  primary_category: "Internships"  (major category)          │
+│  subcategories: ["Technology", "AI"]  (metadata tags)       │
 │  counter:       2  (times shared)                           │
+│  archived:      false                                       │
+│  archive_reason: null | "dead_link" | "expired" | "manual"  │
 │  created_at:    timestamp                                   │
 │  updated_at:    timestamp                                   │
 │                                                             │
@@ -467,16 +559,24 @@ User notified before deadline
 
 ### Classification Logic
 - [ ] What is the confidence threshold for auto-save vs. prompt? (e.g., 0.85?)
-- [ ] How does the system improve classification over time? (Feedback loop)
+- [x] **How does the system improve classification over time?** → GBUS with weighted learning
 
-### User Behavior Model
+### User Behavior Model (GBUS)
 - [ ] How quickly should the model adapt to changing interests?
 - [ ] Should users be able to manually adjust their interest profile?
 - [ ] How is the behavior model stored and synced?
+- [ ] What deep learning architecture for pattern recognition? (LSTM? Transformer? Custom?)
 
 ### Edge/Relationship Logic
-- [ ] How is "relatedness" between a resource and non-primary categories calculated?
-- [ ] Should the system auto-detect relationships, or only when AI explicitly identifies them?
+- [x] **How is "relatedness" calculated?** → AI detects subcategories during classification
+- [x] **Visual edges?** → Only shown if both primary and subcategory nodes exist
+
+### Archive System
+- [ ] How often should the system check for stale resources? (daily? weekly?)
+- [ ] Should users be able to set custom archive rules?
+
+### Search & Query Priority
+- [ ] What factors determine result ranking? (See explanation below)
 
 ---
 
