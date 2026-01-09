@@ -8,6 +8,33 @@
 
 A **personal knowledge management system** that intelligently captures, classifies, and organizes diverse information sources into an interactive graph-based structure, enabling users to build a searchable, interconnected "second brain."
 
+### Four Core Pillars
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    SELF SYSTEMS                      │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
+│  │   SHARED    │  │  REMINDER   │  │  TO-DO LIST │   │
+│  │   MEMORY    │  │   SYSTEM    │  │   MANAGER   │   │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘   │
+│         │                │                │          │
+│         └────────────────┼────────────────┘          │
+│                          │                           │
+│                   ┌──────▼──────┐                    │
+│                   │  ASSISTANT  │                    │
+│                   │   (AI)      │                    │
+│                   └─────────────┘                    │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+1. **Shared Memory:** Graph-based knowledge base of all saved resources
+2. **Reminder System:** Calendar integration with intelligent event detection and notifications
+3. **To-Do List Manager:** Personalized task lists derived from saved resources and user goals
+4. **AI Assistant:** Conversational interface for managing resources, finding similar content, and answering queries
+
 ---
 
 ## 2. Architectural Decisions (Confirmed)
@@ -51,26 +78,26 @@ A **personal knowledge management system** that intelligently captures, classifi
 
 #### Confidence-Based Auto-Classification
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  CLASSIFICATION FLOW                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [New Source] ──► [AI Analyzes Content]                     │
-│                          │                                  │
-│                          ▼                                  │
-│              [Match Against Existing Categories]            │
-│                          │                                  │
-│           ┌──────────────┼──────────────┐                   │
-│           ▼              ▼              ▼                   │
-│     [HIGH CONF]    [MEDIUM CONF]   [LOW/NO MATCH]           │
-│     (≥ threshold)  (uncertain)    (new category?)           │
-│           │              │              │                   │
-│           ▼              ▼              ▼                   │
-│     [AUTO-SAVE]   [AUTO-SAVE +    [PROMPT USER]             │
-│                    FLAG FOR        "Create new              │
-│                    REVIEW]         category?"               │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                  CLASSIFICATION FLOW                  │
+├───────────────────────────────────────────────────────┤
+│                                                       │
+│  [New Source] ──► [AI Analyzes Content]               │
+│                          │                            │
+│                          ▼                            │
+│              [Match Against Existing Categories]      │
+│                          │                            │
+│           ┌──────────────┼──────────────┐             │
+│           ▼              ▼              ▼             │
+│     [HIGH CONF]    [MEDIUM CONF]   [LOW/NO MATCH]     │
+│     (≥ threshold)  (uncertain)    (new category?)     │
+│           │              │              │             │
+│           ▼              ▼              ▼             │
+│     [AUTO-SAVE]   [AUTO-SAVE +    [PROMPT USER]       │
+│                    FLAG FOR        "Create new        │
+│                    REVIEW]         category?"         │
+│                                                       │
+└───────────────────────────────────────────────────────┘
 ```
 
 **Examples:**
@@ -199,36 +226,36 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 
 #### Duplicate Detection
 ```
-┌─────────────────────────────────────────────────────────────┐
-│               DUPLICATE HANDLING FLOW                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [User shares resource]                                     │
-│           │                                                 │
-│           ▼                                                 │
-│  [Check: Exact URL match?]                                  │
-│           │                                                 │
-│     ┌─────┴─────┐                                           │
-│     ▼           ▼                                           │
-│   [YES]       [NO]                                          │
-│     │           │                                           │
-│     ▼           ▼                                           │
-│  [INCREMENT   [Check: Similar content                       │
-│   COUNTER]     from different URL?]                         │
-│     │               │                                       │
-│     │         ┌─────┴─────┐                                 │
-│     │         ▼           ▼                                 │
-│     │       [YES]       [NO]                                │
-│     │         │           │                                 │
-│     │         ▼           ▼                                 │
-│     │    [CREATE NEW   [CREATE NEW                          │
-│     │     NODE + LINK   NODE]                               │
-│     │     AS "SIMILAR"]                                     │
-│     │                                                       │
-│     ▼                                                       │
-│  [Notify user: "Resource already saved (x times)"]          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│               DUPLICATE HANDLING FLOW               │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  [User shares resource]                             │
+│           │                                         │
+│           ▼                                         │
+│  [Check: Exact URL match?]                          │
+│           │                                         │
+│     ┌─────┴─────┐                                   │
+│     ▼           ▼                                   │
+│   [YES]       [NO]                                  │
+│     │           │                                   │
+│     ▼           ▼                                   │
+│  [INCREMENT   [Check: Similar content               │
+│   COUNTER]     from different URL?]                 │
+│     │               │                               │
+│     │         ┌─────┴─────┐                         │
+│     │         ▼           ▼                         │
+│     │       [YES]       [NO]                        │
+│     │         │           │                         │
+│     │         ▼           ▼                         │
+│     │    [CREATE NEW   [CREATE NEW                  │
+│     │     NODE + LINK   NODE]                       │
+│     │     AS "SIMILAR"]                             │
+│     │                                               │
+│     ▼                                               │
+│  [Notify user: "Resource already saved (x times)"]  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
 #### Counter System
@@ -254,37 +281,37 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 
 #### Auto-Archive Logic
 ```
-┌─────────────────────────────────────────────────────────────┐
-│              RESOURCE STALENESS DETECTION                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Triggers for Auto-Archive:                                 │
-│  ┌────────────────────────────────────────┐                │
-│  │ 1. Dead Links (404, domain expired)    │                │
-│  │ 2. Event dates passed (e.g., old       │                │
-│  │    hackathons, expired internships)    │                │
-│  │ 3. Content marked as time-sensitive    │                │
-│  │    and deadline exceeded               │                │
-│  └────────────────────────────────────────┘                │
-│                    │                                        │
-│                    ▼                                        │
-│        [Archive Resource]                                   │
-│                    │                                        │
-│                    ▼                                        │
-│        [Remove from 3D Graph Visualization]                 │
-│                    │                                        │
-│                    ▼                                        │
-│        [Notify User: "X resources archived"]                │
-│                    │                                        │
-│           ┌────────┴────────┐                               │
-│           ▼                 ▼                               │
-│      [User: Keep]     [User: Delete]                        │
-│           │                 │                               │
-│           ▼                 ▼                               │
-│    [Restore to      [Permanently                            │
-│     Graph]          Delete]                                 │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│              RESOURCE STALENESS DETECTION       │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Triggers for Auto-Archive:                     │
+│  ┌────────────────────────────────────────┐     │
+│  │ 1. Dead Links (404, domain expired)    │     │
+│  │ 2. Event dates passed (e.g., old       │     │
+│  │    hackathons, expired internships)    │     │
+│  │ 3. Content marked as time-sensitive    │     │
+│  │    and deadline exceeded               │     │
+│  └────────────────────────────────────────┘     │
+│                    │                            │
+│                    ▼                            │
+│        [Archive Resource]                       │
+│                    │                            │
+│                    ▼                            │
+│        [Remove from 3D Graph Visualization]     │
+│                    │                            │
+│                    ▼                            │
+│        [Notify User: "X resources archived"]    │
+│                    │                            │
+│           ┌────────┴────────┐                   │
+│           ▼                 ▼                   │
+│      [User: Keep]     [User: Delete]            │
+│           │                 │                   │
+│           ▼                 ▼                   │
+│    [Restore to      [Permanently                │
+│     Graph]          Delete]                     │
+│                                                 │
+└─────────────────────────────────────────────────┘
 ```
 
 **Archive Section Features:**
@@ -293,7 +320,120 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 - Can be bulk restored or bulk deleted
 - Archive is synced across devices
 
-### 3.5 User Interaction Layer
+### 3.7 Search & Query System
+
+#### Ranking Strategy
+```
+┌───────────────────────────────────────────────────────────────┐
+│              SEARCH RESULT RANKING LOGIC                      │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Default Priority Order:                                      │
+│                                                               │
+│  1. COUNTER (Primary) ─────────► Most shared = Most important │
+│     Weight: 1.0                                               │
+│                                                               │
+│  ─── Optional Filters (Applied on demand) ───                 │
+│                                                               │
+│  2. Semantic Similarity  ─────► Match to query                │
+│     Weight: 0.8                                               │
+│                                                               │
+│  3. Recency ──────────────────► Newer resources               │
+│     Weight: 0.6                                               │
+│                                                               │
+│  4. User Interest Profile ────► GBUS alignment                │
+│     Weight: 0.5                                               │
+│                                                               │
+│  5. Engagement History ────────► Revisit frequency            │
+│     Weight: 0.4                                               │
+│                                                               │
+│  ─── Example Search ───                                       │
+│                                                               │
+│  Query: "machine learning"                                    │
+│                                                               │
+│  Results (Default - by Counter):                              │
+│  1. ML Tutorial (Counter: 5)                                  │
+│  2. ML Paper Collection (Counter: 3)                          │
+│  3. ML Internship (Counter: 2)                                │
+│  4. ML Article (Counter: 1)                                   │
+│                                                               │
+│  User can apply filters:                                      │
+│  [Filter: Recency] [Filter: Category] [Filter: Semantic]      │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### 3.8 AI Assistant Capabilities
+
+#### Capability Matrix
+| Level | Feature | Example |
+|-------|---------|----------|
+| **Basic** | Keyword search | "Show AI resources" |
+| **Semantic** | Natural language understanding | "What did I save about neural networks last month?" |
+| **Conversational** | Follow-up context | "Show me more like that" |
+| **Analytical** | Insights & patterns | "You've saved 20 internship links but haven't applied to any" |
+| **Proactive** | Internet search for similar events | "Found 3 similar hackathons happening next month" |
+
+#### Proactive Discovery (Advanced Feature)
+```
+┌───────────────────────────────────────────────────┐
+│           PROACTIVE RESOURCE DISCOVERY            │
+├───────────────────────────────────────────────────┤
+│                                                   │
+│  Trigger: User ASKS for similar resources         │
+│          (NOT automatic background)               │
+│                    │                              │
+│                    ▼                              │
+│         [User: "Find similar hackathons"]         │
+│                    │                              │
+│                    ▼                              │
+│         [System searches internet]                │
+│                    │                              │
+│                    ▼                              │
+│         [Finds: ML Competition, AI Summit, etc.]  │
+│                    │                              │
+│                    ▼                              │
+│         [Presents: "Found 3 similar events"]      │
+│                    │                              │
+│           ┌────────┴────────┐                     │
+│           ▼                 ▼                     │
+│      [User: Add]      [User: Ignore]              │
+│           │                                       │
+│           ▼                                       │
+│      [Save as resources]                          │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+### 3.9 To-Do List Integration
+
+#### Auto-Generated Tasks
+```
+┌──────────────────────────────────────────────────────────────┐
+│              TO-DO LIST AUTO-GENERATION                      │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Source: "Hackathon - Apply by Jan 20"                       │
+│            │                                                 │
+│            ▼                                                 │
+│  [AI extracts actionable items]                              │
+│            │                                                 │
+│            ▼                                                 │
+│  Generated Tasks:                                            │
+│  ☐ Review hackathon requirements (Due: Jan 12)               │
+│  ☐ Prepare project proposal (Due: Jan 18)                    │
+│  ☐ Submit application (Due: Jan 20)                          │
+│                                                              │
+│  ─── User can: ───                                           │
+│  • Modify tasks                                              │
+│  • Add custom tasks                                          │
+│  • Link tasks to calendar                                    │
+│  • Set reminders per task                                    │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 3.10 User Interaction Layer
 - **Chat Interface** - Natural language queries against the knowledge base
 - **Search** - Semantic search across all resources
 - **Graph Visualization** - Interactive 2D/3D node graph (neural-network style)
@@ -305,35 +445,35 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 
 ### 4.1 Deployment Topology
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     LOCAL-FIRST ARCHITECTURE                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────────┐                         ┌─────────────┐       │
-│   │ WINDOWS PC  │                         │ ANDROID     │       │
-│   │             │                         │ DEVICE      │       │
-│   │ ┌─────────┐ │                         │ ┌─────────┐ │       │
-│   │ │Local DB │ │◄───── Real-Time ───────►│ │Local DB │ │       │
-│   │ │(Primary)│ │         Sync            │ │(Primary)│ │       │
-│   │ └─────────┘ │                         │ └─────────┘ │       │
-│   │      │      │                         │      │      │       │
-│   │      ▼      │                         │      ▼      │       │
-│   │ ┌─────────┐ │                         │ ┌─────────┐ │       │
-│   │ │ Golang  │ │                         │ │ Local   │ │       │
-│   │ │ Backend │ │                         │ │ Service │ │       │
-│   │ └─────────┘ │                         │ └─────────┘ │       │
-│   └──────┬──────┘                         └──────┬──────┘       │
-│          │                                       │              │
-│          │         ┌─────────────────┐           │              │
-│          │         │   SYNC SERVER   │           │              │
-│          └────────►│  (Lightweight)  │◄──────────┘              │
-│                    │                 │                          │
-│                    │ - Conflict Res. │                          │
-│                    │ - Queue Mgmt    │                          │
-│                    │ - State Sync    │                          │
-│                    └────────┬────────┘                          │
-│                             │                                   │
-└─────────────────────────────┼───────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     LOCAL-FIRST ARCHITECTURE                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   ┌─────────────┐                         ┌─────────────┐   │
+│   │ WINDOWS PC  │                         │ ANDROID     │   │
+│   │             │                         │ DEVICE      │   │
+│   │ ┌─────────┐ │                         │ ┌─────────┐ │   │
+│   │ │Local DB │ │◄───── Real-Time ───────►│ │Local DB │ │   │
+│   │ │(Primary)│ │         Sync            │ │(Primary)│ │   │
+│   │ └─────────┘ │                         │ └─────────┘ │   │
+│   │      │      │                         │      │      │   │
+│   │      ▼      │                         │      ▼      │   │
+│   │ ┌─────────┐ │                         │ ┌─────────┐ │   │
+│   │ │ Golang  │ │                         │ │ Local   │ │   │
+│   │ │ Backend │ │                         │ │ Service │ │   │
+│   │ └─────────┘ │                         │ └─────────┘ │   │
+│   └──────┬──────┘                         └──────┬──────┘   │
+│          │                                       │          │
+│          │         ┌─────────────────┐           │          │
+│          │         │   SYNC SERVER   │           │          │
+│          └────────►│  (Lightweight)  │◄──────────┘          │
+│                    │                 │                      │
+│                    │ - Conflict Res. │                      │
+│                    │ - Queue Mgmt    │                      │
+│                    │ - State Sync    │                      │
+│                    └────────┬────────┘                      │
+│                             │                               │
+└─────────────────────────────┼───────────────────────────────┘
                               │
                     ┌─────────▼─────────┐
                     │   CLOUD AI APIs   │
@@ -411,30 +551,30 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 
 #### Offline Queue System
 ```
-┌─────────────────────────────────────────────┐
-│              OFFLINE QUEUE SYSTEM           │
-├─────────────────────────────────────────────┤
-│                                             │
-│  [User adds source while offline]           │
-│              │                              │
-│              ▼                              │
-│  ┌─────────────────────┐                    │
-│  │ LOCAL PENDING QUEUE │                    │
-│  │ - Source 1 (URL)    │                    │
-│  │ - Source 2 (PDF)    │                    │
-│  │ - Source 3 (IMG)    │                    │
-│  └──────────┬──────────┘                    │
-│             │                               │
-│             ▼                               │
-│  [Connection Restored]                      │
-│             │                               │
-│             ▼                               │
-│  [PROCESS QUEUE]                            │
-│  1. Sync to Pi server                       │
-│  2. Send to Cloud AI APIs                   │
-│  3. Update graph                            │
-│  4. Sync back to all devices                │
-└─────────────────────────────────────────────┘
+┌────────────────────────────────────────┐
+│         OFFLINE QUEUE SYSTEM           │
+├────────────────────────────────────────┤
+│                                        │
+│  [User adds source while offline]      │
+│              │                         │
+│              ▼                         │
+│  ┌─────────────────────┐               │
+│  │ LOCAL PENDING QUEUE │               │
+│  │ - Source 1 (URL)    │               │
+│  │ - Source 2 (PDF)    │               │
+│  │ - Source 3 (IMG)    │               │
+│  └──────────┬──────────┘               │
+│             │                          │
+│             ▼                          │
+│  [Connection Restored]                 │
+│             │                          │
+│             ▼                          │
+│  [PROCESS QUEUE]                       │
+│  1. Sync to Pi server                  │
+│  2. Send to Cloud AI APIs              │
+│  3. Update graph                       │
+│  4. Sync back to all devices           │
+└────────────────────────────────────────┘
 ```
 
 ### 4.3 Background Processing Flow
@@ -546,7 +686,7 @@ User notified before deadline
 ├─────────────────────────────────────────────────────────────┤
 │  id:            UUID                                        │
 │  name:          "Technology"                                │
-│  color:         "#3498db" (for visualization)               │
+│  color:         "#3498db" (for visualization)             │
 │  created_at:    timestamp                                   │
 │  resource_count: 47                                         │
 │  position_3d:   {x, y, z} (for graph visualization)         │
@@ -562,10 +702,29 @@ User notified before deadline
 - [x] **How does the system improve classification over time?** → GBUS with weighted learning
 
 ### User Behavior Model (GBUS)
+- [x] **Category initialization?** → No defaults; categories created as resources are added
 - [ ] How quickly should the model adapt to changing interests?
 - [ ] Should users be able to manually adjust their interest profile?
 - [ ] How is the behavior model stored and synced?
-- [ ] What deep learning architecture for pattern recognition? (LSTM? Transformer? Custom?)
+- [x] **What deep learning architecture?** → Advanced (LSTM/Transformer) + Full AI Agent capabilities
+  - **Purpose:** Better category prediction and classification accuracy
+  - **NOT for:** Proactive suggestions (user must ask first)
+  - **Scope:** Pattern recognition for behavioral modeling
+
+### Multi-Category Resource Handling
+- [ ] When resource is equally relevant to multiple categories (e.g., "AI in Healthcare"):
+  - **Option A:** Prompt user to choose primary category
+  - **Option B:** Prompt to create hybrid category (e.g., "AI in Healthcare")
+  - **Option C:** System chooses most prominent topic
+  - **Decision:** Needs further consideration and testing
+
+### Search & Query Priority
+- [x] **Default ranking:** Counter (popularity) is primary
+- [x] **Filters available:** Semantic similarity, recency, engagement, GBUS profile (applied on demand)
+
+### AI Assistant Capabilities
+- [x] **Chat levels implemented:** Basic, Semantic, Conversational, Analytical, Proactive
+- [x] **Proactive discovery:** Only when user explicitly asks (not automatic background)
 
 ### Edge/Relationship Logic
 - [x] **How is "relatedness" calculated?** → AI detects subcategories during classification
@@ -575,9 +734,11 @@ User notified before deadline
 - [ ] How often should the system check for stale resources? (daily? weekly?)
 - [ ] Should users be able to set custom archive rules?
 
-### Search & Query Priority
-- [ ] What factors determine result ranking? (See explanation below)
+### To-Do List Integration
+- [ ] Should task generation be fully automated or user-initiated?
+- [ ] Can users create to-dos unrelated to resources?
+- [ ] Integration with existing to-do apps or standalone?
 
 ---
 
-*Last Updated: January 5, 2026*
+*Last Updated: January 9, 2026*
