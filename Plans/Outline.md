@@ -41,12 +41,19 @@ A **personal knowledge management system** that intelligently captures, classifi
 
 | Decision | Choice | Notes |
 |----------|--------|-------|
-| **Deployment Model** | Local-First + Sync Server | Data stored locally on each device; lightweight sync server bridges Windows ↔ Android |
-| **AI Processing** | Cloud APIs | External LLM APIs (OpenAI, Anthropic, etc.) |
-| **Processing Mode** | Background (80-90%) | Async processing; user doesn't wait for AI completion |
-| **Sync Strategy** | Real-Time | Immediate sync when online; offline requests queued locally |
-| **Classification Mode** | Smart Auto-Confirm | Auto-save for high-confidence; prompt only for new categories |
+| **Deployment Model** | Local-First (Phase 1) → VPS Sync (Phase 2+) | Phase 1: fully local; Phase 2+: cheap VPS (~$4/mo) for multi-device sync |
+| **AI Processing** | Cloud APIs | OpenAI (`gpt-4o-mini` for skim, `gpt-4o` for deep) + Anthropic |
+| **Processing Mode** | Background (80-90%) + Two-Tier | Skim (2-5s immediate) → Deep (30-60s FIFO queue via Asynq) |
+| **Sync Strategy** | Real-Time via WebSockets | REST for CRUD; WebSockets for live sync and processing status |
+| **Classification Mode** | Smart Auto-Confirm | Auto-save for high-confidence; prompt only for new/ambiguous categories |
 | **Project Type** | Full Implementation | Not an MVP; all features built progressively |
+| **Desktop Framework** | Wails (Go + React) | Single binary, Go backend reuse, Windows + Linux support |
+| **Backend** | Go + Gin + GORM + Asynq | Standard Go Layout; loosely coupled via repository interfaces |
+| **Databases** | SQLite + DGraph + sqlite-vec + Redis | Relational + Graph + Vector + Queue backend |
+| **Authentication** | None (Phase 1) → Google OAuth (Phase 2+) | Local single-user needs no auth; OAuth added with server |
+| **Cross-Platform** | Windows + Linux | Go + Wails compile natively for both; Android deferred to Phase 3+ |
+| **Testing** | Pyramid (Unit 70% + Integration 20% + E2E 10%) | Go testing + Vitest + Playwright |
+| **CI/CD** | GitHub Actions + Docker | Build for Windows+Linux; Docker Compose for local infrastructure |
 
 ---
 
@@ -125,13 +132,16 @@ Visual Graph:
 
 #### User Behavior Prediction: GBUS (Generalized Behavioral Understanding System)
 
+**🚨 FUTURE INTEGRATION - MUST-HAVE FEATURE (Phase 3+)**
+
 The system uses a **sophisticated behavioral model** that avoids simplistic assumptions. Key principles:
 
 **Not Single-Minded:**
 - Saving a Python article → "Highly likely" interested in Python (not 100% certain)
 - Deleting a Python article ≠ No interest in Python
   - Could mean: Resource utilized, content consumed, goal achieved
-- Uses **weighted learning** with potential deep learning models for pattern recognition
+- **Phase 1-2:** Cloud APIs (OpenAI/Anthropic) for classification and pattern detection
+- **Phase 3+:** Custom ML model for behavioral learning (see section 6.3)
 
 **Weighted Signal System:**
 ```
@@ -444,138 +454,77 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 ## 4. System Architecture
 
 ### 4.1 Deployment Topology
+
+#### Phase 1 — Fully Local (Current)
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     LOCAL-FIRST ARCHITECTURE                │
+│              LOCAL-FIRST ARCHITECTURE (Phase 1)             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│   ┌─────────────┐                         ┌─────────────┐   │
-│   │ WINDOWS PC  │                         │ ANDROID     │   │
-│   │             │                         │ DEVICE      │   │
-│   │ ┌─────────┐ │                         │ ┌─────────┐ │   │
-│   │ │Local DB │ │◄───── Real-Time ───────►│ │Local DB │ │   │
-│   │ │(Primary)│ │         Sync            │ │(Primary)│ │   │
-│   │ └─────────┘ │                         │ └─────────┘ │   │
-│   │      │      │                         │      │      │   │
-│   │      ▼      │                         │      ▼      │   │
-│   │ ┌─────────┐ │                         │ ┌─────────┐ │   │
-│   │ │ Golang  │ │                         │ │ Local   │ │   │
-│   │ │ Backend │ │                         │ │ Service │ │   │
-│   │ └─────────┘ │                         │ └─────────┘ │   │
-│   └──────┬──────┘                         └──────┬──────┘   │
-│          │                                       │          │
-│          │         ┌─────────────────┐           │          │
-│          │         │   SYNC SERVER   │           │          │
-│          └────────►│  (Lightweight)  │◄──────────┘          │
-│                    │                 │                      │
-│                    │ - Conflict Res. │                      │
-│                    │ - Queue Mgmt    │                      │
-│                    │ - State Sync    │                      │
-│                    └────────┬────────┘                      │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │          WINDOWS PC / LINUX MACHINE                 │   │
+│   │                                                     │   │
+│   │   ┌──────────────────────────────────────────────┐  │   │
+│   │   │           WAILS DESKTOP APP                  │  │   │
+│   │   │   React UI  ◄──IPC──►  Go Backend (Gin)      │  │   │
+│   │   └────────────────────────┬─────────────────────┘  │   │
+│   │                            │                        │   │
+│   │          ┌─────────────────┼──────────────┐         │   │
+│   │          ▼                 ▼              ▼         │   │
+│   │    ┌──────────┐    ┌────────────┐   ┌──────────┐   │   │
+│   │    │  SQLite  │    │   DGraph   │   │  Redis   │   │   │
+│   │    │ +sqlite- │    │  (Docker)  │   │ (Docker) │   │   │
+│   │    │   vec    │    │   Graph    │   │  Asynq   │   │   │
+│   │    └──────────┘    └────────────┘   └──────────┘   │   │
+│   └─────────────────────────────────────────────────────┘   │
 │                             │                               │
 └─────────────────────────────┼───────────────────────────────┘
                               │
                     ┌─────────▼─────────┐
                     │   CLOUD AI APIs   │
-                    │  (OpenAI, etc.)   │
+                    │  OpenAI/Anthropic  │
                     │                   │
                     │ - Classification  │
                     │ - Extraction      │
                     │ - Embeddings      │
+                    │ - Chat            │
                     └───────────────────┘
+```
+
+#### Phase 2+ — With Sync Server (Future, when Android is added)
+```
+┌──────────────────┐    WebSocket    ┌──────────────────────┐
+│  Wails Desktop   │ ◄────────────► │   VPS (~$4/month)    │
+│  (Win / Linux)   │                │                      │
+│  ├── SQLite      │                │  Go Sync Service     │
+│  └── local cache │                │  ├── PostgreSQL      │
+└──────────────────┘                │  ├── DGraph          │
+                                    │  ├── Redis           │
+┌──────────────────┐    WebSocket   │  └── sqlite-vec      │
+│  Android App     │ ◄────────────► │      or Qdrant       │
+│  (Phase 3+)      │                └──────────────────────┘
+└──────────────────┘
 ```
 
 ### 4.2 Sync Architecture
 
-#### Recommended: Raspberry Pi as Sync Server
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                  RASPBERRY PI SYNC SERVER                        │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   [Windows PC]                              [Android Device]     │
-│        │                                          │              │
-│        │         ┌────────────────────┐           │              │
-│        └────────►│   RASPBERRY PI     │◄──────────┘              │
-│                  │   (Home Network)   │                          │
-│                  │                    │                          │
-│                  │  ┌──────────────┐  │                          │
-│                  │  │ Sync Service │  │                          │
-│                  │  │  (Golang)    │  │                          │
-│                  │  └──────────────┘  │                          │
-│                  │  ┌──────────────┐  │                          │
-│                  │  │ Central DB   │  │                          │
-│                  │  │  (SQLite)    │  │                          │
-│                  │  └──────────────┘  │                          │
-│                  └─────────┬──────────┘                          │
-│                            │                                     │
-│              ┌─────────────┴─────────────┐                       │
-│              ▼                           ▼                       │
-│     [Local Network Sync]        [Remote Access via]              │
-│     (When at home)              [Tailscale/ZeroTier/Cloudflare]  │
-│                                 (When away from home)            │
-└──────────────────────────────────────────────────────────────────┘
-```
+#### 🔄 Phase 2+ — VPS Sync Server (Deferred)
 
-**Why Raspberry Pi works:**
-- Always-on, low power (~5W)
-- One-time cost (~$35-70)
-- Full control over data
-- Can use Tailscale (free) for secure remote access without port forwarding
+> **Note:** Raspberry Pi was considered but dropped in favor of a VPS for reliability.
+> See `Technical_Stack.md` → Section 6.2 for full details.
 
-#### Conflict Resolution: Last-Write-Wins
-```
-┌─────────────────────────────────────────────────────────────┐
-│              LAST-WRITE-WINS STRATEGY                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [Device A: Edit at 10:00 AM]    [Device B: Edit at 10:05]  │
-│              │                            │                 │
-│              └──────────┬─────────────────┘                 │
-│                         ▼                                   │
-│               [Both come online]                            │
-│                         │                                   │
-│                         ▼                                   │
-│              [Compare timestamps]                           │
-│                         │                                   │
-│                         ▼                                   │
-│              [Device B wins (10:05 > 10:00)]                │
-│                         │                                   │
-│                         ▼                                   │
-│              [Device A receives Device B's version]         │
-│                                                             │
-│  Note: Overwritten data stored in "conflict history"        │
-│        for potential recovery.                              │
-└─────────────────────────────────────────────────────────────┘
-```
+#### Current (Phase 1): Local-only, no sync needed
 
-#### Offline Queue System
-```
-┌────────────────────────────────────────┐
-│         OFFLINE QUEUE SYSTEM           │
-├────────────────────────────────────────┤
-│                                        │
-│  [User adds source while offline]      │
-│              │                         │
-│              ▼                         │
-│  ┌─────────────────────┐               │
-│  │ LOCAL PENDING QUEUE │               │
-│  │ - Source 1 (URL)    │               │
-│  │ - Source 2 (PDF)    │               │
-│  │ - Source 3 (IMG)    │               │
-│  └──────────┬──────────┘               │
-│             │                          │
-│             ▼                          │
-│  [Connection Restored]                 │
-│             │                          │
-│             ▼                          │
-│  [PROCESS QUEUE]                       │
-│  1. Sync to Pi server                  │
-│  2. Send to Cloud AI APIs              │
-│  3. Update graph                       │
-│  4. Sync back to all devices           │
-└────────────────────────────────────────┘
-```
+> Full sync architecture documented in `Technical_Stack.md` → Section 6.2
+
+#### Conflict Resolution (Phase 2+): Last-Write-Wins
+- Device with the later timestamp wins
+- Overwritten data stored in "conflict history" for recovery
+
+#### Offline Queue (Phase 2+)
+- Actions taken offline are queued locally (FIFO)
+- Processed in order when connection is restored
+- Queue persisted to SQLite so it survives app restarts
 
 ### 4.3 Background Processing Flow
 ```
@@ -656,6 +605,13 @@ User notified before deadline
 │  counter:       2  (times shared)                           │
 │  archived:      false                                       │
 │  archive_reason: null | "dead_link" | "expired" | "manual"  │
+│                                                             │
+│  ─── STATUS FLAGS ───                                       │
+│  status:        "new" | "processing" | "active" | "stale"   │
+│  is_priority:   false  (user-flagged as priority)           │
+│  is_favorite:   false  (user-marked favorite)               │
+│  is_read:       false  (read/unread status)                 │
+│                                                             │
 │  created_at:    timestamp                                   │
 │  updated_at:    timestamp                                   │
 │                                                             │
@@ -690,55 +646,386 @@ User notified before deadline
 │  created_at:    timestamp                                   │
 │  resource_count: 47                                         │
 │  position_3d:   {x, y, z} (for graph visualization)         │
+│  is_favorite:   false  (user-marked favorite category)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. Open Questions (Architecture & Logic)
+## 6.1 Two-Tier Processing System (Skim → Deep)
 
-### Classification Logic
-- [ ] What is the confidence threshold for auto-save vs. prompt? (e.g., 0.85?)
-- [x] **How does the system improve classification over time?** → GBUS with weighted learning
+### Rationale
+Like the human brain, the system first skims resources to quickly organize them, then performs deep processing later. This allows immediate user feedback while maintaining thorough analysis.
 
-### User Behavior Model (GBUS)
-- [x] **Category initialization?** → No defaults; categories created as resources are added
-- [ ] How quickly should the model adapt to changing interests?
-- [ ] Should users be able to manually adjust their interest profile?
-- [ ] How is the behavior model stored and synced?
-- [x] **What deep learning architecture?** → Advanced (LSTM/Transformer) + Full AI Agent capabilities
-  - **Purpose:** Better category prediction and classification accuracy
-  - **NOT for:** Proactive suggestions (user must ask first)
-  - **Scope:** Pattern recognition for behavioral modeling
+```
+┌──────────────────────────────────────────────────────────────┐
+│              TWO-TIER PROCESSING PIPELINE                    │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [User shares resource] ──► [Immediate ACK]                  │
+│                                  │                           │
+│                    ┌─────────────┴────────────┐              │
+│                    ▼                          ▼              │
+│            ═══ TIER 1: SKIM ═══      [Add to deep queue]    │
+│         (Fast, 2-5 seconds)                                  │
+│                    │                                         │
+│            ┌───────┼───────┐                                 │
+│            ▼       ▼       ▼                                 │
+│      [Extract   [Quick   [Basic                              │
+│       Title]    Category] Metadata]                          │
+│            │       │       │                                 │
+│            └───────┼───────┘                                 │
+│                    ▼                                         │
+│         [Create "PROCESSING" node]                           │
+│         [Visible in graph immediately]                       │
+│                    │                                         │
+│                    ▼                                         │
+│         [User can see node with badge]                       │
+│                                                              │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                              │
+│            ═══ TIER 2: DEEP ═══                              │
+│         (Thorough, 30-60 seconds)                            │
+│         [Processes via FIFO queue]                           │
+│                    │                                         │
+│            ┌───────┼───────┐                                 │
+│            ▼       ▼       ▼                                 │
+│      [Full      [AI      [Generate                           │
+│       Content  Analysis] Embeddings]                         │
+│       Extract]           [GBUS Update]                       │
+│            │       │       │                                 │
+│            └───────┼───────┘                                 │
+│                    ▼                                         │
+│         [Update node to "ACTIVE"]                            │
+│         [Remove processing badge]                            │
+│         [Classification refined]                             │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### Multi-Category Resource Handling
-- [ ] When resource is equally relevant to multiple categories (e.g., "AI in Healthcare"):
-  - **Option A:** Prompt user to choose primary category
-  - **Option B:** Prompt to create hybrid category (e.g., "AI in Healthcare")
-  - **Option C:** System chooses most prominent topic
-  - **Decision:** Needs further consideration and testing
-
-### Search & Query Priority
-- [x] **Default ranking:** Counter (popularity) is primary
-- [x] **Filters available:** Semantic similarity, recency, engagement, GBUS profile (applied on demand)
-
-### AI Assistant Capabilities
-- [x] **Chat levels implemented:** Basic, Semantic, Conversational, Analytical, Proactive
-- [x] **Proactive discovery:** Only when user explicitly asks (not automatic background)
-
-### Edge/Relationship Logic
-- [x] **How is "relatedness" calculated?** → AI detects subcategories during classification
-- [x] **Visual edges?** → Only shown if both primary and subcategory nodes exist
-
-### Archive System
-- [ ] How often should the system check for stale resources? (daily? weekly?)
-- [ ] Should users be able to set custom archive rules?
-
-### To-Do List Integration
-- [ ] Should task generation be fully automated or user-initiated?
-- [ ] Can users create to-dos unrelated to resources?
-- [ ] Integration with existing to-do apps or standalone?
+**Benefits:**
+- **Immediate feedback:** Users see their resource added within seconds
+- **Better UX:** No waiting for full AI processing
+- **Queue management:** Deep processing can handle API rate limits
+- **Graceful degradation:** If AI fails, skim data is still useful
 
 ---
 
-*Last Updated: January 9, 2026*
+## 6.2 Content Extraction Strategy by Resource Type
+
+### Website/Hyperlink
+```
+┌──────────────────────────────────────────────────────────────┐
+│                  WEBSITE EXTRACTION                          │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Stage 1 (Skim):                                             │
+│  • Page title                                                │
+│  • Domain/URL                                                │
+│  • Meta description                                          │
+│  • Quick category guess                                      │
+│                                                              │
+│  Stage 2 (Deep):                                             │
+│  • Full content scraping                                     │
+│  • Detect page type:                                         │
+│    - Landing page → Extract business/service info            │
+│    - Article → Extract author, date, key points              │
+│    - Event page → Extract dates, location, registration      │
+│    - Product → Extract price, features                       │
+│  • Event detection logic:                                    │
+│    - Keywords: "hackathon", "deadline", "apply by"           │
+│    - Date patterns: "January 25, 2026"                       │
+│    - If detected → Auto-create calendar event + reminder     │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Document (PDF, Word, etc.)
+```
+┌──────────────────────────────────────────────────────────────┐
+│                  DOCUMENT EXTRACTION                         │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Stage 1 (Skim):                                             │
+│  • Filename                                                  │
+│  • File size                                                 │
+│  • Page count (if available)                                 │
+│  • Document type                                             │
+│                                                              │
+│  Stage 2 (Deep):                                             │
+│  • Size-based processing:                                    │
+│                                                              │
+│    Small (< 5 pages / < 2MB):                                │
+│    → Full text extraction + AI analysis                      │
+│                                                              │
+│    Medium (5-50 pages / 2-20MB):                             │
+│    → Extract first/last pages + headings                     │
+│    → Summarize key sections                                  │
+│                                                              │
+│    Large (> 50 pages / > 20MB):                              │
+│    → Extract table of contents                               │
+│    → Analyze abstract/introduction                           │
+│    → Index for search, don't process all                     │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Image
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   IMAGE EXTRACTION                           │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Stage 1 (Skim):                                             │
+│  • Filename                                                  │
+│  • File type (jpg, png, etc.)                                │
+│  • Thumbnail generation                                      │
+│                                                              │
+│  Stage 2 (Deep):                                             │
+│  • OCR (if text visible)                                     │
+│  • Image classification (screenshot, diagram, photo, etc.)   │
+│  • Object detection (optional)                               │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6.3 Behavioral Pattern Modeling System
+
+**🚨 PHASE 3+ FEATURE - MUST-HAVE FOR PRODUCTION**
+
+**Phase 1-2 Approach:** Use cloud API classification confidence + simple weighted scoring for interest tracking
+
+**Phase 3+ Advanced Implementation:**
+
+### Overview
+A dedicated machine learning system that infers user interests from holistic behavior patterns, not just direct add/remove actions.
+
+**Key Principle:** Multiple interests coexist; adding "Field Y" resources doesn't mean declining interest in "Field X"
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│           BEHAVIORAL PATTERN FEATURES                        │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Input Signals (Multi-dimensional):                          │
+│                                                              │
+│  1. Resource Interaction Patterns                            │
+│     • Frequency of saves per category                        │
+│     • Time spent viewing resources                           │
+│     • Revisit patterns                                       │
+│     • Search queries                                         │
+│                                                              │
+│  2. User Actions                                             │
+│     • Manual categorization choices                          │
+│     • Favorite/Priority flags                                │
+│     • Rename patterns                                        │
+│     • Calendar/Todo linking                                  │
+│                                                              │
+│  3. Temporal Patterns                                        │
+│     • Time of day preferences                                │
+│     • Seasonality (exam season, job hunting season)          │
+│     • Burst vs sustained interest                            │
+│                                                              │
+│  4. Cross-Category Relationships                             │
+│     • Frequently co-occurring topics                         │
+│     • Interest clusters (AI + Healthcare often together)     │
+│                                                              │
+│  5. Meta-Signals                                             │
+│     • Favorites percentage per category                      │
+│     • Resource quality (counter values)                      │
+│     • Deletion context (read → delete vs unread → delete)    │
+│                                                              │
+│  ═══ Model Output ═══                                        │
+│                                                              │
+│  Hidden interest profile used for:                           │
+│  • Classification suggestions                                │
+│  • Search result boosting                                    │
+│  • Reminder prioritization                                   │
+│  • Proactive discovery targeting                             │
+│                                                              │
+│  NOT visible to user (backend only)                          │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Model Architecture Candidates:**
+- **Option A:** Gradient Boosting (XGBoost/LightGBM) - Good for tabular features
+- **Option B:** LSTM - Captures temporal patterns in user behavior
+- **Option C:** Transformer - Attention mechanism for cross-category relationships
+- **Option D:** Hybrid ensemble
+
+*Decision pending further research and experimentation*
+
+---
+
+## 6.4 Reminder & Calendar System
+
+### Configuration Options
+
+**User Preferences:**
+1. **Reminder Mode:**
+   - Manual only (user sets all reminders)
+   - System-assisted (system suggests, user approves)
+   - Fully automatic (system sets, user can modify)
+
+2. **Notification Channels:**
+   - Push notifications only
+   - Email only
+   - Both push + email
+
+3. **Smart Scheduling:**
+   ```
+   Event detected: Hackathon on Jan 25
+   
+   System suggests:
+   ☐ 1 week before (Jan 18) - "Start preparing"
+   ☐ 3 days before (Jan 22) - "Final review"
+   ☐ 1 day before (Jan 24) - "Tomorrow is the event"
+   
+   User can accept/modify/reject
+   ```
+
+4. **Anti-Spam Logic:**
+   - Maximum N reminders per day (user configurable)
+   - Priority-based: High-priority events get more reminders
+   - Consolidation: "You have 3 upcoming events this week"
+   - Snooze functionality
+
+---
+
+## 6.5 User Management Capabilities
+
+### Allowed Operations
+
+**Category Management:**
+- ✅ Rename categories (updates all linked resources)
+- ✅ Delete categories (prompts: "Move resources to?" or "Archive all?")
+- ✅ Mark category as favorite (visual indicator in graph)
+- ✅ Change category color
+
+**Resource Management:**
+- ✅ Rename resources
+- ✅ Delete resources (moves to trash, 30-day recovery)
+- ✅ Mark as Priority (affects processing queue, search ranking)
+- ✅ Mark as Favorite (affects behavioral model)
+- ✅ Mark as Read/Unread
+- ✅ Move to different category
+- ✅ Add/remove subcategories manually
+
+**Bulk Operations:** (See Future Considerations for optimization strategies)
+
+---
+
+## 6.6 Search & Highlight Behavior
+
+When user searches (via chat or graph search):
+
+```
+Query: "RAG"
+
+Visual Effect:
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│     [Category: AI]  (full brightness)                        │
+│          │                                                   │
+│       ┌──┼──┐                                                │
+│       │  │  │                                                │
+│    ░░RAG Tutorial░░  ← HIGHLIGHTED (pulsing/glow)            │
+│       │  │  │                                                │
+│    [Other AI]    ← DIMMED (30% opacity)                      │
+│    [Resources]                                               │
+│                                                              │
+│                                                              │
+│    [Category: ML]  ← DIMMED (30% opacity)                    │
+│       │                                                      │
+│    ░░RAG Paper░░   ← HIGHLIGHTED                             │
+│       │                                                      │
+│    [Other ML]      ← DIMMED                                  │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Highlight Rules:**
+- Exact matches: Bright highlight + glow effect
+- Semantic matches: Subtle highlight
+- Unrelated nodes: 30% opacity (dimmed but still visible for context)
+- Clear search: Return all nodes to normal brightness
+
+---
+
+## 7. Decisions Summary & Open Questions
+
+### ✅ Confirmed Decisions (Q17-Q30)
+
+**Resource Lifecycle:**
+- [x] Processing badge visible during analysis
+- [x] Priority flag available (user-set)
+- [x] Read/Unread status tracking
+- [x] Favorite flag (affects behavioral model)
+
+**User Management:**
+- [x] Can rename categories and resources
+- [x] Can delete categories/resources
+- [x] Favorites affect behavioral patterns
+
+**GBUS (Behavioral Model):**
+- [x] **Phase 1-2:** Cloud APIs only (OpenAI/Anthropic) for classification
+- [x] **Phase 3+:** Custom ML model (MUST-HAVE for production)
+- [x] ML-based interest profiling (deferred)
+- [x] Hidden from users (backend suggestion algorithm)
+- [x] Multi-interest aware (not zero-sum)
+- [x] Uses holistic behavior patterns
+- [x] No direct UI for users to see/adjust profile
+
+**Content Extraction:**
+- [x] Two-tier: Skim (fast) → Deep (thorough)
+- [x] Website: Basic info + event detection
+- [x] Documents: Size-based processing depth
+- [x] Images: OCR + classification
+
+**Reminders:**
+- [x] Manual, assisted, or automatic modes (user choice)
+- [x] Push, email, or both (user preference)
+- [x] Anti-spam logic (max per day, consolidation)
+
+**Search & Visualization:**
+- [x] Highlight matches, dim unrelated
+- [x] No cross-resource relationship links needed (chat handles this)
+
+**Processing:**
+- [x] FIFO queue for deep processing
+- [x] Two-tier for immediate feedback
+
+**Export:**
+- [x] JSON format
+
+**Subcategories:**
+- [x] No hard limit, but prompt user if category gets overcrowded
+
+### 🔄 Pending Decisions
+
+**Classification Logic:**
+- [ ] What is the confidence threshold for auto-save vs. prompt? (e.g., 0.85?)
+- [ ] Multi-category resources: Choose primary, create hybrid, or system decides?
+
+**Behavioral Model:**
+- [ ] Which ML architecture? (XGBoost, LSTM, Transformer, Hybrid?)
+- [ ] Training data collection strategy?
+- [ ] How often to retrain the model?
+- [ ] Behavioral pattern calculation methodology (needs dedicated design)
+
+### 📋 Deferred to Future Considerations File
+
+See `Future_Considerations.md` for:
+- Graph visualization performance optimization
+- Batch operations implementation strategy  
+- Security & privacy features
+- Archive scheduling strategy
+- To-do list integration approach
+- Offline semantic search caching
+
+---
+
+*Last Updated: February 15, 2026*
