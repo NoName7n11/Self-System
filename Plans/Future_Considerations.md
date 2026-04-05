@@ -388,7 +388,25 @@ Build test suite incrementally alongside development. Prioritize:
 
 ---
 
-## 13. Documentation & Onboarding
+## 13. Aspects of Atom of Thoughts
+
+**Phase 3+ Feature (To Be Elaborated)**
+
+A framework for understanding and modeling user decision-making and interest development through atomic components of thought patterns. This system will enhance decision-making logic and behavioral understanding beyond GBUS.
+
+**Status:** Concept under development - full specification to be provided in future iterations.
+
+**Expected to support:**
+- Breaking down complex interests into atomic decision components
+- Modeling thought progression and reasoning patterns
+- Enhanced behavioral learning across multi-dimensional interests
+- Integration with GBUS for more sophisticated interest profiling
+
+*Further details and implementation strategy to be added in Phase 3+*
+
+---
+
+## 14. Documentation & Onboarding
 
 ### User Documentation
 - Getting started guide
