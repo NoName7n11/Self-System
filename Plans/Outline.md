@@ -54,6 +54,16 @@ A **personal knowledge management system** that intelligently captures, classifi
 | **Cross-Platform** | Windows + Linux | Go + Wails compile natively for both; Android deferred to Phase 3+ |
 | **Testing** | Pyramid (Unit 70% + Integration 20% + E2E 10%) | Go testing + Vitest + Playwright |
 | **CI/CD** | GitHub Actions + Docker | Build for Windows+Linux; Docker Compose for local infrastructure |
+| **Git Workflow** | GitHub Flow | Feature branches → main; automated tests required before merge |
+| **Code Review** | Self-Review PR | Solo development; self-review for accountability & documentation |
+| **Release Versioning** | Semantic Versioning (MAJOR.MINOR.PATCH) | Industry standard; enables clear version tracking |
+| **Dev Environment** | VS Code Dev Container | One-click setup; Go + Node + Docker pre-configured |
+| **Configuration** | Hybrid (config.yml + .env + env vars) | Sensible defaults → local overrides → production overrides |
+| **Test Organization** | Unit adjacent + Integration separate | Unit tests co-located with source; integration tests in `/test` |
+| **Testing Pyramid** | Complete (70% unit, 20% integration, 10% E2E) | ~250 tests total; 80% coverage target |
+| **CI/CD Pipeline** | Standard (Lint + Tests + Build) | GitHub Actions; 6-8 min pipeline; required checks on PRs |
+| **Automated Releases** | Build + Release on Git Tag | Tag `v1.2.0` → auto-build Windows/Linux → GitHub Release |
+| **Code Quality Gates** | Required Checks (tests + lint must pass) | Branch protection: format, lint, tests, build all required |
 
 ---
 

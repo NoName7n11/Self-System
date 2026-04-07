@@ -19,3 +19,36 @@
 70) B + D combo
 
 just giving you a reminder that all these development things should be modular and loosely coupled because when I decided to remove  feature then it could be removed very easily without making much changes or disturbance to other section of the code/program
+
+
+
+
+71) B (GitHub Flow)
+
+72) B (Self-review PR)
+
+73) A (Semantic Versioning) — Professional, scalable, standard
+
+74) B (Dev container)
+
+75) D (Hybrid) — Scalable and flexible
+
+76) C (Unit adjacent, integration separate) — Best balance
+
+77) B (Complete pyramid) — Professional, scales with project
+
+78) B (Standard) — Good balance for Phase 1, can add security scans later
+
+79) B (Automated release build) — Professional, scales well
+
+80) B (Required checks) — Professional without being overkill
+
+
+
+1) I want all the features from the very start. We will build each feature slowly and gradually.
+
+2) 
+
+3) 
+
+4) I will be givibg you the design through Figma MCP later, for now start with backend and logic implementation. If needed, can make a very basic and simple UI for testing purpose.
