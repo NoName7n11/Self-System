@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"selfsystems/internal/ai"
 	"selfsystems/internal/config"
 	httpapi "selfsystems/internal/http"
 	sqliterepo "selfsystems/internal/repository/sqlite"
@@ -34,14 +35,41 @@ func main() {
 	todoRepo := sqliterepo.NewTodoRepository(db)
 	reminderRepo := sqliterepo.NewReminderRepository(db)
 
+	aiManager := ai.NewManager(cfg.AI.PrimaryProvider)
+	heuristicProvider := ai.NewHeuristicProvider()
+	aiManager.Register(heuristicProvider)
+	aiManager.SetFallback(heuristicProvider.Name())
+	aiManager.Register(ai.NewOpenAIProvider(ai.ProviderSettings{
+		Enabled:        cfg.AI.OpenAI.Enabled,
+		APIKey:         cfg.AI.OpenAI.APIKey,
+		Model:          cfg.AI.OpenAI.Model,
+		BaseURL:        cfg.AI.OpenAI.BaseURL,
+		TimeoutSeconds: cfg.AI.OpenAI.TimeoutSeconds,
+	}))
+	aiManager.Register(ai.NewAnthropicProvider(ai.ProviderSettings{
+		Enabled:        cfg.AI.Anthropic.Enabled,
+		APIKey:         cfg.AI.Anthropic.APIKey,
+		Model:          cfg.AI.Anthropic.Model,
+		BaseURL:        cfg.AI.Anthropic.BaseURL,
+		TimeoutSeconds: cfg.AI.Anthropic.TimeoutSeconds,
+	}))
+	aiManager.Register(ai.NewGeminiProvider(ai.ProviderSettings{
+		Enabled:        cfg.AI.Gemini.Enabled,
+		APIKey:         cfg.AI.Gemini.APIKey,
+		Model:          cfg.AI.Gemini.Model,
+		BaseURL:        cfg.AI.Gemini.BaseURL,
+		TimeoutSeconds: cfg.AI.Gemini.TimeoutSeconds,
+	}))
+
 	categorySvc := service.NewCategoryService(categoryRepo)
-	classifier := service.NewCategoryClassifier(categoryRepo)
+	classifier := service.NewCategoryClassifier(categoryRepo, aiManager)
 	resourceSvc := service.NewResourceService(resourceRepo, categoryRepo, classifier, categorySvc)
 	todoSvc := service.NewTodoService(todoRepo)
 	reminderSvc := service.NewReminderService(reminderRepo)
-	chatSvc := service.NewChatService(categorySvc, resourceSvc, todoSvc, reminderSvc)
+	graphSvc := service.NewGraphService(categoryRepo, resourceRepo)
+	chatSvc := service.NewChatService(categorySvc, resourceSvc, todoSvc, reminderSvc, graphSvc)
 
-	handler := httpapi.NewHandler(resourceSvc, categorySvc, todoSvc, reminderSvc, chatSvc)
+	handler := httpapi.NewHandler(resourceSvc, categorySvc, todoSvc, reminderSvc, graphSvc, chatSvc)
 
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())

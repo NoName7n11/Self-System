@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"selfsystems/internal/ai"
 	"selfsystems/internal/domain"
 )
 
@@ -21,16 +22,37 @@ type CategorySuggestion struct {
 
 type CategoryClassifier struct {
 	categories domain.CategoryRepository
+	manager    *ai.Manager
 }
 
-func NewCategoryClassifier(categories domain.CategoryRepository) *CategoryClassifier {
-	return &CategoryClassifier{categories: categories}
+func NewCategoryClassifier(categories domain.CategoryRepository, manager *ai.Manager) *CategoryClassifier {
+	return &CategoryClassifier{categories: categories, manager: manager}
 }
 
 func (c *CategoryClassifier) Suggest(ctx context.Context, rawURL, title string) (CategorySuggestion, error) {
 	items, err := c.categories.List(ctx)
 	if err != nil {
 		return CategorySuggestion{}, fmt.Errorf("list categories for classifier: %w", err)
+	}
+
+	if c.manager != nil {
+		existingNames := categoryNames(items)
+		output, classifyErr := c.manager.ClassifySkim(ctx, ai.ClassificationInput{
+			URL:                rawURL,
+			Title:              title,
+			ExistingCategories: existingNames,
+		})
+		if classifyErr == nil {
+			resolvedCategory, autoCreated, resolveErr := c.resolveCategorySuggestion(ctx, output.SuggestedCategory)
+			if resolveErr == nil {
+				return CategorySuggestion{
+					Category:    resolvedCategory,
+					Score:       output.Confidence,
+					Reason:      output.Reason,
+					AutoCreated: autoCreated,
+				}, nil
+			}
+		}
 	}
 
 	tokens := tokenize(rawURL + " " + title)
@@ -101,6 +123,43 @@ func (c *CategoryClassifier) Suggest(ctx context.Context, rawURL, title string) 
 	}, nil
 }
 
+func (c *CategoryClassifier) resolveCategorySuggestion(ctx context.Context, categoryName string) (domain.Category, bool, error) {
+	normalizedName := normalizeCategoryName(categoryName)
+	if normalizedName == "" {
+		return domain.Category{}, false, fmt.Errorf("category suggestion is empty")
+	}
+
+	existing, err := c.categories.GetByName(ctx, normalizedName)
+	if err != nil {
+		return domain.Category{}, false, err
+	}
+	if existing != nil {
+		return *existing, false, nil
+	}
+
+	created := domain.Category{
+		ID:     uuid.NewString(),
+		Name:   normalizedName,
+		Source: domain.CategorySourceAuto,
+	}
+	if err := c.categories.Create(ctx, &created); err != nil {
+		return domain.Category{}, false, err
+	}
+
+	return created, true, nil
+}
+
+func categoryNames(items []domain.Category) []string {
+	names := make([]string, 0, len(items))
+	for _, item := range items {
+		name := strings.TrimSpace(item.Name)
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 func scoreCategory(category domain.Category, tokens []string) float64 {
 	name := strings.ToLower(category.Name)
 	score := 0.0
@@ -126,22 +185,22 @@ func scoreCategory(category domain.Category, tokens []string) float64 {
 func deriveCategoryName(rawURL, title string) string {
 	combined := strings.ToLower(rawURL + " " + title)
 	keywordMap := map[string]string{
-		"github":      "Development",
-		"dev":         "Development",
-		"programming": "Development",
-		"code":        "Development",
-		"ai":          "AI",
-		"llm":         "AI",
-		"machine":     "AI",
-		"learning":    "AI",
-		"news":        "News",
-		"research":    "Research",
+		"github":       "Development",
+		"dev":          "Development",
+		"programming":  "Development",
+		"code":         "Development",
+		"ai":           "AI",
+		"llm":          "AI",
+		"machine":      "AI",
+		"learning":     "AI",
+		"news":         "News",
+		"research":     "Research",
 		"productivity": "Productivity",
-		"finance":     "Finance",
-		"health":      "Health",
-		"design":      "Design",
-		"video":       "Video",
-		"youtube":     "Video",
+		"finance":      "Finance",
+		"health":       "Health",
+		"design":       "Design",
+		"video":        "Video",
+		"youtube":      "Video",
 	}
 	for keyword, category := range keywordMap {
 		if strings.Contains(combined, keyword) {

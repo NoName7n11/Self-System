@@ -17,6 +17,7 @@ type Handler struct {
 	categories *service.CategoryService
 	todos      *service.TodoService
 	reminders  *service.ReminderService
+	graph      *service.GraphService
 	chat       *service.ChatService
 }
 
@@ -25,6 +26,7 @@ func NewHandler(
 	categories *service.CategoryService,
 	todos *service.TodoService,
 	reminders *service.ReminderService,
+	graph *service.GraphService,
 	chat *service.ChatService,
 ) *Handler {
 	return &Handler{
@@ -32,6 +34,7 @@ func NewHandler(
 		categories: categories,
 		todos:      todos,
 		reminders:  reminders,
+		graph:      graph,
 		chat:       chat,
 	}
 }
@@ -43,6 +46,8 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	api.POST("/resources", h.createResource)
 	api.GET("/resources", h.listResources)
 	api.GET("/resources/search", h.searchResources)
+	api.GET("/resources/semantic-search", h.semanticSearchResources)
+	api.GET("/graph", h.getGraph)
 	api.PATCH("/resources/:id/category", h.updateResourceCategory)
 
 	api.POST("/categories", h.createCategory)
@@ -110,6 +115,27 @@ func (h *Handler) searchResources(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": resources})
+}
+
+func (h *Handler) semanticSearchResources(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	resources, err := h.resources.SemanticSearch(c.Request.Context(), query, limit)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": resources})
+}
+
+func (h *Handler) getGraph(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "1000"))
+	graph, err := h.graph.Build(c.Request.Context(), limit)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": graph})
 }
 
 type updateResourceCategoryRequest struct {

@@ -43,7 +43,7 @@ A **personal knowledge management system** that intelligently captures, classifi
 |----------|--------|-------|
 | **Deployment Model** | Local-First (Phase 1) → VPS Sync (Phase 2+) | Phase 1: fully local; Phase 2+: cheap VPS (~$4/mo) for multi-device sync |
 | **AI Processing** | Cloud APIs | OpenAI (`gpt-4o-mini` for skim, `gpt-4o` for deep) + Anthropic |
-| **Processing Mode** | Background (80-90%) + Two-Tier | Skim (2-5s immediate) → Deep (30-60s FIFO queue via Asynq) |
+| **Processing Mode** | Phase 1: Skim-only (Deep in Phase 2+) | Skim now for immediate classification; Deep queue/GBUS starts in Phase 2 |
 | **Sync Strategy** | Real-Time via WebSockets | REST for CRUD; WebSockets for live sync and processing status |
 | **Classification Mode** | Smart Auto-Confirm | Auto-save for high-confidence; prompt only for new/ambiguous categories |
 | **Project Type** | Full Implementation | Not an MVP; all features built progressively |

@@ -7,6 +7,27 @@ app:
 database:
   path: ./data/self_systems.db
 
+ai:
+  primary_provider: heuristic
+  openai:
+    enabled: false
+    api_key: ""
+    model: gpt-4o-mini
+    base_url: https://api.openai.com
+    timeout_seconds: 20
+  anthropic:
+    enabled: false
+    api_key: ""
+    model: claude-3-5-sonnet-latest
+    base_url: https://api.anthropic.com
+    timeout_seconds: 20
+  gemini:
+    enabled: false
+    api_key: ""
+    model: gemini-1.5-flash
+    base_url: https://generativelanguage.googleapis.com
+    timeout_seconds: 20
+
 features:
   skim_enabled: true
   deep_enabled: false
