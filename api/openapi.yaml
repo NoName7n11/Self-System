@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: Self Systems API
+  version: 0.1.0
+  description: Phase 1 backend API (skim-tier processing, unified chat commands, URL-only resources).
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+  /api/v1/resources:
+    post:
+      summary: Create resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        "201":
+          description: Resource created
+    get:
+      summary: List resources
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Resources list
+  /api/v1/resources/search:
+    get:
+      summary: Search resources
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, default: 25 }
+      responses:
+        "200":
+          description: Search results
+  /api/v1/resources/{id}/category:
+    patch:
+      summary: Update resource category
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id]
+              properties:
+                category_id: { type: string }
+      responses:
+        "200":
+          description: Resource category updated
+  /api/v1/categories:
+    post:
+      summary: Create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        "201":
+          description: Category created
+    get:
+      summary: List categories
+      responses:
+        "200":
+          description: Categories list
+  /api/v1/todos:
+    post:
+      summary: Create todo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTodoRequest'
+      responses:
+        "201":
+          description: Todo created
+    get:
+      summary: List todos
+      responses:
+        "200":
+          description: Todos list
+  /api/v1/reminders:
+    post:
+      summary: Create reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReminderRequest'
+      responses:
+        "201":
+          description: Reminder created
+    get:
+      summary: List reminders
+      responses:
+        "200":
+          description: Reminders list
+  /api/v1/chat/commands:
+    post:
+      summary: Execute unified chat command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  example: "resource: https://example.com | category=Research"
+      responses:
+        "200":
+          description: Command executed
+components:
+  schemas:
+    CreateResourceRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+        title: { type: string }
+        summary: { type: string }
+        category_id: { type: string }
+        category_name: { type: string }
+    CreateCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+    CreateTodoRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        details: { type: string }
+        due_at: { type: string, format: date-time }
+        resource_id: { type: string }
+    CreateReminderRequest:
+      type: object
+      required: [title, remind_at]
+      properties:
+        title: { type: string }
+        message: { type: string }
+        remind_at: { type: string, format: date-time }
+        resource_id: { type: string }

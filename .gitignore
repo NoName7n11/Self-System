@@ -1,0 +1,30 @@
+# Go
+bin/
+dist/
+*.exe
+*.test
+*.out
+coverage.out
+
+# Dependency directories
+vendor/
+node_modules/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Runtime data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+/data/
+
+# Logs
+*.log

@@ -1,0 +1,15 @@
+app:
+  name: Self Systems
+  env: development
+  host: 127.0.0.1
+  port: 8080
+
+database:
+  path: ./data/self_systems.db
+
+features:
+  skim_enabled: true
+  deep_enabled: false
+  unified_chat_enabled: true
+  reminder_enabled: true
+  todo_enabled: true
