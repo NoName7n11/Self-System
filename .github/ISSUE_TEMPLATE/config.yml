@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Development Workflow
+    url: https://github.com/NoName7n11/Self-System/blob/master/Plans/Development_Workflow.md
+    about: Review the project workflow and release practices before opening issues.

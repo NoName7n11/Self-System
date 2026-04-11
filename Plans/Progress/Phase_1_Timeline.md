@@ -98,6 +98,128 @@ Format: Created <file> ``because <reason>``
 - Step 75: Ran go test ./... ``because graph integration required full compile and test validation.``
 - Step 76: Ran go run ./cmd/server (smoke test) ``because runtime route registration and startup behavior had to be verified after graph wiring.``
 
+## Session 7 - Graph Endpoint HTTP Tests
+
+- Step 77: Created internal/http/handler_test.go ``because GET /api/v1/graph needed endpoint-level response and limit behavior verification.``
+- Step 78: Ran go fmt ./... ``because the new HTTP test file had to follow Go formatting conventions.``
+- Step 79: Ran go test ./... ``because graph endpoint test coverage had to be validated with full-suite regression checks.``
+
+## Session 8 - Graph Endpoint Error-Path Coverage
+
+- Step 80: Updated internal/http/handler_test.go ``because GET /api/v1/graph needed a failure-path test for repository/service errors.``
+- Step 81: Ran go fmt ./... ``because updated test imports and stubs had to be normalized.``
+- Step 82: Ran go test ./... ``because error-path assertions had to be verified with full-suite regression checks.``
+
+## Session 9 - Chat Graph Command HTTP Coverage
+
+- Step 83: Updated internal/http/handler_test.go ``because POST /api/v1/chat/commands needed graph command response-shape coverage.``
+- Step 84: Ran go fmt ./... ``because added chat-command graph test code had to be formatted.``
+- Step 85: Ran go test ./... ``because chat-command graph endpoint behavior needed full-suite regression validation.``
+
+## Session 10 - Extended HTTP Hardening Batch
+
+- Step 86: Updated internal/http/handler_test.go ``because chat command validation failures and semantic-search success/failure paths needed endpoint-level coverage in one longer session.``
+- Step 87: Ran go fmt ./... ``because the expanded HTTP test suite updates had to follow Go formatting standards.``
+- Step 88: Ran go test ./... ``because the larger endpoint hardening batch required full-suite regression validation.``
+
+## Session 11 - Multi-Endpoint Hardening and Contract Alignment
+
+- Step 89: Updated internal/http/handler.go ``because search, semantic-search, graph, and chat endpoints needed service-availability guards and stricter request validation.``
+- Step 90: Updated internal/http/handler.go ``because bounded integer parsing was added to normalize endpoint limit handling and prevent unsafe values.``
+- Step 91: Updated internal/http/handler_test.go ``because GET /api/v1/graph needed service-unavailable coverage when graph wiring is absent.``
+- Step 92: Updated internal/http/handler_test.go ``because GET /api/v1/resources/search needed success, missing-query, service-failure, and service-unavailable coverage.``
+- Step 93: Updated internal/http/handler_test.go ``because POST /api/v1/chat/commands needed service-unavailable coverage for configured-runtime failures.``
+- Step 94: Updated internal/http/handler_test.go ``because GET /api/v1/resources/semantic-search needed missing-query and service-unavailable coverage.``
+- Step 95: Updated api/openapi.yaml ``because response contracts had to include new 400/500/503 behaviors for hardened endpoints.``
+- Step 96: Ran go fmt ./... ``because handler and test updates had to follow Go formatting conventions.``
+- Step 97: Ran go test ./... ``because the extended multi-endpoint hardening batch required full-suite regression validation.``
+
+## Session 12 - Remaining CRUD Service-Guard Expansion
+
+- Step 98: Updated internal/http/handler.go ``because create/list resource endpoints needed explicit service-unavailable handling when resource wiring is absent.``
+- Step 99: Updated internal/http/handler.go ``because resource category patch endpoint needed service-unavailable handling before payload processing.``
+- Step 100: Updated internal/http/handler.go ``because create/list category endpoints needed explicit service-unavailable handling when category wiring is absent.``
+- Step 101: Updated internal/http/handler.go ``because create/list todo endpoints needed explicit service-unavailable handling when todo wiring is absent.``
+- Step 102: Updated internal/http/handler.go ``because create/list reminder endpoints needed explicit service-unavailable handling when reminder wiring is absent.``
+- Step 103: Updated internal/http/handler_test.go ``because resource/category/todo/reminder endpoint families needed service-unavailable HTTP regression coverage with shared error assertions.``
+- Step 104: Updated api/openapi.yaml ``because CRUD endpoint contracts had to reflect new 400/500/503 response behaviors from handler hardening.``
+- Step 105: Ran go fmt ./... ``because handler and HTTP test expansions had to be normalized.``
+- Step 106: Ran go test ./... ``because the expanded CRUD hardening batch required full-suite regression validation.``
+
+## Session 13 - Error-Code Standardization and CRUD Success Coverage
+
+- Step 107: Updated internal/http/handler.go ``because all error responses were standardized with a stable code field while preserving readable messages.``
+- Step 108: Updated internal/http/handler.go ``because payload binding failures were mapped to invalid_payload for consistent client-side handling.``
+- Step 109: Updated internal/http/handler_test.go ``because existing error-path tests needed verification of standardized error codes across validation, internal, and service-unavailable branches.``
+- Step 110: Updated internal/http/handler_test.go ``because category/todo/reminder create and list endpoints needed success-path HTTP coverage with pagination checks.``
+- Step 111: Updated api/openapi.yaml ``because a shared ErrorResponse schema was needed to document error plus code payload structure.``
+- Step 112: Ran go fmt ./... ``because handler and test updates had to be normalized after the larger batch changes.``
+- Step 113: Ran go test ./... ``because error-code standardization and expanded CRUD success coverage required full-suite regression validation.``
+
+## Session 14 - Failure Classification and Contract Refactoring Batch
+
+- Step 114: Updated internal/http/handler.go ``because create/update/chat operations needed validation-vs-internal error classification instead of always returning bad request.``
+- Step 115: Updated internal/http/handler.go ``because a shared operation error helper was introduced to map validation failures to 400 and operational failures to 500.``
+- Step 116: Updated internal/http/handler_test.go ``because category/todo/reminder create and list endpoints needed explicit validation and internal-failure coverage with standardized error codes.``
+- Step 117: Updated internal/http/handler_test.go ``because prior error-path assertions were expanded to validate both human-readable error text and machine-readable error code values.``
+- Step 118: Updated api/openapi.yaml ``because endpoint error responses were refactored to reusable response components that reference ErrorResponse schema consistently.``
+- Step 119: Updated api/openapi.yaml ``because create/update/chat endpoints can now emit internal server errors when operational failures occur and needed explicit 500 contract entries.``
+- Step 120: Ran go fmt ./... ``because handler and HTTP test expansions had to be normalized after the larger refactor.``
+- Step 121: Ran go test ./... ``because failure classification changes and broad coverage expansion required full-suite regression validation.``
+
+## Session 15 - Resource CRUD Matrix and Envelope Consistency Batch
+
+- Step 122: Updated internal/http/handler.go ``because create/update/chat handler errors now route through shared operation classification to separate validation failures from internal failures.``
+- Step 123: Updated internal/http/handler.go ``because validation hint matching was centralized to keep 400 vs 500 mapping consistent across operations.``
+- Step 124: Updated internal/http/handler_test.go ``because resource repository stubs needed create/list/update tracking plus injectable failure paths for expanded HTTP coverage.``
+- Step 125: Updated internal/http/handler_test.go ``because resource create/list/update endpoints needed success-path, validation-path, and internal-failure coverage with code assertions.``
+- Step 126: Updated internal/http/handler_test.go ``because category/todo/reminder create and list endpoints needed explicit validation and service-failure regression tests under the new failure classification rules.``
+- Step 127: Updated internal/http/handler_test.go ``because a consolidated representative failure-envelope suite was added to enforce non-empty error and code fields with expected code values.``
+- Step 128: Updated api/openapi.yaml ``because resource creation now exposes internal server failures and required explicit 500 documentation.``
+- Step 129: Ran go fmt ./... ``because expanded handler and HTTP test changes had to be normalized.``
+- Step 130: Ran go test ./... ``because the larger resource CRUD and envelope consistency batch required full-suite regression validation.``
+
+## Session 16 - Phase 1 Closeout Sprint (Config, Integration, Ops)
+
+- Step 131: Updated internal/config/config.go ``because Phase 1 required fixed precedence (defaults -> .env -> environment variables) and .env loading was added without overriding pre-set environment variables.``
+- Step 132: Created internal/config/config_test.go ``because configuration precedence behavior needed automated regression coverage for .env and environment override rules.``
+- Step 133: Created test/integration/api_integration_test.go ``because Phase 1 needed true end-to-end API coverage with real SQLite repositories and HTTP routes.``
+- Step 134: Updated Makefile ``because closeout operations needed docker lifecycle targets, integration-test target, and CI convenience target.``
+- Step 135: Created docker-compose.yml ``because Redis and DGraph local infrastructure had to be scaffolded for documented Phase 1 runtime topology.``
+- Step 136: Created .github/workflows/ci.yml ``because Phase 1 required automated formatting checks, test execution, and build verification in CI.``
+- Step 137: Updated go.mod and go.sum ``because .env loading introduced a new dependency and module metadata had to be synchronized.``
+- Step 138: Ran go mod tidy ``because dependency graph and checksums had to be normalized after closeout sprint changes.``
+- Step 139: Ran go fmt ./... ``because new config and integration test files had to follow Go formatting standards.``
+- Step 140: Ran go test ./... ``because the closeout sprint batch required full-suite validation including integration tests.``
+
+## Session 17 - Release Automation and Closeout Documentation Batch
+
+- Step 141: Created .github/workflows/release.yml ``because Phase 1 closeout required tag-triggered Windows/Linux build artifacts with checksums and automated GitHub Releases.``
+- Step 142: Created .github/pull_request_template.md ``because the documented self-review PR workflow needed a concrete repository template.``
+- Step 143: Created README.md ``because the repository needed a practical setup and operations runbook for day-to-day development commands.``
+- Step 144: Created CHANGELOG.md ``because semantic version release flow needed a tracked change history baseline.``
+- Step 145: Created Plans/Progress/Phase_1_Completion_Checklist.md ``because Phase 1 backend closeout needed an explicit exit-criteria checklist with evidence mapping.``
+- Step 146: Ran go test ./... ``because the release and documentation batch required final regression validation before completion.``
+
+## Session 18 - Governance Templates and Release Checklist Workflow
+
+- Step 147: Updated .github/workflows/ci.yml ``because the repository default branch is master and CI triggers were expanded to cover both master and main.``
+- Step 148: Updated Plans/Progress/Phase_1_Completion_Checklist.md ``because a stray validation line was removed and evidence links were expanded for governance automation artifacts.``
+- Step 149: Created .github/ISSUE_TEMPLATE/bug_report.yml ``because standardized bug reports improve triage speed and reproducibility.``
+- Step 150: Created .github/ISSUE_TEMPLATE/feature_request.yml ``because feature proposals needed consistent problem/solution and acceptance criteria capture.``
+- Step 151: Created .github/ISSUE_TEMPLATE/release_checklist.md ``because release preparation needed a reusable issue-based operational checklist.``
+- Step 152: Created .github/ISSUE_TEMPLATE/config.yml ``because blank issues were disabled in favor of structured templates and workflow guidance links.``
+- Step 153: Created .github/workflows/release-checklist.yml ``because semantic version validation, changelog verification, and optional test gating were needed before tag pushes.``
+- Step 154: Updated README.md ``because CI trigger documentation needed to match master/main workflow coverage.``
+- Step 155: Created scripts/create-release-tag.ps1 ``because release tagging and push needed a guarded command that enforces clean working tree, semver format, and optional test pass.``
+- Step 156: Created scripts/apply-branch-protection.ps1 ``because branch-protection setup needed repeatable API automation for master/main with required checks and review gates.``
+- Step 157: Updated README.md ``because operational commands for release tagging and branch-protection setup had to be documented for immediate use.``
+- Step 158: Updated Plans/Progress/Phase_1_Completion_Checklist.md ``because evidence mapping had to include new release and branch governance automation scripts.``
+- Step 159: Ran go test ./... ``because governance workflow and script additions required a final regression pass.``
+- Step 160: Ran ./scripts/create-release-tag.ps1 -Version v0.1.0 ``because release-tag automation was executed directly and correctly blocked on dirty working tree precondition.``
+- Step 161: Ran ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System ``because branch-protection automation was executed directly and correctly blocked on missing GITHUB_TOKEN credentials.``
+- Step 162: Updated README.md ``because script prerequisites were made explicit to unblock direct execution of final release-governance steps.``
+
 ## Next Entry Rule
 
 - For each new work session, create a new session heading.

@@ -12,6 +12,13 @@ import (
 	"selfsystems/internal/service"
 )
 
+const (
+	errorCodeInvalidPayload     = "invalid_payload"
+	errorCodeValidation         = "validation_error"
+	errorCodeInternal           = "internal_error"
+	errorCodeServiceUnavailable = "service_unavailable"
+)
+
 type Handler struct {
 	resources  *service.ResourceService
 	categories *service.CategoryService
@@ -75,9 +82,14 @@ type createResourceRequest struct {
 }
 
 func (h *Handler) createResource(c *gin.Context) {
+	if h.resources == nil {
+		respondError(c, http.StatusServiceUnavailable, "resource service is not configured")
+		return
+	}
+
 	var req createResourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
 		return
 	}
 
@@ -89,7 +101,7 @@ func (h *Handler) createResource(c *gin.Context) {
 		CategoryName: req.CategoryName,
 	})
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -97,6 +109,11 @@ func (h *Handler) createResource(c *gin.Context) {
 }
 
 func (h *Handler) listResources(c *gin.Context) {
+	if h.resources == nil {
+		respondError(c, http.StatusServiceUnavailable, "resource service is not configured")
+		return
+	}
+
 	limit, offset := pagination(c)
 	resources, err := h.resources.List(c.Request.Context(), limit, offset)
 	if err != nil {
@@ -107,8 +124,18 @@ func (h *Handler) listResources(c *gin.Context) {
 }
 
 func (h *Handler) searchResources(c *gin.Context) {
+	if h.resources == nil {
+		respondError(c, http.StatusServiceUnavailable, "resource service is not configured")
+		return
+	}
+
 	query := strings.TrimSpace(c.Query("q"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "25"))
+	if query == "" {
+		respondError(c, http.StatusBadRequest, "q is required")
+		return
+	}
+
+	limit := parseBoundedInt(c.DefaultQuery("limit", "25"), 25, 1, 100)
 	resources, err := h.resources.Search(c.Request.Context(), query, limit)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
@@ -118,8 +145,18 @@ func (h *Handler) searchResources(c *gin.Context) {
 }
 
 func (h *Handler) semanticSearchResources(c *gin.Context) {
+	if h.resources == nil {
+		respondError(c, http.StatusServiceUnavailable, "resource service is not configured")
+		return
+	}
+
 	query := strings.TrimSpace(c.Query("q"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if query == "" {
+		respondError(c, http.StatusBadRequest, "q is required")
+		return
+	}
+
+	limit := parseBoundedInt(c.DefaultQuery("limit", "10"), 10, 1, 100)
 	resources, err := h.resources.SemanticSearch(c.Request.Context(), query, limit)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
@@ -129,7 +166,12 @@ func (h *Handler) semanticSearchResources(c *gin.Context) {
 }
 
 func (h *Handler) getGraph(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "1000"))
+	if h.graph == nil {
+		respondError(c, http.StatusServiceUnavailable, "graph service is not configured")
+		return
+	}
+
+	limit := parseBoundedInt(c.DefaultQuery("limit", "1000"), 1000, 1, 5000)
 	graph, err := h.graph.Build(c.Request.Context(), limit)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
@@ -143,10 +185,15 @@ type updateResourceCategoryRequest struct {
 }
 
 func (h *Handler) updateResourceCategory(c *gin.Context) {
+	if h.resources == nil {
+		respondError(c, http.StatusServiceUnavailable, "resource service is not configured")
+		return
+	}
+
 	resourceID := c.Param("id")
 	var req updateResourceCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
 		return
 	}
 
@@ -154,7 +201,7 @@ func (h *Handler) updateResourceCategory(c *gin.Context) {
 		ResourceID: resourceID,
 		CategoryID: req.CategoryID,
 	}); err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -167,9 +214,14 @@ type createCategoryRequest struct {
 }
 
 func (h *Handler) createCategory(c *gin.Context) {
+	if h.categories == nil {
+		respondError(c, http.StatusServiceUnavailable, "category service is not configured")
+		return
+	}
+
 	var req createCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
 		return
 	}
 
@@ -179,7 +231,7 @@ func (h *Handler) createCategory(c *gin.Context) {
 		Source:      domain.CategorySourceManual,
 	})
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -187,6 +239,11 @@ func (h *Handler) createCategory(c *gin.Context) {
 }
 
 func (h *Handler) listCategories(c *gin.Context) {
+	if h.categories == nil {
+		respondError(c, http.StatusServiceUnavailable, "category service is not configured")
+		return
+	}
+
 	categories, err := h.categories.List(c.Request.Context())
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
@@ -203,9 +260,14 @@ type createTodoRequest struct {
 }
 
 func (h *Handler) createTodo(c *gin.Context) {
+	if h.todos == nil {
+		respondError(c, http.StatusServiceUnavailable, "todo service is not configured")
+		return
+	}
+
 	var req createTodoRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
 		return
 	}
 
@@ -232,7 +294,7 @@ func (h *Handler) createTodo(c *gin.Context) {
 		ResourceID: resourceID,
 	})
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -240,6 +302,11 @@ func (h *Handler) createTodo(c *gin.Context) {
 }
 
 func (h *Handler) listTodos(c *gin.Context) {
+	if h.todos == nil {
+		respondError(c, http.StatusServiceUnavailable, "todo service is not configured")
+		return
+	}
+
 	limit, offset := pagination(c)
 	todos, err := h.todos.List(c.Request.Context(), limit, offset)
 	if err != nil {
@@ -257,9 +324,14 @@ type createReminderRequest struct {
 }
 
 func (h *Handler) createReminder(c *gin.Context) {
+	if h.reminders == nil {
+		respondError(c, http.StatusServiceUnavailable, "reminder service is not configured")
+		return
+	}
+
 	var req createReminderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
 		return
 	}
 
@@ -282,7 +354,7 @@ func (h *Handler) createReminder(c *gin.Context) {
 		ResourceID: resourceID,
 	})
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -290,6 +362,11 @@ func (h *Handler) createReminder(c *gin.Context) {
 }
 
 func (h *Handler) listReminders(c *gin.Context) {
+	if h.reminders == nil {
+		respondError(c, http.StatusServiceUnavailable, "reminder service is not configured")
+		return
+	}
+
 	limit, offset := pagination(c)
 	reminders, err := h.reminders.List(c.Request.Context(), limit, offset)
 	if err != nil {
@@ -306,13 +383,18 @@ type chatCommandRequest struct {
 func (h *Handler) executeChatCommand(c *gin.Context) {
 	var req chatCommandRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid payload")
+		respondErrorCode(c, http.StatusBadRequest, errorCodeInvalidPayload, "invalid payload")
+		return
+	}
+
+	if h.chat == nil {
+		respondError(c, http.StatusServiceUnavailable, "chat service is not configured")
 		return
 	}
 
 	result, err := h.chat.Execute(c.Request.Context(), req.Message)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondOperationError(c, err)
 		return
 	}
 
@@ -331,6 +413,64 @@ func pagination(c *gin.Context) (int, int) {
 	return limit, offset
 }
 
+func parseBoundedInt(raw string, fallback, min, max int) int {
+	parsed, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return fallback
+	}
+	if parsed < min {
+		return fallback
+	}
+	if parsed > max {
+		return max
+	}
+	return parsed
+}
+
+func respondOperationError(c *gin.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	message := err.Error()
+	if isValidationErrorMessage(message) {
+		respondError(c, http.StatusBadRequest, message)
+		return
+	}
+
+	respondError(c, http.StatusInternalServerError, message)
+}
+
+func isValidationErrorMessage(message string) bool {
+	lower := strings.ToLower(strings.TrimSpace(message))
+	validationHints := []string{
+		"required",
+		"invalid",
+		"not found",
+		"must be",
+		"empty",
+	}
+
+	for _, hint := range validationHints {
+		if strings.Contains(lower, hint) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func respondError(c *gin.Context, status int, message string) {
-	c.JSON(status, gin.H{"error": message})
+	code := errorCodeInternal
+	switch status {
+	case http.StatusBadRequest:
+		code = errorCodeValidation
+	case http.StatusServiceUnavailable:
+		code = errorCodeServiceUnavailable
+	}
+	respondErrorCode(c, status, code, message)
+}
+
+func respondErrorCode(c *gin.Context, status int, code, message string) {
+	c.JSON(status, gin.H{"error": message, "code": code})
 }

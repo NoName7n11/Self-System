@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: selfsystems-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dgraph-zero:
+    image: dgraph/dgraph:latest
+    container_name: selfsystems-dgraph-zero
+    ports:
+      - "5080:5080"
+      - "6080:6080"
+    command: ["dgraph", "zero", "--my=dgraph-zero:5080"]
+    volumes:
+      - dgraph_zero:/dgraph
+
+  dgraph-alpha:
+    image: dgraph/dgraph:latest
+    container_name: selfsystems-dgraph-alpha
+    depends_on:
+      - dgraph-zero
+    ports:
+      - "8081:8080"
+      - "9080:9080"
+    command: ["dgraph", "alpha", "--my=dgraph-alpha:7080", "--zero=dgraph-zero:5080", "--security", "whitelist=0.0.0.0/0"]
+    volumes:
+      - dgraph_alpha:/dgraph
+
+volumes:
+  redis_data:
+  dgraph_zero:
+  dgraph_alpha:

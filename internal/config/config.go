@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -49,6 +51,11 @@ type FeatureConfig struct {
 }
 
 func Load() (Config, error) {
+	if _, err := os.Stat(".env"); err == nil {
+		// Load .env without overriding pre-set environment variables.
+		_ = godotenv.Load(".env")
+	}
+
 	v := viper.New()
 	v.SetConfigName("config.default")
 	v.SetConfigType("yaml")
