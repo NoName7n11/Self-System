@@ -34,25 +34,6 @@ catch {
 $appliedCount = 0
 
 foreach ($branch in $Branches) {
-    $branchUrl = "https://api.github.com/repos/$Owner/$Repo/branches/$branch"
-
-    try {
-        Invoke-RestMethod -Method Get -Uri $branchUrl -Headers $headers | Out-Null
-    }
-    catch {
-        $statusCode = $null
-        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
-            $statusCode = [int]$_.Exception.Response.StatusCode
-        }
-
-        if ($statusCode -eq 404) {
-            Write-Host "Skipping missing branch: $branch"
-            continue
-        }
-
-        throw "Failed to read branch '$branch' (HTTP $statusCode)."
-    }
-
     if ([string]::IsNullOrWhiteSpace($branch)) {
         continue
     }
@@ -79,9 +60,25 @@ foreach ($branch in $Branches) {
     } | ConvertTo-Json -Depth 10
 
     $protectionUrl = "https://api.github.com/repos/$Owner/$Repo/branches/$branch/protection"
-    Invoke-RestMethod -Method Put -Uri $protectionUrl -Headers $headers -Body $payload -ContentType "application/json" | Out-Null
-    Write-Host "Applied protection to branch: $branch"
-    $appliedCount++
+
+    try {
+        Invoke-RestMethod -Method Put -Uri $protectionUrl -Headers $headers -Body $payload -ContentType "application/json" | Out-Null
+        Write-Host "Applied protection to branch: $branch"
+        $appliedCount++
+    }
+    catch {
+        $statusCode = $null
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+
+        if ($statusCode -eq 404) {
+            Write-Host "Skipping missing branch: $branch"
+            continue
+        }
+
+        throw "Failed to apply branch protection to '$branch' (HTTP $statusCode)."
+    }
 }
 
 if ($appliedCount -eq 0) {

@@ -228,6 +228,14 @@ Format: Created <file> ``because <reason>``
 - Step 166: Ran ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System ``because hardened token validation behavior was verified and now fails clearly when token access is invalid.``
 - Step 167: Updated README.md ``because branch-protection command behavior now explicitly includes API token validation.``
 
+## Session 20 - PAT Scope Diagnosis and Branch Protection Success
+
+- Step 168: Ran GitHub API diagnostics for user, repo, and branch endpoints ``because HTTP 403 root cause needed concrete API error details instead of assumption-driven permission changes.``
+- Step 169: Verified direct protection PUT on master ``because the token could apply branch protection and the script failure path had to be isolated.``
+- Step 170: Updated scripts/apply-branch-protection.ps1 ``because pre-reading branch metadata required extra PAT scopes and direct protection updates with 404-skips are more reliable.``
+- Step 171: Ran ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System ``because the updated script needed end-to-end verification with real repository settings.``
+- Step 172: Verified master branch protection via GitHub API ``because strict status checks and review requirements had to be confirmed after the successful apply run.``
+
 ## Next Entry Rule
 
 - For each new work session, create a new session heading.
