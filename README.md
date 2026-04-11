@@ -99,6 +99,7 @@ Branch protection setup (requires GITHUB_TOKEN with admin rights):
 
 - PowerShell: ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System
    - Requires: GITHUB_TOKEN environment variable set with repo administration scope
+   - Script now validates token access via GitHub API before applying rules
 
 ## Key Paths
 

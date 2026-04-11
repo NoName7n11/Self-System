@@ -24,6 +24,15 @@ $headers = @{
     "X-GitHub-Api-Version" = "2022-11-28"
 }
 
+try {
+    Invoke-RestMethod -Method Get -Uri "https://api.github.com/user" -Headers $headers | Out-Null
+}
+catch {
+    throw "Invalid GITHUB_TOKEN or insufficient API access."
+}
+
+$appliedCount = 0
+
 foreach ($branch in $Branches) {
     $branchUrl = "https://api.github.com/repos/$Owner/$Repo/branches/$branch"
 
@@ -31,7 +40,20 @@ foreach ($branch in $Branches) {
         Invoke-RestMethod -Method Get -Uri $branchUrl -Headers $headers | Out-Null
     }
     catch {
-        Write-Host "Skipping missing branch: $branch"
+        $statusCode = $null
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+
+        if ($statusCode -eq 404) {
+            Write-Host "Skipping missing branch: $branch"
+            continue
+        }
+
+        throw "Failed to read branch '$branch' (HTTP $statusCode)."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($branch)) {
         continue
     }
 
@@ -59,4 +81,9 @@ foreach ($branch in $Branches) {
     $protectionUrl = "https://api.github.com/repos/$Owner/$Repo/branches/$branch/protection"
     Invoke-RestMethod -Method Put -Uri $protectionUrl -Headers $headers -Body $payload -ContentType "application/json" | Out-Null
     Write-Host "Applied protection to branch: $branch"
+    $appliedCount++
+}
+
+if ($appliedCount -eq 0) {
+    throw "No branch protection rules were applied. Check branch names and token permissions."
 }

@@ -220,6 +220,14 @@ Format: Created <file> ``because <reason>``
 - Step 161: Ran ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System ``because branch-protection automation was executed directly and correctly blocked on missing GITHUB_TOKEN credentials.``
 - Step 162: Updated README.md ``because script prerequisites were made explicit to unblock direct execution of final release-governance steps.``
 
+## Session 19 - Branch Protection Verification Hardening
+
+- Step 163: Ran git push origin master ``because local release-governance commit state was ahead of origin and needed synchronization.``
+- Step 164: Ran GitHub API verification commands ``because branch protection and release status needed post-run confirmation.``
+- Step 165: Updated scripts/apply-branch-protection.ps1 ``because invalid credentials and non-404 API failures must stop execution instead of being treated as missing branches.``
+- Step 166: Ran ./scripts/apply-branch-protection.ps1 -Owner NoName7n11 -Repo Self-System ``because hardened token validation behavior was verified and now fails clearly when token access is invalid.``
+- Step 167: Updated README.md ``because branch-protection command behavior now explicitly includes API token validation.``
+
 ## Next Entry Rule
 
 - For each new work session, create a new session heading.
