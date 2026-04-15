@@ -1,0 +1,112 @@
+name: Sync Runtime Reachability
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Base URL for deployed sync runtime (for example, https://api.example.com)
+        required: false
+        default: ""
+        type: string
+      websocket_path:
+        description: WebSocket path to verify
+        required: false
+        default: /api/v1/sync/ws
+        type: string
+      timeout_seconds:
+        description: Timeout per verification request in seconds
+        required: false
+        default: "15"
+        type: string
+      bearer_token:
+        description: Optional bearer token for protected sync runtime endpoints
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-runtime:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve target base URL
+        id: resolve
+        shell: bash
+        run: |
+          TARGET_BASE_URL="${{ inputs.base_url }}"
+
+          if [ -z "${TARGET_BASE_URL}" ]; then
+            echo "No base URL provided. Set workflow input base_url."
+            exit 1
+          fi
+
+          echo "base_url=${TARGET_BASE_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Run sync runtime reachability verification
+        id: verify
+        shell: bash
+        env:
+          SS_SYNC_RUNTIME_BEARER_TOKEN: ${{ inputs.bearer_token }}
+        run: |
+          mkdir -p artifacts
+          set +e
+          go run ./scripts/verify_sync_runtime \
+            -base-url "${{ steps.resolve.outputs.base_url }}" \
+            -websocket-path "${{ inputs.websocket_path }}" \
+            -timeout-seconds "${{ inputs.timeout_seconds }}" \
+            -bearer-token "${SS_SYNC_RUNTIME_BEARER_TOKEN}" \
+            -report-file artifacts/sync-runtime-reachability.json \
+            > artifacts/sync-runtime-reachability-stdout.json
+          EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Publish reachability summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Sync Runtime Reachability"
+            echo ""
+            echo "- Base URL: ${{ steps.resolve.outputs.base_url }}"
+            echo "- WebSocket path: ${{ inputs.websocket_path }}"
+            echo "- Verification exit code: ${{ steps.verify.outputs.exit_code }}"
+            echo ""
+            if [ -f artifacts/sync-runtime-reachability.json ]; then
+              echo "### Verification Report"
+              echo '```json'
+              cat artifacts/sync-runtime-reachability.json
+              echo '```'
+            else
+              echo "No verification report was generated."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reachability artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-runtime-reachability
+          path: |
+            artifacts/sync-runtime-reachability.json
+            artifacts/sync-runtime-reachability-stdout.json
+          if-no-files-found: warn
+
+      - name: Enforce verification success
+        shell: bash
+        run: |
+          if [ "${{ steps.verify.outputs.exit_code }}" != "0" ]; then
+            echo "Sync runtime reachability verification failed. See sync-runtime-reachability artifact."
+            exit 1
+          fi
