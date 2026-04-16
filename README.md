@@ -142,6 +142,7 @@ Branch protection setup (requires GITHUB_TOKEN with admin rights):
 - api/openapi.yaml: API contract
 - scripts/generate_distributed_gate_report/main.go: distributed gate evidence report generator
 - scripts/verify_sync_runtime/main.go: deployed sync runtime reachability verifier
+- DEPLOYMENT.md: deployment and runtime verification runbook
 - artifacts/templates/sync-runtime-reachability.sample.json: sample JSON report template for reachability evidence
 - docker-compose.vps.yml: final VPS topology overlay (Go API + NGINX reverse proxy)
 - deploy/nginx/selfsystems.conf: websocket-aware proxy config for /api/v1/sync/ws
