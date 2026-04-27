@@ -35,6 +35,32 @@ If you do not use Make, run:
 - docker compose up -d
 - go run ./cmd/server
 
+## Frontend UI Preview
+
+The Workstream 8 UI lives in `frontend/` and can run independently while the Go API is running.
+
+1. Start backend API from repository root:
+   - `go run ./cmd/server`
+2. In a second terminal, start frontend:
+   - `cd frontend`
+   - `npm install`
+   - `npm run dev`
+3. Open the Vite URL shown in terminal (default: `http://127.0.0.1:5173`).
+
+Optional environment overrides for frontend:
+
+- `VITE_API_BASE_URL` (default `http://127.0.0.1:8080`)
+- `VITE_SYNC_WS_URL` (full websocket URL override)
+- `VITE_SYNC_WS_PATH` (path override, default `/api/v1/sync/ws`)
+
+Current Workstream 8 UI sections:
+
+- `Graph`: graph controls + force graph + resource list/edit/delete
+- `Search`: filter-first resource listing + resource edit/delete panel
+- `Chat`: command dock + resource context list
+- `Tasks`: Todo and Reminder CRUD/status board
+- `Settings`: runtime endpoint/sync/status snapshot
+
 ## Configuration Precedence
 
 Configuration is loaded in this order:
@@ -79,6 +105,13 @@ Windows note: if `make` is not found but MinGW is installed, use `mingw32-make` 
 
 - Full test suite: go test ./...
 - Integration tests only: go test ./test/integration/...
+- Frontend unit tests: cd frontend && npm test
+- Frontend unit scope includes task-store + resource-store create/update/delete mutation error handling (including resource silent refresh retention paths) and API client envelope-contract assertions for resource list/create/update/delete plus task list/create/update/delete operations
+ - Frontend unit scope includes store-level read-path resilience tests (resource/task stores) covering silent refresh retention vs non-silent list failures, task-store + resource-store create/update/delete mutation error handling (including resource silent refresh retention paths) and API client envelope-contract assertions for resource list/create/update/delete plus task list/create/update/delete operations
+- Frontend CI unit gate also emits frontend/test-results/vitest-results.json via npx vitest JSON reporting and publishes pass/fail + failed-assertion summary details for faster contract-test triage
+- Frontend E2E tests: cd frontend && npm run test:e2e
+- Frontend E2E scope includes positive and negative Resource + Tasks flows (resource create/update/delete success, backend/network/timeout/malformed envelope failure UX assertions, and resource delete malformed/empty success-body tolerance assertions; plus todo/reminder create/update/delete/status success/failure, client-side validation, malformed API envelope handling, and network/timeout mutation failure assertions)
+- Frontend E2E first-time browser setup: cd frontend && npx playwright install chromium
 - Distributed sync/replay gate: go test ./internal/sync ./test/integration -run "Sync|Offline|Replay"
 - Distributed gate evidence report: make distributed-report (writes artifacts/distributed-sync-go-test.json and artifacts/distributed-sync-report.md)
 - PostgreSQL central data gate: set SS_POSTGRES_TEST_DSN then run go test ./internal/repository/postgres -run Integration
@@ -94,7 +127,8 @@ Testing layout follows:
 
 - CI workflow: .github/workflows/ci.yml
    - Trigger: push and pull_request to master and main
-   - Checks: formatting, distributed behavior gate, distributed evidence artifacts/summary, full tests, PostgreSQL integration gate, build
+   - Checks: Go formatting, distributed behavior gate + evidence artifacts/summary, full Go tests, PostgreSQL integration gate, server build, plus frontend unit/E2E/build gate (Node + Playwright Chromium)
+   - Artifacts: validates frontend Vitest JSON report generation/non-empty output, publishes frontend unit-test summary details (including failed assertions), conditionally validates Playwright HTML/JSON + trace artifacts when E2E executes, and uploads frontend test-results/playwright-report artifacts for failure diagnostics
 - Sync runtime reachability workflow: .github/workflows/sync-runtime-reachability.yml
    - Trigger: manual workflow dispatch
    - Base URL source: workflow input base_url

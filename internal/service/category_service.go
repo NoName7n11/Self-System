@@ -21,12 +21,27 @@ type CreateCategoryInput struct {
 	Source      domain.CategorySource
 }
 
+type UpdateCategoryInput struct {
+	ID          string
+	Name        string
+	Description string
+}
+
 func NewCategoryService(repo domain.CategoryRepository) *CategoryService {
 	return &CategoryService{repo: repo}
 }
 
 func (s *CategoryService) List(ctx context.Context) ([]domain.Category, error) {
 	return s.repo.List(ctx)
+}
+
+func (s *CategoryService) GetByID(ctx context.Context, id string) (*domain.Category, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, fmt.Errorf("category id is required")
+	}
+
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *CategoryService) Create(ctx context.Context, input CreateCategoryInput) (domain.Category, error) {
@@ -89,6 +104,64 @@ func (s *CategoryService) EnsureByName(ctx context.Context, name string, source 
 	}
 
 	return created, nil
+}
+
+func (s *CategoryService) Update(ctx context.Context, input UpdateCategoryInput) (*domain.Category, error) {
+	id := strings.TrimSpace(input.ID)
+	if id == "" {
+		return nil, fmt.Errorf("category id is required")
+	}
+
+	name := normalizeCategoryName(input.Name)
+	if name == "" {
+		return nil, fmt.Errorf("category name is required")
+	}
+
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, nil
+	}
+
+	byName, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if byName != nil && byName.ID != existing.ID {
+		return nil, fmt.Errorf("category name already exists")
+	}
+
+	existing.Name = name
+	existing.Description = strings.TrimSpace(input.Description)
+
+	if err := s.repo.Update(ctx, existing); err != nil {
+		return nil, err
+	}
+
+	return existing, nil
+}
+
+func (s *CategoryService) Delete(ctx context.Context, id string) (bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false, fmt.Errorf("category id is required")
+	}
+
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if existing == nil {
+		return false, nil
+	}
+
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func normalizeCategoryName(input string) string {

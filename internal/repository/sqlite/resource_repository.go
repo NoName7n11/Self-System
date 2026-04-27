@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,25 @@ func NewResourceRepository(db *sql.DB) *ResourceRepository {
 	return &ResourceRepository{db: db}
 }
 
+func (r *ResourceRepository) GetByID(ctx context.Context, id string) (*domain.Resource, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT r.id, r.url, r.host, r.title, r.summary, r.category_id, c.name, r.user_override, r.created_at, r.updated_at
+		FROM resources r
+		JOIN categories c ON c.id = r.category_id
+		WHERE r.id = ?
+	`, strings.TrimSpace(id))
+
+	resource, err := scanResource(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get resource by id: %w", err)
+	}
+
+	return resource, nil
+}
+
 func (r *ResourceRepository) Create(ctx context.Context, resource *domain.Resource) error {
 	timestamp := nowRFC3339()
 	resource.CreatedAt = parseRFC3339(timestamp)
@@ -29,6 +49,34 @@ func (r *ResourceRepository) Create(ctx context.Context, resource *domain.Resour
 	if err != nil {
 		return fmt.Errorf("create resource: %w", err)
 	}
+	return nil
+}
+
+func (r *ResourceRepository) Update(ctx context.Context, resource *domain.Resource) error {
+	timestamp := nowRFC3339()
+	resource.UpdatedAt = parseRFC3339(timestamp)
+
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE resources
+		SET url = ?, host = ?, title = ?, summary = ?, category_id = ?, user_override = ?, updated_at = ?
+		WHERE id = ?
+	`, strings.TrimSpace(resource.URL), strings.TrimSpace(resource.Host), strings.TrimSpace(resource.Title), strings.TrimSpace(resource.Summary), strings.TrimSpace(resource.CategoryID), boolToInt(resource.UserOverride), timestamp, strings.TrimSpace(resource.ID))
+	if err != nil {
+		return fmt.Errorf("update resource: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ResourceRepository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM resources
+		WHERE id = ?
+	`, strings.TrimSpace(id))
+	if err != nil {
+		return fmt.Errorf("delete resource: %w", err)
+	}
+
 	return nil
 }
 

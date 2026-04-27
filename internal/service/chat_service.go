@@ -64,18 +64,36 @@ func (s *ChatService) Execute(ctx context.Context, message string) (ChatResult, 
 		return s.handleCreateCategory(ctx, strings.TrimSpace(trimmed[len("category:"):])), nil
 	case strings.HasPrefix(lower, "list categories"):
 		return s.handleListCategories(ctx), nil
+	case strings.HasPrefix(lower, "get category"):
+		return s.handleGetCategory(ctx, strings.TrimSpace(trimmed[len("get category"):])), nil
+	case strings.HasPrefix(lower, "update category"):
+		return s.handleUpdateCategory(ctx, strings.TrimSpace(trimmed[len("update category"):])), nil
+	case strings.HasPrefix(lower, "delete category"):
+		return s.handleDeleteCategory(ctx, strings.TrimSpace(trimmed[len("delete category"):])), nil
 	case strings.HasPrefix(lower, "create todo"):
 		return s.handleCreateTodo(ctx, strings.TrimSpace(trimmed[len("create todo"):])), nil
 	case strings.HasPrefix(lower, "todo:"):
 		return s.handleCreateTodo(ctx, strings.TrimSpace(trimmed[len("todo:"):])), nil
 	case strings.HasPrefix(lower, "list todos"):
 		return s.handleListTodos(ctx, strings.TrimSpace(trimmed[len("list todos"):])), nil
+	case strings.HasPrefix(lower, "get todo"):
+		return s.handleGetTodo(ctx, strings.TrimSpace(trimmed[len("get todo"):])), nil
+	case strings.HasPrefix(lower, "update todo"):
+		return s.handleUpdateTodo(ctx, strings.TrimSpace(trimmed[len("update todo"):])), nil
+	case strings.HasPrefix(lower, "delete todo"):
+		return s.handleDeleteTodo(ctx, strings.TrimSpace(trimmed[len("delete todo"):])), nil
 	case strings.HasPrefix(lower, "resource:"):
 		return s.handleCreateResource(ctx, strings.TrimSpace(trimmed[len("resource:"):])), nil
 	case strings.HasPrefix(lower, "save "):
 		return s.handleCreateResource(ctx, strings.TrimSpace(trimmed[len("save "):])), nil
 	case strings.HasPrefix(lower, "list resources"):
 		return s.handleListResources(ctx, strings.TrimSpace(trimmed[len("list resources"):])), nil
+	case strings.HasPrefix(lower, "get resource"):
+		return s.handleGetResource(ctx, strings.TrimSpace(trimmed[len("get resource"):])), nil
+	case strings.HasPrefix(lower, "update resource"):
+		return s.handleUpdateResource(ctx, strings.TrimSpace(trimmed[len("update resource"):])), nil
+	case strings.HasPrefix(lower, "delete resource"):
+		return s.handleDeleteResource(ctx, strings.TrimSpace(trimmed[len("delete resource"):])), nil
 	case strings.HasPrefix(lower, "search "):
 		return s.handleSearchResources(ctx, strings.TrimSpace(trimmed[len("search "):])), nil
 	case strings.HasPrefix(lower, "search:"):
@@ -90,6 +108,12 @@ func (s *ChatService) Execute(ctx context.Context, message string) (ChatResult, 
 		return s.handleCreateReminder(ctx, strings.TrimSpace(trimmed[len("reminder:"):])), nil
 	case strings.HasPrefix(lower, "list reminders"):
 		return s.handleListReminders(ctx, strings.TrimSpace(trimmed[len("list reminders"):])), nil
+	case strings.HasPrefix(lower, "get reminder"):
+		return s.handleGetReminder(ctx, strings.TrimSpace(trimmed[len("get reminder"):])), nil
+	case strings.HasPrefix(lower, "update reminder"):
+		return s.handleUpdateReminder(ctx, strings.TrimSpace(trimmed[len("update reminder"):])), nil
+	case strings.HasPrefix(lower, "delete reminder"):
+		return s.handleDeleteReminder(ctx, strings.TrimSpace(trimmed[len("delete reminder"):])), nil
 	case strings.HasPrefix(lower, "list graph"):
 		return s.handleGraph(ctx, strings.TrimSpace(trimmed[len("list graph"):])), nil
 	case lower == "graph":
@@ -101,7 +125,7 @@ func (s *ChatService) Execute(ctx context.Context, message string) (ChatResult, 
 	default:
 		return ChatResult{
 			Action:  "help",
-			Message: "Unsupported command. Use: create/list category, resource/save, search, semantic search, create/list todo, create/list reminder, graph.",
+			Message: "Unsupported command. Use: create/get/update/delete/list category, resource/save/get/update/delete/list, search, semantic search, create/get/update/delete/list todo, create/get/update/delete/list reminder, graph.",
 		}, nil
 	}
 }
@@ -125,6 +149,80 @@ func (s *ChatService) handleListCategories(ctx context.Context) ChatResult {
 		return ChatResult{Action: "categories_error", Message: err.Error()}
 	}
 	return ChatResult{Action: "categories_list", Message: "Categories loaded", Categories: items}
+}
+
+func (s *ChatService) handleGetCategory(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "category_error", Message: "category id is required"}
+	}
+
+	category, err := s.categories.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "category_error", Message: err.Error()}
+	}
+	if category == nil {
+		return ChatResult{Action: "category_error", Message: "category not found"}
+	}
+
+	return ChatResult{Action: "category_retrieved", Message: "Category loaded", Category: category}
+}
+
+func (s *ChatService) handleUpdateCategory(ctx context.Context, payload string) ChatResult {
+	parts := parsePipePayload(payload)
+	id := firstNonEmpty(parts["id"], parseCommandID(parts["value"]))
+	if id == "" {
+		return ChatResult{Action: "category_error", Message: "category id is required"}
+	}
+
+	existing, err := s.categories.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "category_error", Message: err.Error()}
+	}
+	if existing == nil {
+		return ChatResult{Action: "category_error", Message: "category not found"}
+	}
+
+	name := existing.Name
+	if value, ok := parts["name"]; ok {
+		name = strings.TrimSpace(value)
+	}
+
+	description := existing.Description
+	if value, ok := parts["description"]; ok {
+		description = strings.TrimSpace(value)
+	}
+
+	updated, err := s.categories.Update(ctx, UpdateCategoryInput{
+		ID:          id,
+		Name:        name,
+		Description: description,
+	})
+	if err != nil {
+		return ChatResult{Action: "category_error", Message: err.Error()}
+	}
+	if updated == nil {
+		return ChatResult{Action: "category_error", Message: "category not found"}
+	}
+
+	return ChatResult{Action: "category_updated", Message: "Category updated", Category: updated}
+}
+
+func (s *ChatService) handleDeleteCategory(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "category_error", Message: "category id is required"}
+	}
+
+	deleted, err := s.categories.Delete(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "category_error", Message: err.Error()}
+	}
+	if !deleted {
+		return ChatResult{Action: "category_error", Message: "category not found"}
+	}
+
+	return ChatResult{Action: "category_deleted", Message: "Category deleted"}
 }
 
 func (s *ChatService) handleCreateTodo(ctx context.Context, payload string) ChatResult {
@@ -172,6 +270,124 @@ func (s *ChatService) handleListTodos(ctx context.Context, payload string) ChatR
 	return ChatResult{Action: "todos_list", Message: "Todos loaded", Todos: items}
 }
 
+func (s *ChatService) handleGetTodo(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "todo_error", Message: "todo id is required"}
+	}
+
+	todo, err := s.todos.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "todo_error", Message: err.Error()}
+	}
+	if todo == nil {
+		return ChatResult{Action: "todo_error", Message: "todo not found"}
+	}
+
+	return ChatResult{Action: "todo_retrieved", Message: "Todo loaded", Todo: todo}
+}
+
+func (s *ChatService) handleUpdateTodo(ctx context.Context, payload string) ChatResult {
+	parts := parsePipePayload(payload)
+	id := firstNonEmpty(parts["id"], parseCommandID(parts["value"]))
+	if id == "" {
+		return ChatResult{Action: "todo_error", Message: "todo id is required"}
+	}
+
+	existing, err := s.todos.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "todo_error", Message: err.Error()}
+	}
+	if existing == nil {
+		return ChatResult{Action: "todo_error", Message: "todo not found"}
+	}
+
+	title := existing.Title
+	if value, ok := parts["title"]; ok {
+		title = strings.TrimSpace(value)
+	}
+
+	details := existing.Details
+	if value, ok := parts["details"]; ok {
+		details = strings.TrimSpace(value)
+	}
+
+	status := existing.Status
+	if value, ok := parts["status"]; ok && strings.TrimSpace(value) != "" {
+		status = domain.TodoStatus(strings.TrimSpace(value))
+	}
+
+	dueAt := existing.DueAt
+	if value, ok := parts["due"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			dueAt = nil
+		} else {
+			parsed, parseErr := time.Parse(time.RFC3339, trimmed)
+			if parseErr != nil {
+				return ChatResult{Action: "todo_error", Message: "due must be RFC3339 timestamp"}
+			}
+			dueAt = &parsed
+		}
+	} else if value, ok := parts["due_at"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			dueAt = nil
+		} else {
+			parsed, parseErr := time.Parse(time.RFC3339, trimmed)
+			if parseErr != nil {
+				return ChatResult{Action: "todo_error", Message: "due must be RFC3339 timestamp"}
+			}
+			dueAt = &parsed
+		}
+	}
+
+	resourceID := existing.ResourceID
+	if value, ok := parts["resource"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			resourceID = nil
+		} else {
+			temp := trimmed
+			resourceID = &temp
+		}
+	}
+
+	updated, err := s.todos.Update(ctx, UpdateTodoInput{
+		ID:         id,
+		Title:      title,
+		Details:    details,
+		Status:     status,
+		DueAt:      dueAt,
+		ResourceID: resourceID,
+	})
+	if err != nil {
+		return ChatResult{Action: "todo_error", Message: err.Error()}
+	}
+	if updated == nil {
+		return ChatResult{Action: "todo_error", Message: "todo not found"}
+	}
+
+	return ChatResult{Action: "todo_updated", Message: "Todo updated", Todo: updated}
+}
+
+func (s *ChatService) handleDeleteTodo(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "todo_error", Message: "todo id is required"}
+	}
+
+	deleted, err := s.todos.Delete(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "todo_error", Message: err.Error()}
+	}
+	if !deleted {
+		return ChatResult{Action: "todo_error", Message: "todo not found"}
+	}
+
+	return ChatResult{Action: "todo_deleted", Message: "Todo deleted"}
+}
+
 func (s *ChatService) handleCreateResource(ctx context.Context, payload string) ChatResult {
 	parts := parsePipePayload(payload)
 	resource, err := s.resources.Create(ctx, CreateResourceInput{
@@ -194,6 +410,88 @@ func (s *ChatService) handleListResources(ctx context.Context, payload string) C
 		return ChatResult{Action: "resources_error", Message: err.Error()}
 	}
 	return ChatResult{Action: "resources_list", Message: "Resources loaded", Resources: items}
+}
+
+func (s *ChatService) handleGetResource(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "resource_error", Message: "resource id is required"}
+	}
+
+	resource, err := s.resources.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "resource_error", Message: err.Error()}
+	}
+	if resource == nil {
+		return ChatResult{Action: "resource_error", Message: "resource not found"}
+	}
+
+	return ChatResult{Action: "resource_retrieved", Message: "Resource loaded", Resource: resource}
+}
+
+func (s *ChatService) handleUpdateResource(ctx context.Context, payload string) ChatResult {
+	parts := parsePipePayload(payload)
+	id := firstNonEmpty(parts["id"], parseCommandID(parts["value"]))
+	if id == "" {
+		return ChatResult{Action: "resource_error", Message: "resource id is required"}
+	}
+
+	existing, err := s.resources.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "resource_error", Message: err.Error()}
+	}
+	if existing == nil {
+		return ChatResult{Action: "resource_error", Message: "resource not found"}
+	}
+
+	url := existing.URL
+	if value, ok := parts["url"]; ok {
+		url = strings.TrimSpace(value)
+	}
+
+	title := existing.Title
+	if value, ok := parts["title"]; ok {
+		title = strings.TrimSpace(value)
+	}
+
+	summary := existing.Summary
+	if value, ok := parts["summary"]; ok {
+		summary = strings.TrimSpace(value)
+	}
+
+	updated, err := s.resources.Update(ctx, UpdateResourceInput{
+		ID:           id,
+		URL:          url,
+		Title:        title,
+		Summary:      summary,
+		CategoryID:   strings.TrimSpace(parts["category_id"]),
+		CategoryName: strings.TrimSpace(parts["category"]),
+	})
+	if err != nil {
+		return ChatResult{Action: "resource_error", Message: err.Error()}
+	}
+	if updated == nil {
+		return ChatResult{Action: "resource_error", Message: "resource not found"}
+	}
+
+	return ChatResult{Action: "resource_updated", Message: "Resource updated", Resource: updated}
+}
+
+func (s *ChatService) handleDeleteResource(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "resource_error", Message: "resource id is required"}
+	}
+
+	deleted, err := s.resources.Delete(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "resource_error", Message: err.Error()}
+	}
+	if !deleted {
+		return ChatResult{Action: "resource_error", Message: "resource not found"}
+	}
+
+	return ChatResult{Action: "resource_deleted", Message: "Resource deleted"}
 }
 
 func (s *ChatService) handleSearchResources(ctx context.Context, payload string) ChatResult {
@@ -264,6 +562,122 @@ func (s *ChatService) handleListReminders(ctx context.Context, payload string) C
 	return ChatResult{Action: "reminders_list", Message: "Reminders loaded", Reminders: items}
 }
 
+func (s *ChatService) handleGetReminder(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "reminder_error", Message: "reminder id is required"}
+	}
+
+	reminder, err := s.reminders.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "reminder_error", Message: err.Error()}
+	}
+	if reminder == nil {
+		return ChatResult{Action: "reminder_error", Message: "reminder not found"}
+	}
+
+	return ChatResult{Action: "reminder_retrieved", Message: "Reminder loaded", Reminder: reminder}
+}
+
+func (s *ChatService) handleUpdateReminder(ctx context.Context, payload string) ChatResult {
+	parts := parsePipePayload(payload)
+	id := firstNonEmpty(parts["id"], parseCommandID(parts["value"]))
+	if id == "" {
+		return ChatResult{Action: "reminder_error", Message: "reminder id is required"}
+	}
+
+	existing, err := s.reminders.GetByID(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "reminder_error", Message: err.Error()}
+	}
+	if existing == nil {
+		return ChatResult{Action: "reminder_error", Message: "reminder not found"}
+	}
+
+	title := existing.Title
+	if value, ok := parts["title"]; ok {
+		title = strings.TrimSpace(value)
+	}
+
+	message := existing.Message
+	if value, ok := parts["message"]; ok {
+		message = strings.TrimSpace(value)
+	}
+
+	status := existing.Status
+	if value, ok := parts["status"]; ok && strings.TrimSpace(value) != "" {
+		status = domain.ReminderStatus(strings.TrimSpace(value))
+	}
+
+	remindAt := existing.RemindAt
+	if value, ok := parts["at"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return ChatResult{Action: "reminder_error", Message: "at=<RFC3339> is required"}
+		}
+		parsed, parseErr := time.Parse(time.RFC3339, trimmed)
+		if parseErr != nil {
+			return ChatResult{Action: "reminder_error", Message: "invalid timestamp format"}
+		}
+		remindAt = parsed
+	} else if value, ok := parts["remind_at"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return ChatResult{Action: "reminder_error", Message: "remind_at is required"}
+		}
+		parsed, parseErr := time.Parse(time.RFC3339, trimmed)
+		if parseErr != nil {
+			return ChatResult{Action: "reminder_error", Message: "invalid timestamp format"}
+		}
+		remindAt = parsed
+	}
+
+	resourceID := existing.ResourceID
+	if value, ok := parts["resource"]; ok {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			resourceID = nil
+		} else {
+			temp := trimmed
+			resourceID = &temp
+		}
+	}
+
+	updated, err := s.reminders.Update(ctx, UpdateReminderInput{
+		ID:         id,
+		Title:      title,
+		Message:    message,
+		RemindAt:   remindAt,
+		Status:     status,
+		ResourceID: resourceID,
+	})
+	if err != nil {
+		return ChatResult{Action: "reminder_error", Message: err.Error()}
+	}
+	if updated == nil {
+		return ChatResult{Action: "reminder_error", Message: "reminder not found"}
+	}
+
+	return ChatResult{Action: "reminder_updated", Message: "Reminder updated", Reminder: updated}
+}
+
+func (s *ChatService) handleDeleteReminder(ctx context.Context, payload string) ChatResult {
+	id := parseCommandID(payload)
+	if id == "" {
+		return ChatResult{Action: "reminder_error", Message: "reminder id is required"}
+	}
+
+	deleted, err := s.reminders.Delete(ctx, id)
+	if err != nil {
+		return ChatResult{Action: "reminder_error", Message: err.Error()}
+	}
+	if !deleted {
+		return ChatResult{Action: "reminder_error", Message: "reminder not found"}
+	}
+
+	return ChatResult{Action: "reminder_deleted", Message: "Reminder deleted"}
+}
+
 func (s *ChatService) handleGraph(ctx context.Context, payload string) ChatResult {
 	if s.graph == nil {
 		return ChatResult{Action: "graph_error", Message: "graph service is not configured"}
@@ -285,6 +699,20 @@ func splitTwo(input string) (string, string) {
 		return strings.TrimSpace(parts[0]), ""
 	}
 	return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+}
+
+func parseCommandID(input string) string {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return ""
+	}
+
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return strings.TrimSpace(parts[0])
 }
 
 func parsePipePayload(input string) map[string]string {

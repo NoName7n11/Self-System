@@ -5,7 +5,9 @@ app:
   port: 8080
 
 database:
+  type: sqlite
   path: ./data/self_systems.db
+  url: ""
 
 ai:
   primary_provider: heuristic
@@ -30,7 +32,36 @@ ai:
 
 features:
   skim_enabled: true
-  deep_enabled: false
+  deep_enabled: true
   unified_chat_enabled: true
   reminder_enabled: true
   todo_enabled: true
+
+processing:
+  deep:
+    enabled: true
+    queue_capacity: 256
+    worker_count: 1
+    max_tasks_per_minute: 30
+    max_tokens_per_day: 200000
+    complexity_threshold: 6
+    low_cost_model: gpt-4o-mini
+    high_cost_model: gpt-4o
+    low_cost_estimated_tokens: 250
+    high_cost_estimated_tokens: 1200
+
+sync:
+  enabled: true
+  websocket_path: /api/v1/sync/ws
+  allowed_origins: []
+  heartbeat_seconds: 30
+
+auth:
+  enabled: false
+  google_client_id: ""
+  google_client_secret: ""
+  google_redirect_url: ""
+  jwt_secret: ""
+  jwt_issuer: self-systems
+  jwt_audience: self-systems-clients
+  token_ttl_minutes: 60

@@ -8,11 +8,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"selfsystems/internal/domain"
 	"selfsystems/internal/service"
+	syncapi "selfsystems/internal/sync"
 )
 
 type graphCategoryRepoStub struct {
@@ -39,6 +41,14 @@ func (s graphCategoryRepoStub) Create(ctx context.Context, c *domain.Category) e
 	return nil
 }
 
+func (s graphCategoryRepoStub) Update(ctx context.Context, c *domain.Category) error {
+	return nil
+}
+
+func (s graphCategoryRepoStub) Delete(ctx context.Context, id string) error {
+	return nil
+}
+
 func (s graphCategoryRepoStub) IncrementAccept(ctx context.Context, id string) error {
 	return nil
 }
@@ -52,6 +62,7 @@ type graphResourceRepoStub struct {
 	lastLimit       int
 	lastOffset      int
 	listErr         error
+	getByIDErr      error
 	createErr       error
 	searchItems     []domain.Resource
 	lastSearchQuery string
@@ -59,9 +70,23 @@ type graphResourceRepoStub struct {
 	searchErr       error
 	created         []domain.Resource
 	updateErr       error
+	deleteErr       error
 	lastUpdateID    string
 	lastUpdateCatID string
 	lastUpdateOver  bool
+}
+
+func (s *graphResourceRepoStub) GetByID(ctx context.Context, id string) (*domain.Resource, error) {
+	if s.getByIDErr != nil {
+		return nil, s.getByIDErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			item := s.items[i]
+			return &item, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *graphResourceRepoStub) Create(ctx context.Context, r *domain.Resource) error {
@@ -70,6 +95,36 @@ func (s *graphResourceRepoStub) Create(ctx context.Context, r *domain.Resource) 
 	}
 	if r != nil {
 		s.created = append(s.created, *r)
+	}
+	return nil
+}
+
+func (s *graphResourceRepoStub) Update(ctx context.Context, r *domain.Resource) error {
+	if s.updateErr != nil {
+		return s.updateErr
+	}
+	if r == nil {
+		return nil
+	}
+	for i := range s.items {
+		if s.items[i].ID == r.ID {
+			s.items[i] = *r
+			return nil
+		}
+	}
+	s.items = append(s.items, *r)
+	return nil
+}
+
+func (s *graphResourceRepoStub) Delete(ctx context.Context, id string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			break
+		}
 	}
 	return nil
 }
@@ -108,8 +163,11 @@ func (s *graphResourceRepoStub) UpdateCategory(ctx context.Context, resourceID, 
 type categoryRepoCRUDStub struct {
 	items        []domain.Category
 	createErr    error
+	getByIDErr   error
 	listErr      error
 	getByNameErr error
+	updateErr    error
+	deleteErr    error
 }
 
 func (s *categoryRepoCRUDStub) List(ctx context.Context) ([]domain.Category, error) {
@@ -120,6 +178,9 @@ func (s *categoryRepoCRUDStub) List(ctx context.Context) ([]domain.Category, err
 }
 
 func (s *categoryRepoCRUDStub) GetByID(ctx context.Context, id string) (*domain.Category, error) {
+	if s.getByIDErr != nil {
+		return nil, s.getByIDErr
+	}
 	for i := range s.items {
 		if s.items[i].ID == id {
 			item := s.items[i]
@@ -150,6 +211,32 @@ func (s *categoryRepoCRUDStub) Create(ctx context.Context, c *domain.Category) e
 	return nil
 }
 
+func (s *categoryRepoCRUDStub) Update(ctx context.Context, c *domain.Category) error {
+	if s.updateErr != nil {
+		return s.updateErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == c.ID {
+			s.items[i] = *c
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *categoryRepoCRUDStub) Delete(ctx context.Context, id string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
 func (s *categoryRepoCRUDStub) IncrementAccept(ctx context.Context, id string) error {
 	return nil
 }
@@ -160,10 +247,26 @@ func (s *categoryRepoCRUDStub) IncrementOverride(ctx context.Context, id string)
 
 type todoRepoCRUDStub struct {
 	items      []domain.Todo
+	getByIDErr error
 	createErr  error
+	updateErr  error
+	deleteErr  error
 	listErr    error
 	lastLimit  int
 	lastOffset int
+}
+
+func (s *todoRepoCRUDStub) GetByID(ctx context.Context, id string) (*domain.Todo, error) {
+	if s.getByIDErr != nil {
+		return nil, s.getByIDErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			item := s.items[i]
+			return &item, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *todoRepoCRUDStub) Create(ctx context.Context, t *domain.Todo) error {
@@ -171,6 +274,32 @@ func (s *todoRepoCRUDStub) Create(ctx context.Context, t *domain.Todo) error {
 		return s.createErr
 	}
 	s.items = append(s.items, *t)
+	return nil
+}
+
+func (s *todoRepoCRUDStub) Update(ctx context.Context, t *domain.Todo) error {
+	if s.updateErr != nil {
+		return s.updateErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == t.ID {
+			s.items[i] = *t
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *todoRepoCRUDStub) Delete(ctx context.Context, id string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
 
@@ -185,10 +314,26 @@ func (s *todoRepoCRUDStub) List(ctx context.Context, limit, offset int) ([]domai
 
 type reminderRepoCRUDStub struct {
 	items      []domain.Reminder
+	getByIDErr error
 	createErr  error
+	updateErr  error
+	deleteErr  error
 	listErr    error
 	lastLimit  int
 	lastOffset int
+}
+
+func (s *reminderRepoCRUDStub) GetByID(ctx context.Context, id string) (*domain.Reminder, error) {
+	if s.getByIDErr != nil {
+		return nil, s.getByIDErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			item := s.items[i]
+			return &item, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *reminderRepoCRUDStub) Create(ctx context.Context, r *domain.Reminder) error {
@@ -196,6 +341,32 @@ func (s *reminderRepoCRUDStub) Create(ctx context.Context, r *domain.Reminder) e
 		return s.createErr
 	}
 	s.items = append(s.items, *r)
+	return nil
+}
+
+func (s *reminderRepoCRUDStub) Update(ctx context.Context, r *domain.Reminder) error {
+	if s.updateErr != nil {
+		return s.updateErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == r.ID {
+			s.items[i] = *r
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *reminderRepoCRUDStub) Delete(ctx context.Context, id string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	for i := range s.items {
+		if s.items[i].ID == id {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
 
@@ -1559,5 +1730,864 @@ func TestSemanticSearchResourcesReturnsInternalServerErrorOnServiceFailure(t *te
 
 	if response["code"] != "internal_error" {
 		t.Fatalf("expected code internal_error, got %q", response["code"])
+	}
+}
+
+func TestGetCategoryByIDReturnsCategoryData(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI", Description: "Artificial Intelligence"}}}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/categories/cat-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	var response struct {
+		Data domain.Category `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse category response: %v", err)
+	}
+
+	if response.Data.ID != "cat-1" {
+		t.Fatalf("expected category id cat-1, got %q", response.Data.ID)
+	}
+}
+
+func TestGetCategoryByIDReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categorySvc := service.NewCategoryService(&categoryRepoCRUDStub{})
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/categories/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "category not found")
+}
+
+func TestGetCategoryByIDReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{getByIDErr: errors.New("category lookup failure")}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/categories/cat-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "category lookup failure")
+}
+
+func TestUpdateCategoryReturnsUpdatedCategory(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI", Description: "Old"}}}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/categories/cat-1", strings.NewReader(`{"name":"productivity systems","description":"Updated"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	var response struct {
+		Data domain.Category `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse category response: %v", err)
+	}
+
+	if response.Data.Name != "Productivity Systems" {
+		t.Fatalf("expected normalized category name Productivity Systems, got %q", response.Data.Name)
+	}
+	if categoryRepo.items[0].Description != "Updated" {
+		t.Fatalf("expected category description to be updated")
+	}
+}
+
+func TestUpdateCategoryReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categorySvc := service.NewCategoryService(&categoryRepoCRUDStub{})
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/categories/missing", strings.NewReader(`{"name":"AI"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "category not found")
+}
+
+func TestUpdateCategoryReturnsBadRequestOnValidationError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI"}}}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/categories/cat-1", strings.NewReader(`{"name":"   "}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusBadRequest, "validation_error", "category name is required")
+}
+
+func TestDeleteCategoryReturnsSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI"}}}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/categories/cat-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if len(categoryRepo.items) != 0 {
+		t.Fatalf("expected category to be removed from repository")
+	}
+}
+
+func TestDeleteCategoryReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categorySvc := service.NewCategoryService(&categoryRepoCRUDStub{})
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/categories/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "category not found")
+}
+
+func TestDeleteCategoryReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI"}}, deleteErr: errors.New("category delete failure")}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	handler := NewHandler(nil, categorySvc, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/categories/cat-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "category delete failure")
+}
+
+func TestGetResourceByIDReturnsResourceData(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{items: []domain.Resource{{
+		ID:           "res-1",
+		URL:          "https://example.com/ai",
+		Host:         "example.com",
+		Title:        "AI",
+		CategoryID:   "cat-1",
+		CategoryName: "AI",
+	}}}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/resources/res-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	var response struct {
+		Data domain.Resource `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse resource response: %v", err)
+	}
+
+	if response.Data.ID != "res-1" {
+		t.Fatalf("expected resource id res-1, got %q", response.Data.ID)
+	}
+}
+
+func TestGetResourceByIDReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceSvc := service.NewResourceService(&graphResourceRepoStub{}, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/resources/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "resource not found")
+}
+
+func TestGetResourceByIDReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{getByIDErr: errors.New("resource lookup failure")}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/resources/res-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "resource lookup failure")
+}
+
+func TestUpdateResourceReturnsUpdatedResource(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{items: []domain.Resource{{
+		ID:           "res-1",
+		URL:          "https://example.com/old",
+		Host:         "example.com",
+		Title:        "Old Title",
+		Summary:      "Old Summary",
+		CategoryID:   "cat-1",
+		CategoryName: "AI",
+	}}}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/resources/res-1", strings.NewReader(`{"url":"https://example.com/new","title":"New Title","summary":"New Summary"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	var response struct {
+		Data domain.Resource `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse resource response: %v", err)
+	}
+
+	if response.Data.URL != "https://example.com/new" {
+		t.Fatalf("expected updated resource url, got %q", response.Data.URL)
+	}
+	if response.Data.Title != "New Title" {
+		t.Fatalf("expected updated title New Title, got %q", response.Data.Title)
+	}
+}
+
+func TestUpdateResourceReturnsBadRequestOnValidationError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{items: []domain.Resource{{ID: "res-1", URL: "https://example.com/old", Host: "example.com", CategoryID: "cat-1", CategoryName: "AI"}}}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/resources/res-1", strings.NewReader(`{"url":"not-a-url"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusBadRequest, "validation_error", "invalid url")
+}
+
+func TestUpdateResourceReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceSvc := service.NewResourceService(&graphResourceRepoStub{}, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/resources/missing", strings.NewReader(`{"title":"Updated"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "resource not found")
+}
+
+func TestDeleteResourceReturnsSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{items: []domain.Resource{{ID: "res-1", URL: "https://example.com", CategoryID: "cat-1", CategoryName: "AI"}}}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/res-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if len(resourceRepo.items) != 0 {
+		t.Fatalf("expected resource to be deleted")
+	}
+}
+
+func TestDeleteResourceReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceSvc := service.NewResourceService(&graphResourceRepoStub{}, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "resource not found")
+}
+
+func TestDeleteResourceReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	resourceRepo := &graphResourceRepoStub{items: []domain.Resource{{ID: "res-1", URL: "https://example.com", CategoryID: "cat-1", CategoryName: "AI"}}, deleteErr: errors.New("resource delete failure")}
+	resourceSvc := service.NewResourceService(resourceRepo, &categoryRepoCRUDStub{}, nil, nil)
+	handler := NewHandler(resourceSvc, nil, nil, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/res-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "resource delete failure")
+}
+
+func TestGetTodoByIDReturnsTodoData(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoRepo := &todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Review", Status: domain.TodoStatusOpen}}}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/todos/todo-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+}
+
+func TestGetTodoByIDReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoSvc := service.NewTodoService(&todoRepoCRUDStub{})
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/todos/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "todo not found")
+}
+
+func TestGetTodoByIDReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoRepo := &todoRepoCRUDStub{getByIDErr: errors.New("todo lookup failure")}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/todos/todo-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "todo lookup failure")
+}
+
+func TestUpdateTodoReturnsUpdatedTodo(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoRepo := &todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Review", Status: domain.TodoStatusOpen}}}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/todos/todo-1", strings.NewReader(`{"title":"Updated Task","details":"Done","status":"in_progress","due_at":"2026-04-20T10:00:00Z"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if todoRepo.items[0].Title != "Updated Task" {
+		t.Fatalf("expected todo title Updated Task, got %q", todoRepo.items[0].Title)
+	}
+	if todoRepo.items[0].Status != domain.TodoStatusInProgress {
+		t.Fatalf("expected todo status in_progress, got %q", todoRepo.items[0].Status)
+	}
+}
+
+func TestUpdateTodoReturnsBadRequestOnInvalidDueAt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoSvc := service.NewTodoService(&todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Task", Status: domain.TodoStatusOpen}}})
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/todos/todo-1", strings.NewReader(`{"title":"Task","status":"open","due_at":"bad-time"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusBadRequest, "validation_error", "due_at must be RFC3339")
+}
+
+func TestUpdateTodoReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoSvc := service.NewTodoService(&todoRepoCRUDStub{})
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/todos/missing", strings.NewReader(`{"title":"Task","status":"open"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "todo not found")
+}
+
+func TestDeleteTodoReturnsSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoRepo := &todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Task", Status: domain.TodoStatusOpen}}}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/todos/todo-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if len(todoRepo.items) != 0 {
+		t.Fatalf("expected todo to be deleted")
+	}
+}
+
+func TestDeleteTodoReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoSvc := service.NewTodoService(&todoRepoCRUDStub{})
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/todos/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "todo not found")
+}
+
+func TestDeleteTodoReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	todoRepo := &todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Task", Status: domain.TodoStatusOpen}}, deleteErr: errors.New("todo delete failure")}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandler(nil, nil, todoSvc, nil, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/todos/todo-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "todo delete failure")
+}
+
+func TestGetReminderByIDReturnsReminderData(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderRepo := &reminderRepoCRUDStub{items: []domain.Reminder{{ID: "rem-1", Title: "Follow up", RemindAt: time.Date(2026, time.April, 20, 10, 0, 0, 0, time.UTC), Status: domain.ReminderStatusScheduled}}}
+	reminderSvc := service.NewReminderService(reminderRepo)
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/reminders/rem-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+}
+
+func TestGetReminderByIDReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderSvc := service.NewReminderService(&reminderRepoCRUDStub{})
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/reminders/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "reminder not found")
+}
+
+func TestGetReminderByIDReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderRepo := &reminderRepoCRUDStub{getByIDErr: errors.New("reminder lookup failure")}
+	reminderSvc := service.NewReminderService(reminderRepo)
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/reminders/rem-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "reminder lookup failure")
+}
+
+func TestUpdateReminderReturnsUpdatedReminder(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderRepo := &reminderRepoCRUDStub{items: []domain.Reminder{{ID: "rem-1", Title: "Follow up", RemindAt: time.Date(2026, time.April, 20, 10, 0, 0, 0, time.UTC), Status: domain.ReminderStatusScheduled}}}
+	reminderSvc := service.NewReminderService(reminderRepo)
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/reminders/rem-1", strings.NewReader(`{"title":"Follow up updated","message":"Ping","remind_at":"2026-04-22T08:30:00Z","status":"sent"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if reminderRepo.items[0].Title != "Follow up updated" {
+		t.Fatalf("expected updated reminder title, got %q", reminderRepo.items[0].Title)
+	}
+	if reminderRepo.items[0].Status != domain.ReminderStatusSent {
+		t.Fatalf("expected updated reminder status sent, got %q", reminderRepo.items[0].Status)
+	}
+}
+
+func TestUpdateReminderReturnsBadRequestOnInvalidTime(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderSvc := service.NewReminderService(&reminderRepoCRUDStub{items: []domain.Reminder{{ID: "rem-1", Title: "Follow up", RemindAt: time.Now().UTC(), Status: domain.ReminderStatusScheduled}}})
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/reminders/rem-1", strings.NewReader(`{"title":"Reminder","remind_at":"bad-time"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusBadRequest, "validation_error", "remind_at must be RFC3339")
+}
+
+func TestUpdateReminderReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderSvc := service.NewReminderService(&reminderRepoCRUDStub{})
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/reminders/missing", strings.NewReader(`{"title":"Reminder","remind_at":"2026-04-22T08:30:00Z"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "reminder not found")
+}
+
+func TestDeleteReminderReturnsSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderRepo := &reminderRepoCRUDStub{items: []domain.Reminder{{ID: "rem-1", Title: "Follow up", RemindAt: time.Now().UTC(), Status: domain.ReminderStatusScheduled}}}
+	reminderSvc := service.NewReminderService(reminderRepo)
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/reminders/rem-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if len(reminderRepo.items) != 0 {
+		t.Fatalf("expected reminder to be deleted")
+	}
+}
+
+func TestDeleteReminderReturnsNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderSvc := service.NewReminderService(&reminderRepoCRUDStub{})
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/reminders/missing", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusNotFound, "not_found", "reminder not found")
+}
+
+func TestDeleteReminderReturnsInternalServerErrorOnServiceFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	reminderRepo := &reminderRepoCRUDStub{items: []domain.Reminder{{ID: "rem-1", Title: "Follow up", RemindAt: time.Now().UTC(), Status: domain.ReminderStatusScheduled}}, deleteErr: errors.New("reminder delete failure")}
+	reminderSvc := service.NewReminderService(reminderRepo)
+	handler := NewHandler(nil, nil, nil, reminderSvc, nil, nil)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/reminders/rem-1", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	assertErrorResponse(t, recorder, http.StatusInternalServerError, "internal_error", "reminder delete failure")
+}
+
+func TestCreateResourcePublishesSyncEventWhenHubConfigured(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	hub := syncapi.NewHub()
+	events, unsubscribe := hub.Subscribe(1)
+	defer unsubscribe()
+
+	resourceRepo := &graphResourceRepoStub{}
+	categoryRepo := &categoryRepoCRUDStub{items: []domain.Category{{ID: "cat-1", Name: "AI"}}}
+	resourceSvc := service.NewResourceService(resourceRepo, categoryRepo, nil, nil)
+	handler := NewHandlerWithOptions(resourceSvc, nil, nil, nil, nil, nil, WithSyncHub(hub))
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/resources", strings.NewReader(`{"url":"https://example.com/article","title":"AI Article","category_id":"cat-1"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, recorder.Code)
+	}
+
+	event := readSyncEventFromHub(t, events)
+	if event.Type != syncapi.EventTypeResourceCreated {
+		t.Fatalf("expected sync event type %q, got %q", syncapi.EventTypeResourceCreated, event.Type)
+	}
+	payload, ok := event.Payload.(map[string]any)
+	if !ok {
+		t.Fatalf("expected payload map, got %T", event.Payload)
+	}
+	if strings.TrimSpace(payload["entity_id"].(string)) == "" {
+		t.Fatalf("expected payload.entity_id to be populated")
+	}
+	if payload[syncapi.PayloadKeyEventSource] != syncapi.EventSourceHTTPMutation {
+		t.Fatalf("expected event source %q, got %v", syncapi.EventSourceHTTPMutation, payload[syncapi.PayloadKeyEventSource])
+	}
+	if payload[syncapi.PayloadKeyEventVersion] != syncapi.EventVersionCurrent {
+		t.Fatalf("expected event version %d, got %v", syncapi.EventVersionCurrent, payload[syncapi.PayloadKeyEventVersion])
+	}
+}
+
+func TestUpdateTodoPublishesSyncEventWhenHubConfigured(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	hub := syncapi.NewHub()
+	events, unsubscribe := hub.Subscribe(1)
+	defer unsubscribe()
+
+	todoRepo := &todoRepoCRUDStub{items: []domain.Todo{{ID: "todo-1", Title: "Task", Status: domain.TodoStatusOpen}}}
+	todoSvc := service.NewTodoService(todoRepo)
+	handler := NewHandlerWithOptions(nil, nil, todoSvc, nil, nil, nil, WithSyncHub(hub))
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/todos/todo-1", strings.NewReader(`{"title":"Task Updated","status":"done"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	event := readSyncEventFromHub(t, events)
+	if event.Type != syncapi.EventTypeTodoUpdated {
+		t.Fatalf("expected sync event type %q, got %q", syncapi.EventTypeTodoUpdated, event.Type)
+	}
+	payload, ok := event.Payload.(map[string]any)
+	if !ok {
+		t.Fatalf("expected payload map, got %T", event.Payload)
+	}
+	if payload["entity_id"] != "todo-1" {
+		t.Fatalf("expected payload.entity_id todo-1, got %v", payload["entity_id"])
+	}
+	if payload[syncapi.PayloadKeyEventSource] != syncapi.EventSourceHTTPMutation {
+		t.Fatalf("expected event source %q, got %v", syncapi.EventSourceHTTPMutation, payload[syncapi.PayloadKeyEventSource])
+	}
+}
+
+func TestExecuteChatCommandPublishesSyncEventForResourceCreate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	hub := syncapi.NewHub()
+	events, unsubscribe := hub.Subscribe(1)
+	defer unsubscribe()
+
+	resourceRepo := &graphResourceRepoStub{}
+	categoryRepo := &categoryRepoCRUDStub{}
+	categorySvc := service.NewCategoryService(categoryRepo)
+	resourceSvc := service.NewResourceService(resourceRepo, categoryRepo, nil, categorySvc)
+	todoSvc := service.NewTodoService(&todoRepoCRUDStub{})
+	reminderSvc := service.NewReminderService(&reminderRepoCRUDStub{})
+	chatSvc := service.NewChatService(categorySvc, resourceSvc, todoSvc, reminderSvc, nil)
+
+	handler := NewHandlerWithOptions(resourceSvc, categorySvc, todoSvc, reminderSvc, nil, chatSvc, WithSyncHub(hub))
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/chat/commands", strings.NewReader(`{"message":"resource: https://example.com/chat-item | category=AI"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	event := readSyncEventFromHub(t, events)
+	if event.Type != syncapi.EventTypeResourceCreated {
+		t.Fatalf("expected sync event type %q, got %q", syncapi.EventTypeResourceCreated, event.Type)
+	}
+	payload, ok := event.Payload.(map[string]any)
+	if !ok {
+		t.Fatalf("expected payload map, got %T", event.Payload)
+	}
+	if payload[syncapi.PayloadKeyEventSource] != syncapi.EventSourceChatCommand {
+		t.Fatalf("expected event source %q, got %v", syncapi.EventSourceChatCommand, payload[syncapi.PayloadKeyEventSource])
+	}
+}
+
+func readSyncEventFromHub(t *testing.T, events <-chan syncapi.Event) syncapi.Event {
+	t.Helper()
+
+	select {
+	case event := <-events:
+		return event
+	case <-time.After(1 * time.Second):
+		t.Fatalf("timed out waiting for sync event")
+		return syncapi.Event{}
 	}
 }

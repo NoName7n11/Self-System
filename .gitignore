@@ -28,3 +28,7 @@ node_modules/
 
 # Logs
 *.log
+
+# Frontend e2e artifacts
+frontend/playwright-report/
+frontend/test-results/

@@ -108,6 +108,34 @@ func (r *CategoryRepository) Create(ctx context.Context, c *domain.Category) err
 	return nil
 }
 
+func (r *CategoryRepository) Update(ctx context.Context, c *domain.Category) error {
+	timestamp := nowRFC3339()
+	c.UpdatedAt = parseRFC3339(timestamp)
+
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE categories
+		SET name = ?, description = ?, source = ?, updated_at = ?
+		WHERE id = ?
+	`, strings.TrimSpace(c.Name), strings.TrimSpace(c.Description), string(c.Source), timestamp, strings.TrimSpace(c.ID))
+	if err != nil {
+		return fmt.Errorf("update category: %w", err)
+	}
+
+	return nil
+}
+
+func (r *CategoryRepository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM categories
+		WHERE id = ?
+	`, strings.TrimSpace(id))
+	if err != nil {
+		return fmt.Errorf("delete category: %w", err)
+	}
+
+	return nil
+}
+
 func (r *CategoryRepository) IncrementAccept(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE categories
