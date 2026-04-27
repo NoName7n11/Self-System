@@ -21,6 +21,8 @@ func (s graphCategoryRepoStub) GetByName(ctx context.Context, name string) (*dom
 	return nil, nil
 }
 func (s graphCategoryRepoStub) Create(ctx context.Context, c *domain.Category) error   { return nil }
+func (s graphCategoryRepoStub) Update(ctx context.Context, c *domain.Category) error   { return nil }
+func (s graphCategoryRepoStub) Delete(ctx context.Context, id string) error            { return nil }
 func (s graphCategoryRepoStub) IncrementAccept(ctx context.Context, id string) error   { return nil }
 func (s graphCategoryRepoStub) IncrementOverride(ctx context.Context, id string) error { return nil }
 
@@ -28,7 +30,12 @@ type graphResourceRepoStub struct {
 	items []domain.Resource
 }
 
+func (s graphResourceRepoStub) GetByID(ctx context.Context, id string) (*domain.Resource, error) {
+	return nil, nil
+}
 func (s graphResourceRepoStub) Create(ctx context.Context, r *domain.Resource) error { return nil }
+func (s graphResourceRepoStub) Update(ctx context.Context, r *domain.Resource) error { return nil }
+func (s graphResourceRepoStub) Delete(ctx context.Context, id string) error          { return nil }
 func (s graphResourceRepoStub) List(ctx context.Context, limit, offset int) ([]domain.Resource, error) {
 	return s.items, nil
 }

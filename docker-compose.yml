@@ -1,6 +1,23 @@
 version: "3.9"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: selfsystems-postgres
+    ports:
+      - "${SS_POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${SS_POSTGRES_DB:-self_systems}
+      POSTGRES_USER: ${SS_POSTGRES_USER:-selfsystems}
+      POSTGRES_PASSWORD: ${SS_POSTGRES_PASSWORD:-selfsystems}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: selfsystems-redis
@@ -38,6 +55,7 @@ services:
       - dgraph_alpha:/dgraph
 
 volumes:
+  postgres_data:
   redis_data:
   dgraph_zero:
   dgraph_alpha:

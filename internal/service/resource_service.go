@@ -28,6 +28,15 @@ type CreateResourceInput struct {
 	CategoryName string
 }
 
+type UpdateResourceInput struct {
+	ID           string
+	URL          string
+	Title        string
+	Summary      string
+	CategoryID   string
+	CategoryName string
+}
+
 type UpdateResourceCategoryInput struct {
 	ResourceID string
 	CategoryID string
@@ -108,6 +117,120 @@ func (s *ResourceService) Create(ctx context.Context, input CreateResourceInput)
 
 func (s *ResourceService) List(ctx context.Context, limit, offset int) ([]domain.Resource, error) {
 	return s.resources.List(ctx, limit, offset)
+}
+
+func (s *ResourceService) GetByID(ctx context.Context, id string) (*domain.Resource, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, fmt.Errorf("resource id is required")
+	}
+
+	return s.resources.GetByID(ctx, id)
+}
+
+func (s *ResourceService) Update(ctx context.Context, input UpdateResourceInput) (*domain.Resource, error) {
+	id := strings.TrimSpace(input.ID)
+	if id == "" {
+		return nil, fmt.Errorf("resource id is required")
+	}
+
+	existing, err := s.resources.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, nil
+	}
+
+	normalizedURL := existing.URL
+	host := existing.Host
+	if strings.TrimSpace(input.URL) != "" {
+		normalizedURL, host, err = normalizeURL(input.URL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	title := strings.TrimSpace(input.Title)
+	if title == "" {
+		title = inferTitleFromURL(normalizedURL)
+	}
+
+	summary := strings.TrimSpace(input.Summary)
+	category := domain.Category{ID: existing.CategoryID, Name: existing.CategoryName}
+	userOverride := existing.UserOverride
+	oldCategoryID := existing.CategoryID
+
+	if categoryID := strings.TrimSpace(input.CategoryID); categoryID != "" {
+		if s.categories == nil {
+			return nil, fmt.Errorf("category repository is not configured")
+		}
+
+		categoryPtr, getErr := s.categories.GetByID(ctx, categoryID)
+		if getErr != nil {
+			return nil, getErr
+		}
+		if categoryPtr == nil {
+			return nil, fmt.Errorf("category not found")
+		}
+		category = *categoryPtr
+		userOverride = true
+	} else if categoryName := strings.TrimSpace(input.CategoryName); categoryName != "" {
+		if s.catSvc == nil {
+			return nil, fmt.Errorf("category service is not configured")
+		}
+
+		resolved, resolveErr := s.catSvc.EnsureByName(ctx, categoryName, domain.CategorySourceManual)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		category = resolved
+		userOverride = true
+	}
+
+	existing.URL = normalizedURL
+	existing.Host = host
+	existing.Title = title
+	existing.Summary = summary
+	existing.CategoryID = category.ID
+	existing.CategoryName = category.Name
+	existing.UserOverride = userOverride
+
+	if err := s.resources.Update(ctx, existing); err != nil {
+		return nil, err
+	}
+
+	if category.ID != "" && category.ID != oldCategoryID {
+		if s.categories == nil {
+			return nil, fmt.Errorf("category repository is not configured")
+		}
+		if err := s.categories.IncrementAccept(ctx, category.ID); err != nil {
+			return nil, err
+		}
+	}
+
+	return existing, nil
+}
+
+func (s *ResourceService) Delete(ctx context.Context, id string) (bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false, fmt.Errorf("resource id is required")
+	}
+
+	existing, err := s.resources.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if existing == nil {
+		return false, nil
+	}
+
+	if err := s.resources.Delete(ctx, id); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (s *ResourceService) Search(ctx context.Context, query string, limit int) ([]domain.Resource, error) {
