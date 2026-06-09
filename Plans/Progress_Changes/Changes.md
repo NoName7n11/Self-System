@@ -1,0 +1,137 @@
+# Change 1: Creation of ADR
+Date: 2026-05-28
+
+## What to do
+Capture durable, one-page rationale for high-impact architecture decisions.
+
+## What we did
+Created Plans/ADR/README.md and Plans/ADR/template.md, then drafted ADR 0001 through 0009 to record key decisions and reversals.
+
+## Why this approch
+Preserves decision rationale and tradeoffs, prevents re-litigation, and keeps reversals explicit through superseding records.
+
+# Change 2: Removal of DGraph from Active Architecture
+Date: 2026-05-28
+
+## What to do
+Remove the unused DGraph services and references from the current architecture and documentation.
+
+## What we did
+Removed DGraph from docker-compose.yml and docker-compose.vps.yml and updated README.md, DEPLOYMENT.md, Plans/Technical_Stack.md, Plans/Outline.md, Plans/Development_Workflow.md, Plans/Project_Workflow_Guide.md, .github/copilot-instructions.md, and CHANGELOG.md.
+
+## Why this approch
+Eliminates idle infrastructure overhead, reduces attack surface, and keeps the graph model within the existing relational stack until a dedicated graph store is justified.
+
+# Change 3: Event Sourcing Migration Workstream
+Date: 2026-05-30
+
+## What to do
+Define a step-by-step workstream for migrating from state-based storage to event sourcing, starting with Resource and expanding to other domains.
+
+## What we did
+Created Plans/Progress Changes/Change_3_Workstream.md with objectives, constraints, workstreams, deliverables, and milestones for the migration. Updated the schema specification for sequence primary key, payload validation, and projection snapshots, then added events/snapshots migrations plus the internal/eventstore adapters (SQLite and Postgres). Hardened the package in Session 8: fixed Postgres payload CHECK constraint, added WithTx/TxStore for P8 synchronous projectors, UUID validation in normalizeEvent, PostgresTxStore, expanded SQLite test coverage (13 tests), and added a Postgres parity test file (8 tests, skips without DSN). Workstreams 1–6 are complete. WS2 delivered: TxConn, ProjectorRegistry, resource event types, sync projectors, dual-write with OCC retry, feature flag, 7 service tests. WS3 delivered: RunResourceBackfill (batch-TX, idempotent), CheckResourceParity (field-level diff), FormatReport, CLI tools binary (backfill + parity subcommands), BenchmarkBackfill100K (30-min budget), 16 migration tests. WS4 delivered: OutboxWorker (tails events table, publishes to hub, aligns sequences), WSHandler durable replay from events table + hub history merge, handler decoupling via EventsEnabled(), WithEventStoreReplay route option, 9 outbox tests. WS5 delivered: Category/Todo/Reminder event types, SQLite+Postgres projectors, service dual-write (17 new files), shared eventsource.go helper, 14 domain integration tests, WAL mode for SQLite, outbox translation extended, GBUS signal event type constants. WS6 delivered: EventObservability (atomic counters for appends, OCC retries, projector latency, snapshots, redactions), LatestSequence on Store interface, SetObservability on ProjectorRegistry, WithXxxEventObservability options on all 4 services, SnapshotWorker (P5 cadence: 100 events / 30 days, 30s bounded batch), GET /api/v1/sync/events/health endpoint (auth-gated), WithOutboxWorker + WithEventObservability route options, buildRepositories returns rawDB, DEPLOYMENT.md rollback + recovery runbooks (Sections 8–9), 10 new tests. WS7 delivered: property_test.go (fuzz + table-driven: version monotonicity + projection determinism across 5 seeds/interleaving cases), reconnect_test.go (8 hub replay tests + events-table durable replay + FuzzReconnectReplaySince), scripts/rollback_drill/main.go (flag ON/OFF/parity end-to-end, exit 0), .github/workflows/event-sourcing-gates.yml (property, reconnect, drill, backfill 10x, full suite), Makefile targets (event-sourcing-test, rollback-drill, backfill-bench). All 7 workstreams complete — Change 3 Definition of Done satisfied.
+
+## Why this approch
+Provides a controlled, incremental path to event sourcing with parity checks, sync alignment, and rollback safety.
+
+# Change 4: Event Sourcing Pattern ADRs (P1-P8)
+Date: 2026-05-30
+
+## What to do
+Record the load-bearing event sourcing patterns as ADRs before implementation.
+
+## What we did
+Created ADR 0010 through 0017 covering OCC, idempotency, payload versioning, outbox, snapshots, redaction, dual-write, and projector classification.
+
+## Why this approch
+Locks the migration rules up front so implementation stays consistent and auditable.
+
+# Change 5: ADR Index in README
+Date: 2026-05-30
+
+## What to do
+Make the ADR collection discoverable by adding an index to the ADR README.
+
+## What we did
+Added an ADR index in Plans/ADR/README.md listing ADR 0001 through 0017 with statuses.
+
+## Why this approch
+Ensures new contributors can find decisions quickly and prevents drift between files and the index.
+
+# Change 6: Content Extraction Pipeline
+Date: 2026-06-03
+
+## What to do
+Build the real ingestion pipeline — URL scraping, PDF parsing, and image/OCR — so resources contain actual extracted content instead of metadata stubs.
+
+## What we did
+WS5 delivered: `internal/extractor/fetcher.go` (ContentFetcher, 30s timeout, 20MiB cap), `ResourceService.UpdateExtractedData` delegation method, DeepProcessor builder methods (`WithContentFetcher`, `WithPDFExtractor`, `WithImageExtractor`, `WithEventDetector`, `WithReminderService`), `ProcessDirect` for synchronous testing, `runExtractionForResource` + `runPDFExtraction` + `runImageExtraction` + `runEventDetection` + `inferSourceType` helpers wired into `processTask` before the token budget reservation, skim extractor and all extractors wired in `cmd/server/main.go`, 3 integration tests (`EventDetection_CreatesReminder`, `NoEvent_NoReminder`, `PDFExtraction`), `extraction-test` Makefile target, CI gate step in `event-sourcing-gates.yml`. All 5 workstreams complete — Change 6 Definition of Done satisfied.
+
+WS1 delivered: `ResourceExtractedData` struct in domain, `extracted_data TEXT` column in SQLite (ALTER TABLE migration) and Postgres (0003_extracted_data.sql), `UpdateExtractedData` on both repository implementations and the domain interface, `internal/extractor/url_extractor.go` (fetch + HTML parse with golang.org/x/net/html, OG tag preference, nav/footer/script stripping, page type detection), 6 extractor unit tests with httptest fixtures, `ResourceSkimCompleted` event type, `WithSkimExtractor` option and async `runSkimExtraction` goroutine in ResourceService, stub fixes in handler_test.go and graph_service_test.go. Full `go test ./...` passes.
+
+## Why this approach
+Every downstream feature (AI classification, embeddings, semantic search, deep processing, GBUS) depends on resources having real content. This is the foundation that must land first.
+
+# Change 7: AI Intelligence Layer
+Date: 2026-06-03
+
+## What to do
+Replace the keyword heuristic classifier with real AI classification, add embedding generation, integrate sqlite-vec for vector storage, wire semantic search, and make deep processing a genuine AI enrichment step instead of a metadata annotator.
+
+## What we did
+WS1 delivered: `Provider` field on `ai.ClassificationOutput` (stamped by the manager), refactored manager fan-out into shared `classify` + added `ClassifyResource` method, classification fields on `ResourceExtractedData` (ClassificationConfidence, ClassificationSource, NeedsReview) plus Entities, `Source` field + source constants (ai/heuristic/user) on `CategorySuggestion`, `classification_threshold` on AIConfig (default 0.85) wired through `WithClassificationThreshold` option, threshold enforcement in `ResourceService.Create` setting NeedsReview for sub-threshold auto-classifications, classification metadata folded into `ResourceCreatedPayload.ExtractedDataJSON` so it flows through the projector into the resources table (one-event invariant preserved), `extracted_data` column added to both resource projectors, `ResourceClassified` event type + payload reserved for WS5 re-classification, 6 classifier/threshold unit tests with in-memory fakes. Full `go test ./...` passes.
+
+WS2 + WS3 delivered: EmbeddingProvider interface + Embedding type + manager GenerateEmbedding fan-out, deterministic LocalEmbeddingProvider (feature-hashing, 256-dim, L2-normalised) as offline fallback, real OpenAIEmbeddingProvider when configured, CosineSimilarity helper, ResourceEmbedding domain type + EmbeddingRepository interface (Upsert/Get/Delete/SearchSimilar), resource_embeddings table (SQLite + Postgres 0004 migration), pure-Go vector_repository in both DBs (float32 BLOB/BYTEA encoding, brute-force cosine SearchSimilar with model-version isolation and threshold filtering — sqlite-vec rejected as a C extension incompatible with modernc/sqlite), EmbeddingService orchestrating generation/storage/query-embedding/search, deep processor runEmbedding step with token-budget reservation, ResourceEmbedded event reserved, embedding providers + service wired in main.go, 16 tests (ai embedding, vector repo, embedding service). Full `go test ./...` passes.
+
+WS4 + WS5 + WS6 delivered: vector-backed `SemanticSearch` (falls back to token scoring when no embeddings), `HybridSearch` (normalized rank merge: keyword 1.0, semantic 0.8), `mode=keyword|semantic|hybrid` on `/resources/search`, OpenAPI updated, `EnrichmentProvider` interface + `OpenAIEnrichmentProvider` + `EnrichResource` fan-out on Manager, `runEnrichment` in deep processor (AI summary → key_points → entities, annotation stub as fallback), `ResourceEnriched` event type, exported `MockProvider` satisfying all three AI interfaces, 4 integration tests (classification confidence, deep summary + embedding, semantic search, needs-review) all via MockProvider with zero real API calls, `ai-pipeline-test` Makefile target + CI gate step. All 6 workstreams complete — Change 7 Definition of Done satisfied.
+
+## Why this approach
+Classification confidence, embeddings, and semantic search are the core intelligence features the Outline describes. They are all one pipeline (classify → embed → search) and must be built together to avoid partial integration debt.
+
+# Change 8: Resource Lifecycle
+Date: 2026-06-03
+
+## What to do
+Implement duplicate detection with the counter system and the archive system with auto-archive triggers, manual archive, and restore flows.
+
+## What we did
+WS1 delivered: `ErrDuplicateResource` sentinel, `FindByURL` + `IncrementCounter` on `ResourceRepository`, duplicate URL check in `ResourceService.Create` (increments counter, returns existing resource), `ResourceCounterIncremented` event type + payload, HTTP handler returns 200 + `duplicate:true` on duplicate save. WS2 delivered: `SimilarResource` domain entity, `SimilarResourceRepository` interface + SQLite implementation (bidirectional upsert), `similar_resources` join table migration, `internal/service/duplicate_detector.go` (post-embedding cosine > 0.92 check, `ResourceSimilarityDetected` event), `similar_to` field on Resource response. WS3 delivered: `save_count`, `archived`, `archive_reason`, `archived_at` columns via ALTER TABLE migrations, `ArchiveReason` type (manual/dead_link/expired), `Archive`/`Restore`/`BulkArchive`/`BulkRestore`/`ListArchived` on repository + service, `ResourceArchived`/`ResourceRestored` event types + payloads, `List` now filters `archived=0` by default, `GET /api/v1/resources?archived=true` archive view, `POST /api/v1/resources/:id/archive`, `POST /api/v1/resources/:id/restore`, `POST /api/v1/resources/bulk-archive`, `POST /api/v1/resources/bulk-restore` endpoints. WS4 delivered: `internal/service/archive_worker.go` (daily ticker + one-cycle `Run`; HTTP HEAD dead-link check; event_date expiry check; logs archived count), `auto_archive_dead_links` + `auto_archive_expired_events` feature flags (both default false). WS5 delivered: `test/integration/resource_lifecycle_integration_test.go` with 4 integration tests (duplicate counter, archive/restore flow, bulk ops, dead-link reason). All test stubs (http/handler_test, service/classifier_test, service/graph_service_test) updated with 8 new interface methods. Postgres repo has stub implementations returning `ErrNotImplemented` until migration ships. Full `go test ./...` passes with zero regressions.
+
+## Why this approach
+Resource lifecycle features depend on content being real — meaningful duplicate detection requires actual content similarity, not just URL matching on stub resources. Builds on Change 6 and 7.
+
+# Change 9: Wails Integration
+Date: 2026-06-08
+
+## What to do
+Replace the standalone Vite/REST frontend with a proper Wails desktop app using IPC bindings, add desktop-native features (system tray, notifications), and wire the Windows + Linux build pipeline.
+
+## What we did
+WS1 delivered: `github.com/wailsapp/wails/v2 v2.12.0` added to `go.mod`, `wails.json` at repo root with `frontend:dev:serverUrl` pointing to Vite dev server, `cmd/desktop/main.go` (build tag: `desktop`) as the Wails entry point wiring all services (ResourceService, CategoryService, TodoService, ReminderService) from SQLite repositories, `internal/desktop/app.go` (build tag: `desktop`) as the Wails App struct. WS2 delivered: all IPC methods on the App struct (`GetResources`, `CreateResource`, `UpdateResource`, `DeleteResource`, `SearchResources`, `ArchiveResource`, `RestoreResource`, `GetCategories`, `CreateCategory`, `GetTodos`, `CreateTodo`, `GetReminders`), `frontend/src/lib/ipc.ts` bridge that detects Wails context via `window.go` and routes calls through IPC or REST fallback, `useResourceStore.ts` updated to call `GetResources` and `CreateResource` via `ipcCall` with REST fallback so browser dev mode is unchanged. WS3 delivered: `NotifyProcessingComplete` emits a `processing:complete` Wails runtime event to the frontend; `onWailsEvent` helper in `ipc.ts` for subscribing to Wails events. WS4 delivered: `build-desktop` job added to `.github/workflows/release.yml` building Windows (windows-latest runner) and Linux (ubuntu-latest runner) desktop binaries via `wails build` on every release tag, `wails-dev`/`wails-build-windows`/`wails-build-linux`/`gbus-train` targets added to `Makefile`. WS5 delivered: `internal/desktop/app_test.go` (build tag: `desktop`) with 5 unit tests (Startup sets context, GetResources empty, CreateResource round-trip, DeleteResource, GetCategories empty) using in-memory service stubs. Full `go test ./...` and `go test -tags desktop ./internal/desktop/...` pass with zero regressions.
+
+## Why this approach
+The app is described as a local-first desktop app throughout the Outline and ADRs, but the frontend is currently a standalone web app over REST. Wails integration is what makes it actually a desktop application. Done after the backend pipeline is solid to avoid rework.
+
+# Change 10: GBUS — Behavioral Model
+Date: 2026-06-08
+
+## What to do
+Implement the GBUS behavioral model end-to-end: signal taxonomy and instrumentation, feature store aggregation, training dataset pipeline, baseline model training, inference integration into classification and search, and monitoring + governance.
+
+## What we did
+WS1 delivered: `internal/gbus/signals.go` with 10 signal type constants and `SignalWeights` map (manual_classification=1.0, category_correction=1.0, auto_classification=0.5, resource_saved=0.3, resource_deleted=0.1, resource_revisited=0.4, counter_incremented=0.2, search_query=0.2, reminder_dismissed=0.1, deep_process_confirmed=0.3), `GBUSSignalPayload` struct, `internal/gbus/emitter.go` with `SignalEmitter` (fire-and-forget goroutine, writes `aggregate_type="gbus_signal"` events), `internal/gbus/emitter_test.go` (6 tests: disabled no-op, nil store no-op, all 7 core signal types, explicit weight not overridden, async non-blocking). WS2 delivered: `GBUSCategoryFeature` / `GBUSResourceFeature` types and `GBUSFeatureStore` interface in `internal/domain`, `internal/gbus/feature_store.go` aliasing domain types, `internal/gbus/aggregator.go` (reads `ReadBySequence`, filters `gbus_signal` events, upserts category + resource features, daily ticker + startup catch-up, 30s bounded), `internal/repository/sqlite/gbus_repository.go` SQLite implementation with ON CONFLICT upsert and `PruneOlderThan`, `gbus_category_features` and `gbus_resource_features` tables added to SQLite schema (with PRIMARY KEY + indexes), `internal/gbus/aggregator_test.go` (4 tests). WS3 delivered: `scripts/gbus_train/main.go` CLI (reads feature tables, computes time-decay-weighted category affinity scores, normalizes to [0,1], evaluates proxy accuracy against manual_classification signals, saves JSON artifact, `-promote` flag for production promotion), `models/gbus/model_registry.json` with schema, promotion criteria (≥5% lift, ≥50 samples), retraining cadence, and rollback procedure. WS4 delivered: `internal/gbus/inference.go` (`Inference` struct loads JSON model artifact at startup, `CategoryScore`, `BiasClassification` (+10% max boost on sub-threshold classifications), `RerankByInterest` (blend original rank with GBUS affinity at weight 0.5), `Reload`, `ModelVersion`/`ModelStatus` for health reporting, safe no-op when disabled/model missing), `ResourceService` wired with `WithGBUSEmitter` (emits manual/auto_classification on Create, resource_deleted on Delete, counter_incremented on duplicate) and `WithGBUSInference` (biases low-confidence classifications, reranks vectorSearch results). WS5 delivered: `internal/gbus/monitor.go` (`Monitor` with `SignalCount` atomic counter, `LastCheckAt`, `CheckDrift` reads recent 500 signals and compares current accuracy to stored baseline, triggers `Reload` if drift >10%, daily ticker), `GBUSConfig` in `internal/config/config.go` (`enabled`, `inference_enabled`, `retention_days=90`, `model_path`), GBUS defaults in config, `GET /api/v1/gbus/health` endpoint returning model status/signal count/last check, `GBUSMonitor` interface on the handler, full wiring in `cmd/server/main.go` (aggregator + monitor started in `runtimeCtx`), `gbus.enabled: false` and `gbus.inference_enabled: false` defaults in `config.default.yml`. Import cycle (eventstore_test → sqlite → gbus → eventstore) resolved by lifting `GBUSFeatureStore`/feature types to `internal/domain`. Full `go test ./...` passes with zero regressions.
+
+## Why this approach
+GBUS learns from signals that only have meaning once the real pipeline exists — classification confidence to correct, content to interact with, search results to click. Doing this last ensures the training data is real and the inference has something meaningful to integrate into.
+
+# Change 11: Correctness Fixes & Finding 3 Verification
+Date: 2026-06-07
+
+## What to do
+Verify the residual edge case for Finding 3 with an explicit regression test, and neutralize the Store.Snapshot latent comprehension trap with explicit documentation per ADR 0018.
+
+## What we did
+Added `TestMergeReplay_SkippedRowInterleaving` in `internal/sync/outbox_worker_test.go` to explicitly test the exact finding 3 edge case (untranslatable event, direct hub event, translatable event) and updated `Store.Snapshot` in `internal/eventstore/store.go` to explicitly forbid its use for projection rebuilds.
+
+## Why this approch
+Closes the final correctness loops by ensuring the exact edge cases described are formally tested, and prevents future developers from misusing the `Store.Snapshot` method contrary to ADR 0018.

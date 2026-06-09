@@ -1,0 +1,277 @@
+# Changes Log
+
+Purpose: Track each change session with short, timeline-style entries.
+Style: Created or Updated file with reason highlighted.
+Format: Created <file> ``because <reason>``
+
+## Session 1 - Progress Changes Log Initialization
+
+- Step 01: Created Plans/Progress Changes/Changes.md ``because major architecture changes needed an objective/reasoning log.``
+- Step 02: Created Plans/Progress Changes/Changes_log.md ``because each change session needs a concise timeline similar to Phase 2 tracking.``
+- Step 03: Recorded ADR creation and DGraph removal in Plans/Progress Changes/Changes.md ``because the initial change set should be documented immediately.``
+
+## Session 2 - Event Sourcing Workstream Draft
+
+- Step 01: Created Plans/Progress Changes/Change_3_Workstream.md ``because the event-sourcing migration needed a structured workstream plan.``
+- Step 02: Updated Plans/Progress Changes/Changes.md ``because the new event-sourcing workstream needed a Change 3 entry.``
+
+## Session 3 - DGraph Reference Cleanup (Workflow Guide)
+
+- Step 01: Updated Plans/Project_Workflow_Guide.md ``because the workflow guide must not list DGraph in the active data-store stack.``
+- Step 02: Updated Plans/Progress Changes/Changes.md ``because Change 2 needed to include the workflow guide cleanup.``
+
+## Session 4 - Event Sourcing Pattern ADRs
+
+- Step 01: Created Plans/ADR/0010-optimistic-concurrency-control-for-events.md ``because event ordering requires explicit OCC rules.``
+- Step 02: Created Plans/ADR/0011-idempotent-event-appends.md ``because retry safety requires idempotent append behavior.``
+- Step 03: Created Plans/ADR/0012-event-payload-versioning-and-upcasters.md ``because event payloads must evolve without rewriting history.``
+- Step 04: Created Plans/ADR/0013-events-table-as-outbox.md ``because sync emission must be derived from the event log.``
+- Step 05: Created Plans/ADR/0014-snapshot-and-compaction-policy.md ``because projection rebuilds need bounded time and storage growth.``
+- Step 06: Created Plans/ADR/0015-redaction-via-envelope-preserving-rewrite.md ``because privacy redaction must preserve audit and sequence integrity.``
+- Step 07: Created Plans/ADR/0016-dual-write-transition-policy.md ``because migration needs a safe, reversible write-path toggle.``
+- Step 08: Created Plans/ADR/0017-projector-classification-and-registry.md ``because projector execution order must be explicit and consistent.``
+- Step 09: Updated Plans/Progress Changes/Changes.md ``because Change 4 needed to record the new ADR set.``
+
+## Session 5 - ADR Index Update
+
+- Step 01: Updated Plans/ADR/README.md ``because the ADR collection needs an index for discoverability.``
+- Step 02: Updated Plans/Progress Changes/Changes.md ``because Change 5 needed to record the ADR index addition.``
+
+## Session 6 - Event Sourcing Workstream 1 Kickoff
+
+- Step 01: Updated Plans/Progress Changes/Change_3_Workstream.md ``because the schema spec needed sequence primary key, payload validation, and projection snapshot details.``
+- Step 02: Updated internal/repository/sqlite/migration.go ``because events and projection_snapshots tables are required for the event store.``
+- Step 03: Created internal/repository/postgres/migrations/0002_events.sql ``because Postgres needed the events and projection_snapshots schema.``
+- Step 04: Created internal/eventstore/store.go ``because a shared event store interface and types were required.``
+- Step 05: Created internal/eventstore/sqlite_store.go ``because SQLite needs an event store adapter.``
+- Step 06: Created internal/eventstore/postgres_store.go ``because Postgres needs an event store adapter.``
+- Step 07: Updated Plans/Progress Changes/Changes.md ``because Change 3 needed to reflect the schema and eventstore kickoff.``
+
+## Session 7 - Eventstore Unit Tests
+
+- Step 01: Created internal/eventstore/sqlite_store_test.go ``because append, idempotency, OCC, and redaction needed unit coverage.``
+- Step 02: Updated Plans/Progress Changes/Changes.md ``because Change 3 needed to include the eventstore unit tests.``
+
+## Session 8 - Eventstore Hardening and Postgres Parity
+
+- Step 01: Updated internal/repository/postgres/migrations/0002_events.sql ``because the JSONB payload CHECK was a no-op (IS NOT NULL passes any JSONB value); changed to jsonb_typeof = 'object' to enforce object-only payloads, and applied the same to projection_snapshots.``
+- Step 02: Updated internal/eventstore/store.go ``because the Store interface needed a WithTx method for P8 synchronous projectors, UUID validation needed adding to normalizeEvent, stringsTrim wrapper was removed in favour of direct strings.TrimSpace calls, and RecordedAt is now always server-set (caller value ignored).``
+- Step 03: Updated internal/eventstore/sqlite_store.go ``because shared append/read/snapshot/redact helpers were extracted to work against both *sql.DB and *sql.Tx, SQLiteTxStore (implements TxStore) was added, WithTx was implemented, the sqliteDB interface was replaced with *sql.DB for BeginTx access, and optionalPtr was renamed to nullToPtr.``
+- Step 04: Updated internal/eventstore/postgres_store.go ``because PostgresTxStore (implements TxStore) was added, WithTx was implemented, shared pg-prefixed helpers were extracted, and the postgresDB interface was replaced with *sql.DB.``
+- Step 05: Updated internal/eventstore/sqlite_store_test.go ``because tests were expanded to cover ReadBySequence, Snapshot insert and upsert, multi-event aggregate reads with afterVersion and limit filters, invalid-payload rejection, invalid-UUID rejection, missing-field rejection, WithTx commit, and WithTx rollback.``
+- Step 06: Created internal/eventstore/postgres_store_test.go ``because the Postgres adapter needed parity test coverage for append, idempotency, OCC, ReadBySequence, Snapshot, Redact, WithTx commit, and WithTx rollback; tests skip cleanly when no DSN is configured.``
+- Step 07: Ran gofmt -w on all Session 8 touched Go files (2026-06-02, pass) ``because formatting consistency was required before validation.``
+- Step 08: Ran go test ./... (2026-06-02, pass) ``because all eventstore hardening changes required full-suite regression validation.``
+
+## Session 9 - Workstream Status Sync
+
+- Step 01: Updated Plans/Progress Changes/Change_3_Workstream.md ``because WS1 completion was never recorded; marked WS1 COMPLETE with checkboxes on all deliverables and done criteria, deferred ProjectorRegistry note, and marked WS2 IN PROGRESS.``
+- Step 02: Updated Plans/Progress Changes/Changes.md ``because Change 3 needed to reflect WS1 completion and WS2 as the active workstream.``
+
+## Session 10 - Workstream 2: Resource Event-Sourced Write Path
+
+- Step 01: Updated internal/eventstore/store.go ``because TxStore needed a Conn() TxConn method and a new TxConn interface so sync projectors can write to projection tables inside the same transaction (P8).``
+- Step 02: Updated internal/eventstore/sqlite_store.go ``because SQLiteTxStore needed Conn() TxConn returning its *sql.Tx.``
+- Step 03: Updated internal/eventstore/postgres_store.go ``because PostgresTxStore needed Conn() TxConn returning its *sql.Tx.``
+- Step 04: Created internal/eventstore/projector.go ``because ProjectorRegistry, SyncProjector, and AsyncProjector types were needed for P8 projector classification.``
+- Step 05: Created internal/eventstore/resource_events.go ``because Resource event type constants and v1 payload structs (ResourceCreated, ResourceUpdated, ResourceDeleted, ResourceCategoryAssigned) were needed.``
+- Step 06: Created internal/eventstore/resource_projector.go ``because SQLite and Postgres sync projectors for the resources projection table were needed; RegisterResourceProjectors(registry, dialect) registers them by database type.``
+- Step 07: Updated internal/config/config.go ``because FeatureConfig needed EventsResourceEnabled bool for the P7 dual-write feature flag.``
+- Step 08: Updated config/config.default.yml ``because events_resource_enabled defaults to false (flag OFF per P7).``
+- Step 09: Updated internal/service/resource_service.go ``because ResourceService needed dual-write support: WithEventSourcing option, appendWithTx with OCC retry (maxRetries=3), latestResourceVersion helper, and event-sourced helpers for Create/Update/Delete/CategoryAssign.``
+- Step 10: Updated cmd/server/main.go ``because buildRepositories now returns eventstore.Store and the server wires the registry when events_resource_enabled is true.``
+- Step 11: Created internal/service/resource_service_eventsource_test.go ``because 7 integration tests were needed covering: Create (event + projection), payload correctness, Update (version chain), Delete (projection removal), flag OFF direct repo, OCC retry, and idempotent event_id.``
+- Step 12: Ran go test ./... (2026-06-02, pass) ``because all WS2 changes required full-suite regression validation.``
+
+## Sessions 11–14 - Change 3 WS3–WS7 (lost to context compaction)
+
+_These sessions were completed but their log entries were lost when the conversation context was compacted. See Plans/Progress Changes/Change_3_Workstream.md for the full deliverables record._
+
+## Session 15 - Gap Analysis and Changes 6–10 Workstream Planning
+
+- Step 01: Updated Plans/Progress Changes/Changes.md ``because Changes 6–10 needed entries documenting the five gap-closure workstreams identified from the vision vs. implementation audit.``
+- Step 02: Created Plans/Progress Changes/Change_6_Workstream.md ``because the content extraction pipeline (URL scraping, PDF, image/OCR) needed a structured workstream plan.``
+- Step 03: Created Plans/Progress Changes/Change_7_Workstream.md ``because the AI intelligence layer (real classification, embeddings, sqlite-vec, semantic search, real deep processing) needed a structured workstream plan.``
+- Step 04: Created Plans/Progress Changes/Change_8_Workstream.md ``because the resource lifecycle features (duplicate detection, counter system, archive system) needed a structured workstream plan.``
+- Step 05: Created Plans/Progress Changes/Change_9_Workstream.md ``because Wails desktop integration (IPC bindings, system tray, OS notifications, build pipeline) needed a structured workstream plan.``
+- Step 06: Created Plans/Progress Changes/Change_10_Workstream.md ``because the GBUS behavioral model (signal capture, feature store, training pipeline, inference integration, monitoring) needed a structured workstream plan.``
+
+## Session 16 - Change 6 WS1: URL Extraction Skim Tier
+
+- Step 01: Updated internal/domain/entities.go ``because Resource needed a ResourceExtractedData struct and ExtractedData field for the content extraction pipeline.``
+- Step 02: Updated internal/domain/repositories.go ``because ResourceRepository needed UpdateExtractedData to let extraction workers write without a full domain mutation.``
+- Step 03: Updated internal/repository/sqlite/migration.go ``because the resources table needed an extracted_data TEXT column, added via ALTER TABLE with duplicate-column guard for existing databases.``
+- Step 04: Updated internal/repository/sqlite/resource_repository.go ``because all queries, scanResource, Create, Update, and new UpdateExtractedData needed to handle the extracted_data column with JSON marshal/unmarshal.``
+- Step 05: Created internal/repository/postgres/migrations/0003_extracted_data.sql ``because the Postgres schema needed the extracted_data column via its versioned migration runner.``
+- Step 06: Updated internal/repository/postgres/repositories.go ``because the Postgres resource repo needed extracted_data in all queries, scanResource, Create, Update, and a new UpdateExtractedData method.``
+- Step 07: Updated internal/eventstore/resource_events.go ``because ResourceSkimCompleted event type and payload were needed for future event emission from the skim worker.``
+- Step 08: Created internal/extractor/url_extractor.go ``because WS1 required a real HTTP fetch + HTML parser with OG tag preference, nav/footer/script stripping, 2MB body cap, and page type detection.``
+- Step 09: Created internal/extractor/testdata/article.html ``because the article page type test needed a fixture with OG tags and article signals.``
+- Step 10: Created internal/extractor/testdata/event.html ``because the event page type test needed a fixture with hackathon/deadline keywords.``
+- Step 11: Created internal/extractor/testdata/minimal.html ``because the unknown page type test needed a minimal fixture with no special signals.``
+- Step 12: Created internal/extractor/url_extractor_test.go ``because WS1 required 6 unit tests covering article extraction, event detection, minimal page, non-HTML content type, 404 status, timeout, and meta fallback.``
+- Step 13: Updated internal/service/resource_service.go ``because ResourceService needed SkimExtractor interface, WithSkimExtractor option, and async runSkimExtraction goroutine wired after Create.``
+- Step 14: Updated internal/http/handler_test.go and internal/service/graph_service_test.go ``because the graphResourceRepoStub needed UpdateExtractedData to satisfy the updated domain.ResourceRepository interface.``
+- Step 15: Ran go test ./... (2026-06-03, pass) ``because all WS1 changes required full-suite regression validation.``
+
+## Session 17 - Change 6 WS2: PDF Extraction
+
+- Step 01: Ran go get github.com/ledongthuc/pdf@latest (2026-06-03, pass) ``because WS2 required a pure Go PDF text extraction library.``
+- Step 02: Created internal/extractor/pdf_extractor.go ``because WS2 required size-stratified PDF text extraction: small (< 5 pages / < 2 MiB) → full text, medium (5–50 pages) → first 2 + last 2 pages, large (> 50 pages) → first 2 pages.``
+- Step 03: Created internal/extractor/pdf_extractor_test.go ``because WS2 required 7 tests covering small/medium/large extraction, empty content, invalid bytes, cancelled context, and size threshold boundaries. Uses an embedded newTestPDF builder — no binary fixtures needed.``
+- Step 04: Updated internal/eventstore/resource_events.go ``because ResourcePDFExtracted event type and payload were needed.``
+- Step 05: Ran go test ./... (2026-06-03, pass) ``because all WS2 changes required full-suite regression validation.``
+
+## Session 18 - Change 6 WS3: Image Classification and Thumbnail Generation
+
+- Step 01: Updated internal/domain/entities.go ``because ResourceExtractedData needed ImageFormat, ImageWidth, ImageHeight, ThumbnailBase64, and OCRText fields for the image processing tier.``
+- Step 02: Created internal/extractor/image_extractor.go ``because WS3 required heuristic image type classification (screenshot/photo/diagram/unknown based on format, aspect ratio, dimensions, and filename hint) plus thumbnail generation (nearest-neighbour scale to 200×200 max, PNG output) using pure stdlib only. OCR deferred to Change 7 AI vision layer.``
+- Step 03: Created internal/extractor/image_extractor_test.go ``because WS3 required 9 tests covering landscape PNG screenshot detection, filename hint override, square PNG diagram detection, JPEG photo detection, thumbnail scale-down with aspect ratio preservation, no upscale for small images, base64 encoding, empty content error, invalid bytes error, and cancelled context.``
+- Step 04: Updated internal/eventstore/resource_events.go ``because ResourceImageProcessed event type, constant, and payload were needed.``
+- Step 05: Ran go test ./... (2026-06-03, pass) ``because all WS3 changes required full-suite regression validation.``
+
+## Session 19 - Change 6 WS4: Event Detection
+
+- Step 01: Created internal/extractor/event_detector.go ``because WS4 required keyword-triggered event detection (20 ordered keywords, multi-word phrases prioritised) with 5 date extraction patterns (ISO, full/short month name, day-month-year, US numeric), ordinal suffix stripping, 250-char search windows, 150-char snippets, and HasFutureDate() helper for the reminder creation layer.``
+- Step 02: Created internal/extractor/event_detector_test.go ``because WS4 required 13 tests covering full/short/ISO/US-numeric/day-month-year date formats, ordinal stripping, keyword-without-date, no-false-positive on plain article text, multi-keyword text, snippet length, empty text, cancelled context, and HasFutureDate.``
+- Step 03: Updated internal/eventstore/resource_events.go ``because ResourceEventDetected event type, constant, and payload (keyword, date_text, event_date, reminder_id) were needed.``
+- Step 04: Ran go test ./... (2026-06-03, pass) ``because all WS4 changes required full-suite regression validation.``
+
+## Session 20 - Change 6 WS5: Integration, Wiring, and CI Gate
+
+- Step 01: Created internal/extractor/fetcher.go ``because the deep processing tier needed a raw content fetcher (30s timeout, 20 MiB cap) for PDF and image URLs.``
+- Step 02: Updated internal/service/resource_service.go ``because ResourceService needed an UpdateExtractedData delegation method for the deep processor extraction workers.``
+- Step 03: Updated internal/service/deep_processor.go ``because the deep processor needed: extractor struct fields (contentFetcher, pdfExtractor, imageExtractor, eventDetector, reminderSvc), builder methods (WithContentFetcher/WithPDFExtractor/WithImageExtractor/WithEventDetector/WithReminderService), ProcessDirect for synchronous test use, and private helpers runExtractionForResource/runPDFExtraction/runImageExtraction/runEventDetection/inferSourceType wired into processTask before the token budget reservation.``
+- Step 04: Updated cmd/server/main.go ``because the runtime needed the skim extractor wired into ResourceService and all Change 6 extractors (ContentFetcher, PDFExtractor, ImageExtractor, EventDetector, ReminderService) wired into DeepProcessor.``
+- Step 05: Created test/integration/extraction_integration_test.go ``because WS5 required 3 integration tests: EventDetection_CreatesReminder (future event → reminder auto-created), NoEvent_NoReminder (plain article → no reminder), and PDFExtraction (httptest PDF server → extracted text persisted).``
+- Step 06: Updated Makefile ``because an extraction-test target was needed to run extractor unit + integration tests.``
+- Step 07: Updated .github/workflows/event-sourcing-gates.yml ``because an extraction gate step was needed in CI.``
+- Step 08: Ran go test ./... (2026-06-03, pass) ``because all WS5 changes required full-suite regression validation.``
+
+## Session 21 - Change 7 WS1: Real AI Classification
+
+- Step 01: Updated internal/ai/types.go ``because ClassificationOutput needed a Provider field so the manager can report which provider answered.``
+- Step 02: Updated internal/ai/manager.go ``because the provider fan-out was refactored into a shared classify() that stamps Provider, and a ClassifyResource method was added for full-content classification (WS5).``
+- Step 03: Updated internal/domain/entities.go ``because ResourceExtractedData needed ClassificationConfidence, ClassificationSource, NeedsReview, and Entities fields.``
+- Step 04: Updated internal/config/config.go and config/config.default.yml ``because AIConfig needed a configurable classification_threshold (default 0.85).``
+- Step 05: Updated internal/service/classifier.go ``because CategorySuggestion needed a Source field, source constants (ai/heuristic/user), and a classificationSourceForProvider helper; all return paths now set Source.``
+- Step 06: Updated internal/service/resource_service.go ``because Create now captures classification confidence/source, applies the configurable threshold to set NeedsReview, stores classification in ExtractedData, and folds it into the ResourceCreated event via ExtractedDataJSON; added WithClassificationThreshold option (default 0.85).``
+- Step 07: Updated internal/eventstore/resource_events.go ``because ResourceCreatedPayload gained an ExtractedDataJSON field, and ResourceClassified event type + payload were reserved for WS5 re-classification.``
+- Step 08: Updated internal/eventstore/resource_projector.go ``because both SQLite and Postgres ResourceCreated projectors now write the extracted_data column from the event payload, with a projExtractedData helper defaulting to '{}'.``
+- Step 09: Updated cmd/server/main.go ``because ResourceService now receives WithClassificationThreshold from config.``
+- Step 10: Created internal/service/classifier_test.go ``because WS1 required 6 tests: AI-path source stamping, heuristic fallback source, low-confidence NeedsReview flagging, high-confidence no-review, manual category no-review, and custom threshold — using in-memory category/resource repo fakes and a configurable fake AI provider.``
+- Step 11: Ran go test ./... (2026-06-03, pass) ``because all WS1 changes required full-suite regression validation; folding classification into ResourceCreated preserved the one-event-per-create invariant.``
+
+## Session 22 - Change 7 WS2 + WS3: Embeddings and Pure-Go Vector Search
+
+- Step 01: Updated Plans/Progress Changes/Change_7_Workstream.md ``because the WS3 sqlite-vec approach was replaced with a pure-Go brute-force cosine decision (sqlite-vec is a C extension incompatible with modernc/sqlite); recorded the architecture decision inline.``
+- Step 02: Created internal/ai/embedding.go ``because WS2 needed an EmbeddingProvider interface, Embedding type, manager GenerateEmbedding fan-out, a deterministic LocalEmbeddingProvider (feature-hashing, 256-dim, L2-normalised) as the offline fallback, and a CosineSimilarity helper.``
+- Step 03: Created internal/ai/openai_embedding_provider.go ``because WS2 needed a real OpenAI embeddings provider used when configured, reporting ErrProviderUnavailable otherwise so the manager falls back to local.``
+- Step 04: Updated internal/ai/manager.go ``because the Manager needed an embeddingProviders list and RegisterEmbedding.``
+- Step 05: Updated internal/domain/entities.go and repositories.go ``because ResourceEmbedding, EmbeddingRepository (Upsert/Get/Delete/SearchSimilar), and EmbeddingMatch were needed.``
+- Step 06: Updated internal/repository/sqlite/migration.go and created internal/repository/sqlite/vector_repository.go ``because WS2/WS3 needed a resource_embeddings table and a pure-Go embedding repo with float32 BLOB encoding and brute-force cosine SearchSimilar.``
+- Step 07: Created internal/repository/postgres/migrations/0004_resource_embeddings.sql and internal/repository/postgres/vector_repository.go ``because Postgres needed parity (BYTEA vectors, same brute-force search).``
+- Step 08: Created internal/service/embedding_service.go ``because WS2 needed an EmbeddingService orchestrating generation, storage, query embedding, and SearchSimilar.``
+- Step 09: Updated internal/eventstore/resource_events.go ``because a ResourceEmbedded event type was reserved.``
+- Step 10: Updated internal/service/deep_processor.go ``because the deep processor needed an embeddingSvc field, WithEmbeddingService builder, and a runEmbedding step (with token-budget reservation) wired into processTask, plus embeddingTextForResource helper.``
+- Step 11: Updated cmd/server/main.go ``because buildRepositories now returns an EmbeddingRepository, the manager registers OpenAI + local embedding providers, and the deep processor receives the embedding service.``
+- Step 12: Created internal/ai/embedding_test.go, internal/repository/sqlite/vector_repository_test.go, internal/service/embedding_service_test.go ``because WS2/WS3 required tests for local-embedding determinism/normalisation/similarity, manager fallback, vector round-trip, SearchSimilar ordering/threshold/model-version isolation, and the embedding service store+search paths.``
+- Step 13: Ran go test ./... (2026-06-03, pass) ``because all WS2/WS3 changes required full-suite regression validation.``
+
+## Session 23 - Change 7 WS4 + WS5 + WS6: Semantic Search, Real Enrichment, CI Gate
+
+- Step 01: Updated internal/service/resource_service.go ``because SemanticSearch now uses vector search via EmbeddingService when configured (falls back to token scoring on zero results), and HybridSearch was added with normalized rank merging (keyword weight 1.0, semantic 0.8).``
+- Step 02: Added WithResourceEmbeddingService option ``because ResourceService needed the embedding service injected to power vector-backed semantic search.``
+- Step 03: Updated internal/http/handler.go ``because searchResources now accepts a mode query param (keyword/semantic/hybrid) routing to the appropriate service method.``
+- Step 04: Updated api/openapi.yaml ``because the /resources/search endpoint needed a mode enum parameter and /resources/semantic-search was marked deprecated.``
+- Step 05: Updated cmd/server/main.go ``because ResourceService now receives WithResourceEmbeddingService and the OpenAI enrichment provider is registered on the manager.``
+- Step 06: Created internal/service/resource_service_search_test.go ``because WS4 required 5 tests: vector path, token fallback on no embeddings, empty query, hybrid merge, and deduplication.``
+- Step 07: Created internal/ai/enrichment.go ``because WS5 needed EnrichmentProvider interface, EnrichmentInput/Result types, OpenAIEnrichmentProvider, RegisterEnrichment, and EnrichResource fan-out on Manager.``
+- Step 08: Updated internal/ai/manager.go ``because enrichmentProviders slice and RegisterEnrichment method were needed.``
+- Step 09: Updated internal/service/deep_processor.go ``because runEnrichment replaces the direct buildDeepSummary call — tries AI enrichment first, falls back to annotation stub, persists key_points and entities into extracted_data.``
+- Step 10: Updated internal/eventstore/resource_events.go ``because ResourceEnriched event type and payload were added.``
+- Step 11: Created internal/ai/enrichment_test.go ``because WS5 required 6 tests: success, skip unavailable, no providers, parse valid JSON, parse JSON wrapped in text, parse no JSON.``
+- Step 12: Created internal/ai/mock_provider.go ``because WS6 required an exported MockProvider satisfying Provider + EmbeddingProvider + EnrichmentProvider for CI test isolation.``
+- Step 13: Exported NormalizeVector in internal/ai/embedding.go ``because the integration test fixture needed to normalize mock vectors without a private helper.``
+- Step 14: Created test/integration/ai_pipeline_integration_test.go ``because WS6 required 4 integration tests: classification confidence stored, deep processing writes real summary and embedding, semantic search returns results, needs-review flagging — all using MockProvider with zero real API calls.``
+- Step 15: Updated Makefile ``because ai-pipeline-test target was needed.``
+- Step 16: Updated .github/workflows/event-sourcing-gates.yml ``because an AI pipeline gate step was needed in CI.``
+- Step 17: Ran go test ./... (2026-06-03, pass) ``because all WS4+WS5+WS6 changes required full-suite regression validation.``
+
+## Session 24 - Correctness Fixes (Findings 2, 6, 7, 9) + ADR 0018
+
+- Step 01: Updated internal/service/eventsource.go ``because Finding 2 required guarding ApplySync on result.Applied — duplicate event_id calls were re-projecting the caller's in-memory payload; skipping is safe because Append and ApplySync run atomically in the same WithTx.``
+- Step 02: Updated internal/service/resource_service.go ``because Finding 9 required preserving the source entity ID during offline replay: added ID field to CreateResourceInput, used when non-empty instead of generating a new UUID.``
+- Step 03: Updated internal/sync/service_mutation_applier.go ``because applyResourceCreate now passes entityID (from mutation.EntityID or ExtractEntityID) to CreateResourceInput.ID so cross-device identity is preserved.``
+- Step 04: Updated internal/service/deep_processor.go ``because Finding 6 required deduping reminders before create (reminderExistsForDate helper checks existing reminders by resource_id + same UTC day); and Finding 7 required replacing all swallowed background-write errors (_ = ...) with slog.Warn + p.setLastError so failures are observable rather than silent.``
+- Step 05: Updated internal/service/resource_service.go ``because Finding 7 required replacing _ = s.resources.UpdateExtractedData(...) and _ = s.resources.Update(...) in runSkimExtraction with slog.Warn calls.``
+- Step 06: Created Plans/ADR/0018-event-sourcing-demoted-to-audit-log-and-sync-outbox.md ``because the architecture decision (Option B: event log = audit trail + sync outbox, mutable tables = source of truth) needed to be recorded as a durable decision to close Finding 1 by design rather than by more implementation work.``
+- Step 07: Updated Plans/ADR/README.md ``because ADR 0018 needed to be added to the index.``
+- Step 08: Ran go test ./... (2026-06-03, pass) ``because all four correctness fixes required full-suite regression validation.``
+
+## Session 25 - Finding 3 Test + Finding 5 Dissolution
+
+- Step 01: Updated internal/sync/ws_handler.go ``because the reconnect merge deduped hub events by raw sequence (seenSeqs[he.Sequence]), silently dropping a directly-published hub event whose minted sequence collided with an unrelated events-table sequence; replaced the inline merge with a call to mergeDurableAndHubReplay.``
+- Step 02: Updated internal/sync/outbox_worker.go ``because the fix needed eventOriginIsOutbox + mergeDurableAndHubReplay: hub events are now deduped by origin (only outbox.worker-sourced events are skipped, since the events-table read already covers them) rather than by raw sequence — the Finding 3 residual edge case fix per ADR 0018.``
+- Step 03: Updated internal/sync/outbox_worker_test.go ``because Finding 3 needed 4 regression tests: sequence-collision keeps hub event, outbox-originated hub events deduped, untranslatable stored skipped, merged output sorted.``
+- Step 04: Deleted internal/eventstore/snapshot_worker.go and snapshot_worker_test.go ``because Finding 5 is dissolved per ADR 0018 — the snapshot worker started but did nothing useful (rebuild-from-events is no longer a guarantee) and carried a latent Postgres ? placeholder bug; deleting is less code than fixing a path we no longer need.``
+- Step 05: Updated cmd/server/main.go ``because the snapshot worker startup was removed; buildRepositories no longer returns rawDB *sql.DB (its only consumer was the snapshot worker) and the database/sql import was dropped.``
+- Step 06: Updated internal/eventstore/observability.go, internal/sync/routes.go, internal/eventstore/observability_test.go ``because RecordSnapshotCreated had zero callers after the worker deletion and snapshots_created was a permanently-0 health metric — removed the field, method, DTO field, and health-endpoint wiring to avoid a misleading inert metric.``
+- Step 07: Updated Plans/ADR/0014-snapshot-and-compaction-policy.md ``because the snapshot policy is no longer in force; marked Superseded by ADR 0018 with an explanatory note.``
+- Step 08: Updated Plans/ADR/0018 and Plans/ADR/README.md ``because Findings 3 and 5 moved from open/deferred to resolved, and the index needed 0014 marked superseded (also fixed a pre-existing duplicate 0014 index line).``
+- Step 09: Ran go test ./... (2026-06-07, pass) ``because the Finding 3 fix, snapshot worker deletion, and observability changes required full-suite regression validation.``
+
+## Session 26 - Finding 3 Verification & Store.Snapshot Documentation
+
+- Step 01: Updated internal/eventstore/store.go ``because Store.Snapshot needed a doc comment explicitly warning against using it for projection rebuilds (neutralizing a latent comprehension trap per ADR 0018).``
+- Step 02: Updated internal/sync/outbox_worker_test.go ``because Finding 3 required an exact regression test (TestMergeReplay_SkippedRowInterleaving) asserting no sequence reuse or dropped events when an untranslatable event store row and direct hub event are interleaved.``
+- Step 03: Updated Plans/Progress Changes/Changes.md ``because the final correctness and verification steps needed to be documented as Change 11.``
+
+## Session 59 - Change 8: Resource Lifecycle (Duplicate Detection + Archive System)
+
+- Step 01: Updated internal/domain/entities.go ``because Resource needed SaveCount, Archived, ArchiveReason, ArchivedAt, SimilarTo fields (with json tags) and a new SimilarResource entity for the similarity join table.``
+- Step 02: Updated internal/domain/repositories.go ``because ResourceRepository needed FindByURL, IncrementCounter, ListArchived, Archive, Restore, BulkArchive, BulkRestore; added SimilarResourceRepository interface and ErrDuplicateResource sentinel.``
+- Step 03: Updated internal/repository/sqlite/migration.go ``because save_count, archived, archive_reason, archived_at columns and a similar_resources join table had to be added via ALTER TABLE migrations and CREATE TABLE.``
+- Step 04: Updated internal/repository/sqlite/resource_repository.go ``because all new interface methods needed implementation; scanResource updated to read new columns; List now filters archived=0 by default; SimilarResourceRepository added.``
+- Step 05: Updated internal/eventstore/resource_events.go ``because ResourceCounterIncremented, ResourceArchived, ResourceRestored, ResourceSimilarityDetected event type constants and payload types were needed for lifecycle events.``
+- Step 06: Updated internal/service/resource_service.go ``because Create needed exact-URL duplicate detection (increment counter + return ErrDuplicateResource); Archive, Restore, BulkArchive, BulkRestore, ListArchived service methods added with event emission helpers.``
+- Step 07: Created internal/service/duplicate_detector.go ``because post-embedding content-similarity detection (cosine > 0.92) needed a dedicated component that writes similar_resources links and emits ResourceSimilarityDetected events.``
+- Step 08: Created internal/service/archive_worker.go ``because a daily background job was needed to auto-archive dead links (HTTP HEAD → 404/error) and expired events (event_date < now) with configurable opt-in triggers.``
+- Step 09: Updated internal/config/config.go and config/config.default.yml ``because auto_archive_dead_links and auto_archive_expired_events feature flags were needed; both default false (opt-in).``
+- Step 10: Updated internal/http/handler.go ``because createResource needed to return 200 + duplicate:true for duplicate URLs; listResources needed ?archived=true support; archiveResource, restoreResource, bulkArchiveResources, bulkRestoreResources handlers and routes added.``
+- Step 11: Updated internal/repository/postgres/repositories.go ``because the postgres ResourceRepository needed stub implementations of all new interface methods (returns ErrNotImplemented until Postgres migration ships).``
+- Step 12: Updated test stubs in internal/http/handler_test.go, internal/service/classifier_test.go, internal/service/graph_service_test.go ``because all fakes implementing ResourceRepository needed the eight new interface methods added.``
+- Step 13: Created test/integration/resource_lifecycle_integration_test.go ``because duplicate detection, archive/restore, bulk ops, and dead-link reason were all WS5 CI requirements.``
+- Step 14: Ran go test ./... (2026-06-08, pass) ``because all lifecycle integration tests and full suite needed to pass with zero regressions.``
+
+## Session 60 - Change 9: Wails Desktop Integration + Change 10: GBUS Behavioral Model
+
+- Step 01: Created internal/gbus/signals.go ``because GBUS needed 10 signal type constants, SignalWeights map, and GBUSSignalPayload struct as the shared signal schema.``
+- Step 02: Created internal/gbus/emitter.go ``because async fire-and-forget signal emission to the event store (aggregate_type=gbus_signal) was needed without blocking primary operations.``
+- Step 03: Created internal/gbus/emitter_test.go ``because 6 unit tests were needed for disabled no-op, nil store no-op, all 7 core signal types, explicit weight preservation, and async non-blocking guarantee.``
+- Step 04: Created internal/gbus/feature_store.go ``because FeatureStore/CategoryFeature/ResourceFeature type aliases on domain types were needed so gbus-internal code stays clean.``
+- Step 05: Updated internal/domain/entities.go ``because GBUSCategoryFeature and GBUSResourceFeature entity types needed to live in domain to avoid import cycles.``
+- Step 06: Updated internal/domain/repositories.go ``because GBUSFeatureStore interface needed to live in domain for the same reason (time import added).``
+- Step 07: Created internal/repository/sqlite/gbus_repository.go ``because the SQLite GBUSFeatureStore implementation (ON CONFLICT upsert, PruneOlderThan) was needed.``
+- Step 08: Updated internal/repository/sqlite/migration.go ``because gbus_category_features and gbus_resource_features tables needed to be added to the SQLite schema.``
+- Step 09: Created internal/gbus/aggregator.go ``because a daily background job was needed to tail gbus_signal events via ReadBySequence, upsert feature rows, and prune old data within a 30s bound.``
+- Step 10: Created internal/gbus/aggregator_test.go ``because 4 tests were needed for category signal aggregation, resource signal aggregation, non-GBUS event skipping, and sequence tracking.``
+- Step 11: Created scripts/gbus_train/main.go ``because a reproducible CLI training pipeline was needed to read feature tables, compute time-decayed affinity scores, evaluate proxy accuracy, and save a versioned JSON model artifact.``
+- Step 12: Created models/gbus/model_registry.json ``because model versioning metadata, promotion criteria (≥5% lift, ≥50 samples), retraining cadence, and rollback procedure needed a durable record.``
+- Step 13: Created internal/gbus/inference.go ``because the runtime inference engine (load JSON model, CategoryScore, BiasClassification +10% max, RerankByInterest, Reload, ModelVersion/ModelStatus) was needed for WS4 integration.``
+- Step 14: Created internal/gbus/monitor.go ``because daily drift detection (compare current accuracy to baseline, warn >10% drift, trigger Reload, SignalCount atomic counter) was needed for WS5 governance.``
+- Step 15: Updated internal/service/resource_service.go ``because GBUS signal emission (manual/auto_classification on Create, resource_deleted on Delete, counter_incremented on duplicate) and GBUS inference (classification bias + vectorSearch reranking) needed wiring via WithGBUSEmitter and WithGBUSInference options.``
+- Step 16: Updated internal/config/config.go ``because GBUSConfig struct (enabled, inference_enabled, retention_days, model_path) and setGBUSDefaults were needed.``
+- Step 17: Updated config/config.default.yml ``because gbus.enabled=false and gbus.inference_enabled=false defaults needed adding.``
+- Step 18: Updated internal/http/handler.go ``because GET /api/v1/gbus/health endpoint, GBUSMonitor interface, GBUSInferenceInfo interface, and WithGBUSMonitor handler option were needed.``
+- Step 19: Updated cmd/server/main.go ``because buildRepositories needed to return domain.GBUSFeatureStore, and the GBUS aggregator+monitor needed to start in runtimeCtx with gbusEmitter/gbusInference wired into resourceSvc.``
+- Step 20: Added github.com/wailsapp/wails/v2 v2.12.0 to go.mod ``because Wails v2 was the chosen desktop integration framework per ADR 0001.``
+- Step 21: Created wails.json ``because Wails required a config file at the repo root specifying the frontend dev server URL, build commands, and app metadata.``
+- Step 22: Created cmd/desktop/main.go (build tag: desktop) ``because a Wails entry point was needed that wires all services from SQLite repos and runs the Wails app loop.``
+- Step 23: Created internal/desktop/app.go (build tag: desktop) ``because the Wails App struct with all IPC methods (GetResources, CreateResource, UpdateResource, DeleteResource, SearchResources, ArchiveResource, RestoreResource, GetCategories, CreateCategory, GetTodos, CreateTodo, GetReminders) and Startup/Shutdown/NotifyProcessingComplete hooks was needed.``
+- Step 24: Created internal/desktop/app_test.go (build tag: desktop) ``because 5 unit tests (Startup context, GetResources empty, CreateResource round-trip, DeleteResource, GetCategories) with in-memory stubs were required.``
+- Step 25: Created frontend/src/lib/ipc.ts ``because an isWailsContext detector, ipcCall REST/IPC toggle wrapper, and onWailsEvent subscriber were needed so stores can use IPC in desktop mode and REST in browser mode.``
+- Step 26: Updated frontend/src/stores/useResourceStore.ts ``because loadResources and addResource needed to call through ipcCall so desktop mode routes to GetResources/CreateResource IPC bindings.``
+- Step 27: Updated Makefile ``because wails-dev, wails-build-windows, wails-build-linux, and gbus-train targets were needed for developer workflow.``
+- Step 28: Updated .github/workflows/release.yml ``because a build-desktop job was needed to produce Windows and Linux desktop binaries via wails build on every release tag.``
+- Step 29: Ran go test ./... (2026-06-08, pass) + go test -tags desktop ./internal/desktop/... (pass) ``because all new packages and full suite needed to pass with zero regressions.``

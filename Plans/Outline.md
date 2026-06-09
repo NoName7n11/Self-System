@@ -49,7 +49,7 @@ A **personal knowledge management system** that intelligently captures, classifi
 | **Project Type** | Full Implementation | Not an MVP; all features built progressively |
 | **Desktop Framework** | Wails (Go + React) | Single binary, Go backend reuse, Windows + Linux support |
 | **Backend** | Go + Gin + GORM + Asynq | Standard Go Layout; loosely coupled via repository interfaces |
-| **Databases** | SQLite + DGraph + sqlite-vec + Redis | Relational + Graph + Vector + Queue backend |
+| **Databases** | SQLite + sqlite-vec + Redis | Relational + Vector + Queue backend |
 | **Authentication** | None (Phase 1) → Google OAuth (Phase 2+) | Local single-user needs no auth; OAuth added with server |
 | **Cross-Platform** | Windows + Linux | Go + Wails compile natively for both; Android deferred to Phase 3+ |
 | **Testing** | Pyramid (Unit 70% + Integration 20% + E2E 10%) | Go testing + Vitest + Playwright |
@@ -481,11 +481,11 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 │   │                            │                        │   │
 │   │          ┌─────────────────┼──────────────┐         │   │
 │   │          ▼                 ▼              ▼         │   │
-│   │    ┌──────────┐    ┌────────────┐   ┌──────────┐   │   │
-│   │    │  SQLite  │    │   DGraph   │   │  Redis   │   │   │
-│   │    │ +sqlite- │    │  (Docker)  │   │ (Docker) │   │   │
-│   │    │   vec    │    │   Graph    │   │  Asynq   │   │   │
-│   │    └──────────┘    └────────────┘   └──────────┘   │   │
+│   │    ┌──────────┐    ┌──────────┐           │
+│   │    │  SQLite  │    │  Redis   │           │
+│   │    │ +sqlite- │    │ (Docker) │           │
+│   │    │   vec    │    │  Asynq   │           │
+│   │    └──────────┘    └──────────┘           │
 │   └─────────────────────────────────────────────────────┘   │
 │                             │                               │
 └─────────────────────────────┼───────────────────────────────┘
@@ -508,8 +508,7 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
 │  (Win / Linux)   │                │                      │
 │  ├── SQLite      │                │  Go Sync Service     │
 │  └── local cache │                │  ├── PostgreSQL      │
-└──────────────────┘                │  ├── DGraph          │
-                                    │  ├── Redis           │
+└──────────────────┘                │  ├── Redis           │
 ┌──────────────────┐    WebSocket   │  └── sqlite-vec      │
 │  Android App     │ ◄────────────► │      or Qdrant       │
 │  (Phase 3+)      │                └──────────────────────┘

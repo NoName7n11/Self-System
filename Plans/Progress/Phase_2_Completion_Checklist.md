@@ -1,7 +1,8 @@
 # Phase 2 Completion Checklist
 
 Date: 2026-04-11
-Status: In progress
+Status: Complete
+Completion Date: 2026-05-06
 Scope: Phase 2 distributed architecture, sync, auth, and deep processing rollout.
 
 ## Exit Criteria
@@ -30,25 +31,45 @@ Scope: Phase 2 distributed architecture, sync, auth, and deep processing rollout
 - Deep processing worker and queue flow: internal/service/deep_processor.go, internal/service/deep_processor_test.go, internal/http/handler.go (enqueue hook + deep processing endpoints), internal/http/deep_processing_handler_test.go, cmd/server/main.go (runtime worker startup), test/integration/deep_processing_integration_test.go
 - API contract updates: api/openapi.yaml (phase 2 sync/auth routes + bearer auth responses + /api/v1/processing/deep/* endpoints and schemas)
 - UI interaction implementation files: frontend/package.json, frontend/tsconfig.json, frontend/vite.config.ts, frontend/vitest.config.ts, frontend/playwright.config.ts, frontend/src/App.tsx, frontend/src/styles.css, frontend/src/components/layout/Sidebar.tsx, frontend/src/components/layout/Topbar.tsx, frontend/src/components/graph/GraphControls.tsx, frontend/src/components/graph/GraphCanvas.tsx, frontend/src/components/resource/ResourceForm.tsx, frontend/src/components/resource/ResourceList.tsx, frontend/src/components/chat/ChatDock.tsx, frontend/src/components/tasks/TaskBoard.tsx, frontend/src/stores/useLayoutStore.ts, frontend/src/stores/useResourceStore.ts, frontend/src/stores/useChatStore.ts, frontend/src/stores/useSyncStore.ts, frontend/src/stores/useTaskStore.ts, frontend/src/stores/useTaskStore.test.ts, frontend/src/hooks/useFilteredResources.ts, frontend/src/api/client.ts, frontend/test/e2e/tasks.spec.ts, frontend/test/e2e/resources.spec.ts
-- VPS deployment assets and runbook: DEPLOYMENT.md, docker-compose.yml (PostgreSQL service + healthcheck), .env.example (PostgreSQL runtime defaults), Makefile (docker-up-postgres + test-postgres gate + verify-sync-runtime)
+- Frontend integration, UI, and visual tests: frontend/test/integration/store.msw.test.ts, frontend/test/integration/ui/resource-form.ui.test.tsx, frontend/test/integration/ui/resource-list.ui.test.tsx, frontend/test/integration/ui/task-board.ui.test.tsx, frontend/test/e2e/chat.spec.ts, frontend/test/e2e/navigation.spec.ts, frontend/test/e2e/visual.spec.ts, frontend/test/e2e/visual.spec.ts-snapshots
+- VPS deployment assets and runbook: DEPLOYMENT.md, docker-compose.yml (PostgreSQL service + healthcheck), docker-compose.vps.yml, docker-compose.vps.tls.yml, deploy/nginx/selfsystems.conf, deploy/nginx/selfsystems-https.conf (optional TLS template), deploy/ops/ops-checklist.md, deploy/ops/rollback.md, .env.example (PostgreSQL runtime defaults), Makefile (docker-up-postgres + test-postgres gate + verify-sync-runtime)
 - Distributed test suites: internal/sync/hub_test.go, test/integration/sync_integration_test.go, test/integration/deep_processing_integration_test.go
 - CI workflow updates: .github/workflows/ci.yml (explicit distributed sync/replay gate command + generated distributed evidence report artifact + PostgreSQL service-backed central data integration gate + dedicated frontend unit/E2E/build Playwright gate + Playwright report/test-results artifact upload with CI-side report/trace validation for retry/failure diagnostics)
-- Observability and metrics hooks: internal/sync/observability.go, internal/sync/routes.go (/api/v1/sync/metrics + /api/v1/sync/health metrics snapshot), internal/sync/ws_handler.go, test/integration/sync_integration_test.go
+- Observability and metrics hooks: internal/sync/observability.go, internal/sync/logging.go, internal/sync/routes.go (/api/v1/sync/metrics + /api/v1/sync/health metrics snapshot), internal/sync/ws_handler.go, test/integration/sync_integration_test.go
+- Operational troubleshooting guide: deploy/ops/troubleshooting.md, DEPLOYMENT.md
 - Cost control configuration: config/config.default.yml (processing.deep throughput/token budget defaults), .env.example (SS_PROCESSING_DEEP_* overrides), internal/config/config.go and internal/config/config_test.go (defaults/env override loader coverage)
+- Cost-impact validation notes: deploy/ops/cost-impact.md, DEPLOYMENT.md
+- Project workflow guide: Plans/Project_Workflow_Guide.md (workflow conventions, testing, progress tracking)
 
 ## Validation Snapshot (To Update Iteratively)
 
 Latest validation commands:
 
+- [x] cd frontend ; npx playwright test test/e2e (2026-05-05, pass after visual snapshot stabilization and graph layout masking)
+- [x] cd frontend ; npx playwright test test/e2e/visual.spec.ts --update-snapshots (2026-05-05, pass after expanding visual snapshots for graph/chat/error layouts)
+- [x] cd frontend ; npx vitest run test/integration (2026-05-04, pass after adding UI integration coverage and jsdom config)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-30, pass after Workstream 8 task-store validation expansion: todo/reminder required-field checks, invalid date handling, and status sanitization coverage)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-30, pass after Workstream 8 sync-store event-shape expansion: missing/blank type handling and invalid sequence retention)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-29, pass after Workstream 8 sync-store constructor-failure expansion: websocket constructor fallback plus reasonless-close handling)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-29, pass after Workstream 8 sync-store reconnect lifecycle expansion: unknown close-code handling, progressive reconnect backoff/max-delay capping, and reconnect-open recovery)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-29, pass after Workstream 8 sync-store lifecycle recovery expansion: connect/reconnect state transition recovery, stop-cancelled reconnect and refresh timers, and shared websocket reuse while connecting/connected)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store repeated offline start/polling cadence coverage: repeated start while offline reuses fallback polling and maintains reload cadence)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store duplicate-start protection coverage: repeated start while connected reuses the existing websocket connection)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store blank-URL startup coverage: empty websocket URL offline handling plus fallback polling assertions)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store websocket-message/error coverage: malformed payload ignore, non-mutation heartbeat handling, and transport-error surfacing unit assertions)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store stop-cleanup coverage: stop resets status, closes websocket, and cancels pending refresh/reconnect work)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 sync-store reconnect/fallback mutation coverage: fallback URL failure, reconnect-after-close, and debounced mutation refresh unit assertions)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 chat-store command handling expansion: blank-input skip, mutation refresh trigger, and failure surfacing unit assertions plus full frontend gate re-validation)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-28, pass after Workstream 8 task-store reminder list-read resilience expansion: reminder load failure retention/error assertions plus full frontend gate re-validation)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 resource list-read API contract parity expansion: malformed-success, non-ok envelope/fallback, and non-array success-data unit assertions)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 task list-read API contract parity expansion: todo/reminder list malformed-success, non-ok envelope/fallback, and non-array success-data unit assertions)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 task-create API contract parity expansion: todo/reminder create malformed-success and non-ok envelope/fallback unit assertions)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 dual parity expansion: API client resource create/update malformed-success and non-ok envelope-contract assertions plus resource-store loadResources silent refresh retention/failure unit coverage)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 resource-store unit parity expansion: create/update validation and failure-path assertions plus selected-resource state-preservation checks for resource mutations)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 resource delete success-envelope parity completion: malformed JSON and empty-body delete success tolerance E2E assertions plus deterministic dispatchEvent-based resource-row selection hardening for update/delete mutation tests)
- - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 Session 58: added store-level list-read resilience tests for resource and task stores (silent refresh retention vs surfaced non-silent errors) and full frontend gate passed)
-	- Vitest JSON: frontend/test-results/vitest-results.json
-	- Playwright report: frontend/playwright-report (HTML artifacts saved when Playwright runs with reporter=html)
+- [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-27, pass after Workstream 8 Session 58: added store-level list-read resilience tests for resource and task stores (silent refresh retention vs surfaced non-silent errors) and full frontend gate passed)
+  - Vitest JSON: frontend/test-results/vitest-results.json
+  - Playwright report: frontend/playwright-report (HTML artifacts saved when Playwright runs with reporter=html)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-23, pass after Workstream 8 resource failure-class parity completion: resource create malformed-envelope failure and resource update backend-failure E2E UX/state-preservation assertions)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-22, pass after Workstream 8 resource network/timeout parity expansion: resource create network failure, resource update timeout failure, and resource delete timeout failure E2E UX assertions)
 - [x] cd frontend ; npm test ; npm run test:e2e ; npm run build (2026-04-22, pass after Workstream 8 resource E2E expansion: create/update/delete success coverage, backend/malformed failure-path UX assertions, and selector-stability hardening against chat-panel pointer interception/strict-locator collisions)
@@ -178,6 +199,7 @@ Result summary:
 - Workstream 8 tasks slice now includes Todo/Reminder API wiring, dedicated task Zustand store, interactive task board CRUD/status flows, and sync/chat-triggered task refresh behavior.
 - Workstream 8 task-resource linking is now wired end-to-end in frontend drafts/forms/list views, and frontend unit testing now has an active Vitest gate (`npm test`) with initial task-store coverage.
 - Workstream 8 now includes an active Playwright E2E gate with frontend-owned config and an initial Tasks section scenario that verifies todo creation with linked resource selection via mocked API routes.
+- Workstream 8 now includes UI integration coverage (ResourceForm/ResourceList/TaskBoard), with jsdom-backed Vitest config and testing-library dependencies for UI-level validation.
 - Workstream 8 E2E coverage now includes reminder creation and status-transition (`Mark Sent`) behavior, and CI now enforces frontend unit + Playwright E2E + build gates in addition to existing Go/distributed checks.
 - Workstream 8 E2E coverage now also validates todo update/status progression and reminder delete behavior, and CI now uploads Playwright HTML report/test-results artifacts for faster failure triage.
 - Workstream 8 E2E coverage now additionally validates negative task mutation UX paths for create/update/delete/status operations: todo/reminder create failures, todo update + mark-done failures, and reminder delete + mark-sent failures surface deterministic backend error messages while preserving expected list state.
@@ -189,6 +211,8 @@ Result summary:
 - Workstream 8 resource E2E coverage now includes mutation transport/timeout parity assertions: create network failure plus update/delete timeout failures with deterministic error-surface and state-preservation checks.
 - Workstream 8 resource E2E coverage now includes remaining mutation failure-class parity assertions for create malformed-envelope failure and update backend failure, completing deterministic error-surface/state-preservation checks across create/update failure modes.
 - Workstream 8 resource E2E coverage now includes delete success-envelope parity assertions for malformed JSON and empty-body success responses, and resource-row selection now uses deterministic dispatchEvent + retry fallback to prevent overlay-driven update/delete flakiness.
+- Workstream 8 E2E coverage now includes chat/navigation/graph flows, sidebar and filter validation, and a dev-only graph selection hook for deterministic node selection assertions.
+- Workstream 8 visual snapshot coverage now includes search/graph/chat/tasks/settings layouts plus resource-create and chat-error states, with masked graph layout to stabilize pixel diffs.
 - Frontend resource-store unit coverage now includes create/update mutation validation and rejected-operation assertions, plus `loadResources` silent-refresh retention checks for selected-resource failure paths and selected-id clearing behavior when refreshed rows drop the selected entity.
 - Frontend task-store unit coverage now includes rejected mutation handling for todo/reminder create/update/delete operations, asserting surfaced error messages and no unintended state mutation.
 - Frontend API client unit coverage now includes explicit envelope-contract assertions for resource create/update and task update/delete paths: successful mutation responses without `data` fail deterministically, non-ok responses surface envelope/fallback status errors, and delete no-data paths tolerate empty/malformed success bodies.
@@ -199,6 +223,9 @@ Result summary:
 - Frontend CI now validates Playwright HTML/JSON report presence and enforces trace artifact existence when retries/failures occur before publishing Playwright artifacts.
 - Workstream 8 Tasks E2E specs now route failure toggles through reusable helper setters for todo/reminder create/update/delete mutation paths, reducing state-toggle duplication while preserving deterministic negative-path behavior.
 - Frontend CI unit gating now runs Vitest with JSON report output and non-empty artifact validation, publishes unit pass/fail and failed-assertion details into the GitHub job summary, and skips Playwright artifact validation when E2E execution is skipped so unit-test failures are not masked by secondary artifact errors.
+- Workstream 9 deployment hardening now includes a TLS compose overlay, TLS-enabled NGINX template, ops checklist, and rollback playbook referenced in the deployment runbook.
+- Workstream 11 observability now includes structured sync logging, replay queue depth metrics, and an operational troubleshooting guide.
+- Workstream 12 cost controls now include batching, deduped enqueue protection, min reprocess interval caching, and cost-impact validation notes.
 
 ## Notes
 

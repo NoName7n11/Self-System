@@ -25,10 +25,10 @@
 │  └───┬───────────────┬──────────────────┬───────────────────┬──┘    │
 │      │               │                  │                   │       │
 │      ▼               ▼                  ▼                   ▼       │
-│  ┌───────┐     ┌──────────┐     ┌────────────┐     ┌──────────────┐ │
-│  │SQLite │     │  DGraph  │     │ sqlite-vec │     │    Redis     │ │
-│  │(local)│     │  (graph) │     │ (vectors)  │     │   (Asynq)    │ │
-│  └───────┘     └──────────┘     └────────────┘     └──────────────┘ │
+│  ┌───────┐     ┌────────────┐     ┌──────────────┐                  │
+│  │SQLite │     │ sqlite-vec │     │    Redis     │                  │
+│  │(local)│     │ (vectors)  │     │   (Asynq)    │                  │
+│  └───────┘     └────────────┘     └──────────────┘                  │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
                                   │
@@ -84,7 +84,6 @@ self-systems/
 │   ├── service/         ← Use cases, orchestration
 │   ├── repository/      ← Database access layer (implements domain interfaces)
 │   │   ├── sqlite/
-│   │   └── dgraph/
 │   ├── worker/          ← Asynq task handlers
 │   │   ├── tasks/
 │   │   └── handlers/
@@ -100,7 +99,7 @@ self-systems/
 │   └── public/
 │
 ├── migrations/          ← Database migration files
-├── docker/              ← Docker configs for DGraph, Redis
+├── docker/              ← Docker configs for Redis
 ├── docker-compose.yml
 ├── go.mod
 └── go.sum
@@ -126,8 +125,6 @@ gorm.io/driver/sqlite
 - Auto-migration support
 - Soft deletes (30-day recovery for deleted resources)
 - Hooks for timestamps (`created_at`, `updated_at`)
-
-**Note:** DGraph is accessed via its own Go client (not GORM), as it is a graph database.
 
 ```go
 // Example — Repository interface (loosely coupled)
@@ -341,55 +338,7 @@ modernc.org/sqlite                ← Pure Go driver (recommended, no CGo)
 
 ---
 
-### 3.2 Graph Database — DGraph
-
-**Used for:** Category→Resource relationships, graph traversal, edge storage
-
-```
-github.com/dgraph-io/dgo/v230     ← Official Go client
-```
-
-**Deployment:** Docker container (local)
-
-```yaml
-# docker-compose.yml
-services:
-  dgraph-zero:
-    image: dgraph/dgraph:latest
-    ports: ["5080:5080", "6080:6080"]
-
-  dgraph-alpha:
-    image: dgraph/dgraph:latest
-    ports: ["8080:8080", "9080:9080"]
-```
-
-**Why DGraph:**
-- Written in Go (fits the stack)
-- GraphQL + DQL query interface
-- Designed for graph traversal (category↔resource relationships)
-- Open source, self-hosted
-
-**What DGraph stores:**
-```graphql
-type Category {
-    id: ID!
-    name: String! @index(exact)
-    color: String
-    resources: [Resource] @hasInverse(field: category)
-}
-
-type Resource {
-    id: ID!
-    title: String! @index(fulltext)
-    category: Category
-    relatedCategories: [Category]   # weak edges
-    edgeStrength: Float             # primary=1.0, related=0.3
-}
-```
-
----
-
-### 3.3 Vector Search — sqlite-vec
+### 3.2 Vector Search — sqlite-vec
 
 **Used for:** Semantic search via embedding vectors
 
@@ -422,7 +371,7 @@ rows := db.Query(`
 
 ---
 
-### 3.4 Job Queue Backend — Redis
+### 3.3 Job Queue Backend — Redis
 
 **Used for:** Asynq job queue backend only
 
@@ -498,8 +447,8 @@ github.com/anthropics/anthropic-sdk-go
 │    └── Go Backend (Gin, embedded)
 │
 └── Docker Compose services:
-     ├── DGraph Zero + Alpha
-     └── Redis
+  ├── PostgreSQL (optional for sync)
+  └── Redis
 ```
 
 **Running the app:**
@@ -533,8 +482,7 @@ wails build
 [User's Machine]                    [VPS Server — Hetzner]
 ├── Wails App      ◄─ WebSocket ──► Go Sync Service (Gin)
 ├── SQLite (local)                  ├── PostgreSQL (central DB)
-└── ...                             ├── DGraph
-                                    ├── Redis
+└── ...                             ├── Redis
                                     └── sqlite-vec / Qdrant
 
 [Android App]      ◄─ WebSocket ──► (same VPS)
@@ -586,7 +534,7 @@ wails build
 | **Go 1.22+** | Backend language | golang.org |
 | **Node.js 20+ + npm** | React frontend | nodejs.org |
 | **Wails CLI** | Desktop app build | `go install github.com/wailsapp/wails/v2/cmd/wails@latest` |
-| **Docker Desktop** | Run DGraph + Redis | docker.com |
+| **Docker Desktop** | Run PostgreSQL + Redis | docker.com |
 | **Git** | Version control | git-scm.com |
 | **VS Code** | Primary editor | Already installed ✅ |
 
@@ -599,7 +547,6 @@ wails build
 | `dbaeumer.vscode-eslint` | JS/TS linting |
 | `ms-azuretools.vscode-docker` | Docker management |
 | `bradlc.vscode-tailwindcss` | Tailwind CSS intellisense |
-| `DgraphLabs.vscode-dgraph` | DQL syntax support |
 
 ### 7.3 Design Tools
 
@@ -620,7 +567,6 @@ wails build
 | Tool | Purpose |
 |------|---------|
 | **DBeaver** | SQLite database viewer/editor |
-| **Ratel (DGraph UI)** | Graph database browser (built into DGraph) |
 | **RedisInsight** | Redis queue monitoring |
 
 ---

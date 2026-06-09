@@ -34,7 +34,7 @@ Scope: Phase 1 backend and operations readiness for the current repository.
 - Branch protection automation script: scripts/apply-branch-protection.ps1
 - Local infra stack: docker-compose.yml
 - Dev commands: Makefile
-- Session log: Plans/Progress/Phase_1_Timeline.md
+- Session log: Check/Security_Check/Phase_1_Timeline.md
 
 ## Validation Snapshot
 

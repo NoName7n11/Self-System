@@ -346,10 +346,6 @@ database:
   type: sqlite
   path: ./data.db
 
-dgraph:
-  host: localhost
-  port: 8080
-
 redis:
   host: localhost
   port: 6379

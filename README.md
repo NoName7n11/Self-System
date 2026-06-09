@@ -10,13 +10,13 @@ Current repository status: Phase 1 backend and operations closeout are in place 
 - Storage: SQLite (default) with PostgreSQL adapter for Phase 2 central-store runtime
 - AI abstraction: heuristic, OpenAI, Anthropic, and Gemini providers behind a manager
 - API contract: OpenAPI spec in api/openapi.yaml
-- Local infrastructure: PostgreSQL, Redis, and DGraph Docker services for sync, queue, and graph topology
+- Local infrastructure: PostgreSQL and Redis Docker services for sync and queue
 - VPS topology: Dockerized Go API behind NGINX reverse proxy via docker-compose.vps.yml
 
 ## Prerequisites
 
 - Go 1.22+
-- Docker Desktop (optional, for PostgreSQL, Redis, and DGraph)
+- Docker Desktop (optional, for PostgreSQL and Redis)
 - GNU Make (optional, convenience commands)
 
 ## Quick Start
@@ -106,8 +106,7 @@ Windows note: if `make` is not found but MinGW is installed, use `mingw32-make` 
 - Full test suite: go test ./...
 - Integration tests only: go test ./test/integration/...
 - Frontend unit tests: cd frontend && npm test
-- Frontend unit scope includes task-store + resource-store create/update/delete mutation error handling (including resource silent refresh retention paths) and API client envelope-contract assertions for resource list/create/update/delete plus task list/create/update/delete operations
- - Frontend unit scope includes store-level read-path resilience tests (resource/task stores) covering silent refresh retention vs non-silent list failures, task-store + resource-store create/update/delete mutation error handling (including resource silent refresh retention paths) and API client envelope-contract assertions for resource list/create/update/delete plus task list/create/update/delete operations
+- Frontend unit scope includes resource/task store create/update/delete mutation error handling, store-level read-path resilience tests for resource/task stores, task-store validation errors and status sanitization, chat-store command handling refreshes, sync-store connect/reconnect lifecycle recovery, websocket constructor fallback, unknown close-code and reasonless-close handling, progressive reconnect backoff/max-delay capping, fallback/debounced mutation refresh, stop-cleanup behavior, blank-URL startup handling, duplicate-start protection, malformed-message/transport-error handling, invalid event type/sequence handling, and repeated offline start/polling cadence, plus API client envelope-contract assertions for resource list/create/update/delete plus task list/create/update/delete operations
 - Frontend CI unit gate also emits frontend/test-results/vitest-results.json via npx vitest JSON reporting and publishes pass/fail + failed-assertion summary details for faster contract-test triage
 - Frontend E2E tests: cd frontend && npm run test:e2e
 - Frontend E2E scope includes positive and negative Resource + Tasks flows (resource create/update/delete success, backend/network/timeout/malformed envelope failure UX assertions, and resource delete malformed/empty success-body tolerance assertions; plus todo/reminder create/update/delete/status success/failure, client-side validation, malformed API envelope handling, and network/timeout mutation failure assertions)
@@ -179,8 +178,14 @@ Branch protection setup (requires GITHUB_TOKEN with admin rights):
 - DEPLOYMENT.md: deployment and runtime verification runbook
 - artifacts/templates/sync-runtime-reachability.sample.json: sample JSON report template for reachability evidence
 - docker-compose.vps.yml: final VPS topology overlay (Go API + NGINX reverse proxy)
+- docker-compose.vps.tls.yml: optional TLS overlay for NGINX
 - deploy/nginx/selfsystems.conf: websocket-aware proxy config for /api/v1/sync/ws
-- Plans/Progress/Phase_1_Timeline.md: implementation timeline
+- deploy/nginx/selfsystems-https.conf: optional TLS-enabled NGINX config
+- deploy/ops/ops-checklist.md: VPS operations checklist
+- deploy/ops/rollback.md: rollback and Postgres restore playbook
+- deploy/ops/troubleshooting.md: operational troubleshooting guide
+- deploy/ops/cost-impact.md: deep processing cost-impact validation notes
+- Plans/Security_Check/Phase_1_Timeline.md: implementation timeline
 
 ## Near-Term Next Focus
 

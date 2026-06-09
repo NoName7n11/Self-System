@@ -394,6 +394,158 @@ Format: Created <file> ``because <reason>``
 - Step 215: Updated `frontend/src/stores/useResourceStore.test.ts` and `frontend/src/stores/useTaskStore.test.ts` ``because store-level list-read resilience needed explicit assertions for silent refresh retention (preserve selection/draft) and non-silent list failures (surface errors) to close remaining store-level contract gaps.``
 - Step 216: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-27, pass) ``because Session 58 required the same full frontend gate re-validation used for prior Workstream 8 slices so validation evidence is consistent.``
 
+## Session 59 - Task Reminder Read-Path Resilience
+
+- Step 217: Updated `frontend/src/stores/useTaskStore.test.ts` ``because reminder list-read resilience still needed explicit coverage for non-silent failure retention and error surfacing, mirroring the todo and resource store patterns.``
+- Step 218: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the new reminder read-path coverage needed the usual full frontend gate confirmation before the session could be closed out.``
+
+## Session 60 - Chat Command Store Coverage
+
+- Step 219: Created `frontend/src/stores/useChatStore.test.ts` ``because chat command handling needed unit coverage for blank-input handling, mutation-triggered silent refreshes, and failure surfacing across resource/task stores.``
+- Step 220: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because chat-store coverage required the standard full frontend gate re-validation before the slice could be recorded as complete.``
+
+## Session 61 - Sync Store Reconnect and Fallback Coverage
+
+- Step 221: Created `frontend/src/stores/useSyncStore.test.ts` ``because sync-store behavior needed explicit coverage for fallback URL failure, websocket reconnect scheduling, and debounced mutation refreshes.``
+- Step 222: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the new sync-store slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 223: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the sync-store slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 62 - Sync Store Stop Cleanup Coverage
+
+- Step 224: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store stop behavior needed explicit coverage for closing active sockets, cancelling pending refresh work, and preventing reconnect after shutdown.``
+- Step 225: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the stop-cleanup slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 226: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the stop-cleanup slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 63 - Sync Store Message and Error Handling
+
+- Step 227: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store websocket handling still needed explicit coverage for malformed payloads, non-mutation heartbeat events, and transport-error surfacing.``
+- Step 228: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the new sync-message/error slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 229: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the websocket-message/error slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 64 - Sync Store Blank URL Startup Coverage
+
+- Step 230: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync startup still needed explicit coverage for blank websocket URL handling and fallback polling startup.``
+- Step 231: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the blank-URL slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 232: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the blank-URL startup slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 65 - Sync Store Duplicate-Start Protection
+
+- Step 233: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync startup still needed explicit coverage that repeated start calls reuse the active websocket instead of opening a second one.``
+- Step 234: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the duplicate-start slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 235: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the duplicate-start slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 66 - Sync Store Repeated Offline Start Cadence
+
+- Step 236: Updated `frontend/src/stores/useSyncStore.test.ts` ``because offline retry behavior still needed explicit coverage that repeated start calls reuse fallback polling and preserve reload cadence rather than creating duplicate timers.``
+- Step 237: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the repeated-offline-start slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 238: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-28, pass) ``because the repeated-offline-start slice required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 67 - Sync Store Lifecycle Recovery Expansion
+
+- Step 239: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store lifecycle recovery still needed broader coverage for reconnect state transitions, stopping with pending reconnect/refresh timers, and websocket reuse while connecting or connected.``
+- Step 240: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the lifecycle recovery slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 241: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-29, pass) ``because the lifecycle recovery expansion required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 68 - Sync Store Reconnect Backoff Expansion
+
+- Step 242: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store lifecycle coverage still needed explicit assertions for unknown close-code formatting, progressive reconnect backoff, and the maximum reconnect delay cap.``
+- Step 243: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the reconnect-backoff slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 244: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-29, pass) ``because the reconnect-backoff expansion required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 69 - Sync Store Constructor-Fallback Expansion
+
+- Step 245: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store lifecycle coverage still needed explicit assertions for websocket constructor fallback and close events that omit a reason string.``
+- Step 246: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the constructor-fallback slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 247: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-29, pass) ``because the constructor-fallback expansion required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 70 - Sync Store Event Shape Handling
+
+- Step 248: Updated `frontend/src/stores/useSyncStore.test.ts` ``because sync-store lifecycle coverage still needed explicit assertions for missing/blank event types and invalid sequence retention.``
+- Step 249: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the event-shape handling slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 250: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-30, pass) ``because the event-shape handling expansion required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 71 - Task Store Validation and Status Sanitization
+
+- Step 251: Updated `frontend/src/stores/useTaskStore.test.ts` ``because task-store coverage still needed explicit assertions for required-field validation, invalid date handling, and draft status sanitization.``
+- Step 252: Updated `README.md` and `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the task-store validation slice and validation evidence needed to be reflected in the runbook and Phase 2 progress ledger.``
+- Step 253: Ran `cd frontend ; npm test ; npm run test:e2e ; npm run build` (2026-04-30, pass) ``because the task-store validation expansion required the standard full frontend gate confirmation before the session could be recorded as complete.``
+
+## Session 72 - Workstream 8 Frontend Integration + UI Coverage
+
+- Step 254: Updated `frontend/vitest.config.ts` ``because UI integration coverage needed TSX integration inclusion and a jsdom default with node overrides for MSW tests.``
+- Step 255: Created `frontend/test/integration/ui/resource-form.ui.test.tsx`, `frontend/test/integration/ui/resource-list.ui.test.tsx`, and `frontend/test/integration/ui/task-board.ui.test.tsx` ``because UI-level integration coverage was required for resource/task form and list behavior.``
+- Step 256: Updated `frontend/test/integration/ui/resource-form.ui.test.tsx` ``because jsdom runtime annotations, React import, and cleanup were needed for stable JSX rendering.``
+- Step 257: Updated `frontend/package.json` ``because @testing-library/react and jsdom were needed to run UI integration tests.``
+- Step 258: Ran `cd frontend ; npx vitest run test/integration` (pass) ``because the expanded integration suite needed validation.``
+
+## Session 73 - Workstream 8 E2E Expansion (Chat, Navigation, Graph)
+
+- Step 259: Created `frontend/test/e2e/chat.spec.ts` and `frontend/test/e2e/navigation.spec.ts` ``because E2E coverage needed chat workflows, navigation, search filtering, and settings runtime assertions with API/websocket mocks.``
+- Step 260: Updated `frontend/test/e2e/navigation.spec.ts` ``because selectors needed strict-mode stability and coverage expanded to graph filters, view-mode toggles, override counts, graph meta assertions, and sidebar collapse/expand behavior.``
+- Step 261: Updated `frontend/src/components/graph/GraphCanvas.tsx` and `frontend/test/e2e/navigation.spec.ts` ``because E2E needed a dev-only graph selection hook for deterministic node selection coverage.``
+- Step 262: Ran `cd frontend ; npx playwright test test/e2e` (pass) ``because the expanded E2E suite required validation.``
+
+## Session 74 - Workstream 8 Visual Snapshot Coverage
+
+- Step 263: Created `frontend/test/e2e/visual.spec.ts` ``because visual regression coverage was required for key UI layouts.``
+- Step 264: Updated `frontend/test/e2e/visual.spec.ts` ``because snapshot coverage expanded to graph/chat layouts, error states, and stabilized masking for graph layout comparisons.``
+- Step 265: Ran `cd frontend ; npx playwright test test/e2e/visual.spec.ts --update-snapshots` and `cd frontend ; npx playwright test test/e2e` (pass) ``because new visual baselines and full-suite validation were required after snapshot expansion.``
+- Step 266: Updated `Plans/Progress/Phase_2_Completion_Checklist.md` ``because frontend integration/E2E/visual coverage and validation evidence needed to be recorded.``
+
+## Session 75 - Workstream 9 Deployment Hardening (TLS + Ops Checklist)
+
+- Step 267: Created `deploy/nginx/selfsystems-https.conf` ``because VPS deployments needed a ready TLS-enabled NGINX template with websocket upgrade support.``
+- Step 268: Updated `DEPLOYMENT.md` ``because the runbook needed optional TLS steps and a VPS hardening checklist.``
+
+## Session 76 - Project Workflow Guide
+
+- Step 269: Created `Plans/Project_Workflow_Guide.md` ``because new contributors and AI agents need a single source of truth for project workflow, testing, and progress-tracking practices.``
+
+## Session 77 - Workstream 9 Deployment Hardening (TLS Overlay + Ops)
+
+- Step 270: Created `docker-compose.vps.tls.yml` ``because TLS deployments needed a compose overlay for 443 and cert mounts.``
+- Step 271: Created `deploy/ops/ops-checklist.md` ``because VPS operations needed a compact checklist for ongoing maintenance.``
+- Step 272: Created `deploy/ops/rollback.md` ``because rollback and database restore steps needed a dedicated playbook.``
+- Step 273: Updated `DEPLOYMENT.md` ``because TLS overlay guidance and ops/rollback references needed to be documented.``
+- Step 274: Updated `README.md` ``because the deployment asset index needed to include new TLS and ops files.``
+- Step 275: Updated `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the evidence map and summary needed to reflect new Workstream 9 artifacts.``
+
+## Session 78 - Workstream 11 Observability and Ops Controls
+
+- Step 276: Updated `cmd/server/main.go` and created `internal/sync/logging.go` ``because structured JSON logging was needed for sync runtime operations.``
+- Step 277: Updated `internal/sync/observability.go`, `internal/sync/replay_store.go`, `internal/sync/replay_store_memory.go`, `internal/sync/replay_store_sqlite.go`, `internal/sync/offline_replay_manager.go`, `internal/sync/routes.go`, and `internal/sync/ws_handler.go` ``because queue depth snapshots and structured sync logging were required for Workstream 11 observability.``
+- Step 278: Updated `test/integration/sync_integration_test.go` ``because metrics coverage needed to assert replay queue depth reporting.``
+- Step 279: Created `deploy/ops/troubleshooting.md` and updated `DEPLOYMENT.md` and `README.md` ``because Workstream 11 needed an operational troubleshooting guide referenced in the runbook.``
+- Step 280: Updated `Plans/Progress/Phase_2_Completion_Checklist.md` ``because the evidence map and summary needed to reflect Workstream 11 observability and troubleshooting assets.``
+- Step 281: Updated `api/openapi.yaml` ``because sync metrics schemas needed to include replay queue depth fields.``
+- Step 282: Updated `.env.example` ``because log level overrides needed to be documented for operational control.``
+
+## Session 79 - Workstream 12 Cost and Throughput Controls (Batching + Cache)
+
+- Step 283: Updated `internal/service/deep_processor.go` ``because deep processing needed batching, enqueue dedupe, and min reprocess interval caching with new metrics.``
+- Step 284: Updated `internal/service/deep_processor_test.go` ``because batching and cache behavior needed regression coverage.``
+- Step 285: Updated `internal/config/config.go`, `config/config.default.yml`, and `.env.example` ``because deep processing batch size and reprocess interval settings needed configuration defaults and overrides.``
+- Step 286: Updated `cmd/server/main.go` ``because deep processing settings wiring needed to include batching and caching controls.``
+- Step 287: Updated `api/openapi.yaml` ``because deep processing metrics schemas needed to include batching and cache counters.``
+- Step 288: Created `deploy/ops/cost-impact.md` and updated `DEPLOYMENT.md` and `README.md` ``because Workstream 12 required cost-impact validation notes and runbook references.``
+- Step 289: Updated `Plans/Progress/Phase_2_Completion_Checklist.md` ``because Workstream 12 evidence needed to reflect batching, caching, and cost-impact notes.``
+- Step 290: Ran `go test ./test/integration -run DeepProcessing` (2026-05-06, pass) ``because deep processing integration coverage needed to validate end-to-end metrics after batching/caching changes.``
+- Step 291: Ran `go test ./internal/service -run DeepProcessor` (2026-05-06, pass) ``because deep processing unit coverage needed to validate batching, dedupe, and skip behavior.``
+
+## Session 80 - Phase 2 Completion
+
+- Step 292: Updated `Plans/Progress/Phase_2_Completion_Checklist.md` ``because Phase 2 exit criteria are met and the completion date needed to be recorded.``
+
+## Session 81 - Additional Checks
+
+- Step 293: Ran `curl http://127.0.0.1:8080/health` (2026-05-06, failed) ``because the frontend showed fetch errors and we needed to confirm the backend was not reachable.``
+- Step 294: Ran `go run ./cmd/server` (2026-05-06, started) ``because the local API needed to be running to clear fetch errors in the UI.``
+- Step 295: Ran `Get-NetTCPConnection -LocalPort 8080 -State Listen` and `curl http://127.0.0.1:8080/health` (2026-05-06, pass) ``because we needed to confirm the API was listening and responding after startup.``
+- Step 296: Observed browser console CORS preflight failures from `http://127.0.0.1:5173` to `http://127.0.0.1:8080` with missing `Access-Control-Allow-Origin` ``because the UI still showed Failed to fetch and Add-as-New errors after the backend was reachable.``
+- Step 297: Created `internal/http/cors.go` and updated `cmd/server/main.go` ``because the API needed CORS middleware (using the sync allowed-origins list) to allow the Vite UI to call the backend in local development.``
+- Step 298: Restarted the API and confirmed 200 responses for list endpoints during UI reload (2026-05-06, pass) ``because we needed to validate that fetches succeeded after the CORS middleware change.``
+- Step 299: Used the UI Add As New flow to create the Example Resource and observed the resource counts/graph update (2026-05-06, pass) ``because we needed to confirm Add-as-New works end-to-end.``
+
 ## Next Entry Rule
 
 - For each new work session, create a new session heading.
