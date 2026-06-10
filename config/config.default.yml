@@ -1,0 +1,90 @@
+app:
+  name: Self Systems
+  env: development
+  host: 127.0.0.1
+  port: 8080
+
+database:
+  type: sqlite
+  path: ./data/self_systems.db
+  url: ""
+
+ai:
+  primary_provider: heuristic
+  # Minimum classification confidence for auto-save. Below this, resources are
+  # flagged for review (needs_review = true). Range 0-1, default 0.85.
+  classification_threshold: 0.85
+  openai:
+    enabled: false
+    api_key: ""
+    model: gpt-4o-mini
+    base_url: https://api.openai.com
+    timeout_seconds: 20
+  anthropic:
+    enabled: false
+    api_key: ""
+    model: claude-3-5-sonnet-latest
+    base_url: https://api.anthropic.com
+    timeout_seconds: 20
+  gemini:
+    enabled: false
+    api_key: ""
+    model: gemini-1.5-flash
+    base_url: https://generativelanguage.googleapis.com
+    timeout_seconds: 20
+
+features:
+  skim_enabled: true
+  deep_enabled: true
+  unified_chat_enabled: true
+  reminder_enabled: true
+  todo_enabled: true
+  events_resource_enabled: false
+  events_category_enabled: false
+  events_todo_enabled: false
+  events_reminder_enabled: false
+  # Auto-archive triggers (opt-in). Both default false.
+  auto_archive_dead_links: false
+  auto_archive_expired_events: false
+
+processing:
+  deep:
+    enabled: true
+    queue_capacity: 256
+    worker_count: 1
+    batch_size: 8
+    max_tasks_per_minute: 30
+    max_tokens_per_day: 200000
+    min_reprocess_interval_seconds: 300
+    complexity_threshold: 6
+    low_cost_model: gpt-4o-mini
+    high_cost_model: gpt-4o
+    low_cost_estimated_tokens: 250
+    high_cost_estimated_tokens: 1200
+    budget_state_path: ./data/deep_budget_state.json
+
+sync:
+  enabled: true
+  websocket_path: /api/v1/sync/ws
+  allowed_origins: []
+  heartbeat_seconds: 30
+  max_connections_per_client: 5
+
+gbus:
+  # enabled activates signal emission and daily aggregation.
+  enabled: false
+  # inference_enabled loads the model artifact and applies GBUS scores to
+  # classification and search. Requires a production model in model_path.
+  inference_enabled: false
+  retention_days: 90
+  model_path: ./models/gbus/baseline.json
+
+auth:
+  enabled: false
+  google_client_id: ""
+  google_client_secret: ""
+  google_redirect_url: ""
+  jwt_secret: ""
+  jwt_issuer: self-systems
+  jwt_audience: self-systems-clients
+  token_ttl_minutes: 60

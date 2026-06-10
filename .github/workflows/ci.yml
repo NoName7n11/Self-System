@@ -1,0 +1,303 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+
+jobs:
+  go-ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: self_systems_ci
+          POSTGRES_USER: selfsystems
+          POSTGRES_PASSWORD: selfsystems
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U selfsystems -d self_systems_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Verify formatting
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "These files are not gofmt-formatted:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Execute distributed sync and replay gate
+        id: distributed_gate
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          set +e
+          set -o pipefail
+          go test -json ./internal/sync ./test/integration -run "Sync|Offline|Replay" | tee artifacts/distributed-sync-go-test.json
+          EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate distributed gate evidence report
+        if: always()
+        shell: bash
+        run: |
+          if [ -s artifacts/distributed-sync-go-test.json ]; then
+            go run ./scripts/generate_distributed_gate_report \
+              -input artifacts/distributed-sync-go-test.json \
+              -output artifacts/distributed-sync-report.md
+          else
+            {
+              echo "# Distributed Behavior Gate Report"
+              echo ""
+              echo "No distributed gate JSON output was captured."
+            } > artifacts/distributed-sync-report.md
+          fi
+
+      - name: Publish distributed gate summary
+        if: always()
+        shell: bash
+        run: |
+          cat artifacts/distributed-sync-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload distributed gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: distributed-gate-evidence
+          path: |
+            artifacts/distributed-sync-go-test.json
+            artifacts/distributed-sync-report.md
+          if-no-files-found: warn
+
+      - name: Enforce distributed gate status
+        shell: bash
+        run: |
+          if [ "${{ steps.distributed_gate.outputs.exit_code }}" != "0" ]; then
+            echo "Distributed sync/replay gate failed. See distributed-gate-evidence artifact."
+            exit 1
+          fi
+
+      - name: Run full Go tests
+        run: go test ./...
+
+      - name: Run PostgreSQL central data integration gate
+        env:
+          SS_POSTGRES_TEST_DSN: postgres://selfsystems:selfsystems@localhost:5432/self_systems_ci?sslmode=disable
+        run: go test ./internal/repository/postgres -run Integration
+
+      - name: Build server
+        run: go build -o bin/self-systems ./cmd/server
+
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run frontend unit tests
+        id: frontend_unit
+        run: |
+          mkdir -p test-results
+          npx vitest run --reporter=default --reporter=json --outputFile=test-results/vitest-results.json
+
+      - name: Validate frontend Vitest artifact
+        if: always() && steps.frontend_unit.outcome != 'skipped'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "test-results/vitest-results.json" ]; then
+            echo "Missing Vitest JSON report at frontend/test-results/vitest-results.json"
+            exit 1
+          fi
+
+          node -e '
+          const fs = require("node:fs");
+
+          const report = JSON.parse(fs.readFileSync("test-results/vitest-results.json", "utf8"));
+
+          const totalSuites = Number(report.numTotalTestSuites ?? report.testResults?.length ?? 0);
+          const totalTests = Number(
+            report.numTotalTests
+              ?? report.testResults?.reduce((count, suite) => {
+                const assertions = Array.isArray(suite.assertionResults) ? suite.assertionResults.length : 0;
+                return count + assertions;
+              }, 0)
+              ?? 0,
+          );
+
+          if (totalSuites <= 0 || totalTests <= 0) {
+            console.error(`Vitest report appears empty (suites=${totalSuites}, tests=${totalTests}).`);
+            process.exit(1);
+          }
+          '
+
+      - name: Publish frontend unit summary
+        if: always() && steps.frontend_unit.outcome != 'skipped'
+        shell: bash
+        run: |
+          node -e '
+          const fs = require("node:fs");
+
+          const report = JSON.parse(fs.readFileSync("test-results/vitest-results.json", "utf8"));
+
+          const totalSuites = Number(report.numTotalTestSuites ?? report.testResults?.length ?? 0);
+          const failedSuites = Number(report.numFailedTestSuites ?? 0);
+          const passedSuites = Number(report.numPassedTestSuites ?? Math.max(0, totalSuites - failedSuites));
+          const totalTests = Number(
+            report.numTotalTests
+              ?? report.testResults?.reduce((count, suite) => {
+                const assertions = Array.isArray(suite.assertionResults) ? suite.assertionResults.length : 0;
+                return count + assertions;
+              }, 0)
+              ?? 0,
+          );
+          const failedTests = Number(report.numFailedTests ?? 0);
+          const passedTests = Number(report.numPassedTests ?? Math.max(0, totalTests - failedTests));
+
+          const lines = [];
+          lines.push("### Frontend Unit Test Summary");
+          lines.push("");
+          lines.push(`- Suites: ${passedSuites} passed / ${failedSuites} failed / ${totalSuites} total`);
+          lines.push(`- Tests: ${passedTests} passed / ${failedTests} failed / ${totalTests} total`);
+
+          const failedEntries = [];
+          for (const suite of report.testResults ?? []) {
+            const suiteName = typeof suite.name === "string" ? suite.name : "unknown suite";
+            for (const assertion of suite.assertionResults ?? []) {
+              if (assertion && assertion.status === "failed") {
+                const title = typeof assertion.fullName === "string" ? assertion.fullName : assertion.title;
+                failedEntries.push(`- ${suiteName} :: ${title || "unknown test"}`);
+              }
+            }
+          }
+
+          if (failedEntries.length > 0) {
+            lines.push("");
+            lines.push("Failed assertions:");
+            lines.push(...failedEntries.slice(0, 20));
+          }
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join("\n")}\n`);
+          '
+
+      - name: Run frontend E2E tests
+        id: frontend_e2e
+        run: npm run test:e2e
+
+      - name: Validate frontend Playwright artifacts
+        if: always() && steps.frontend_e2e.outcome != 'skipped'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "playwright-report/index.html" ]; then
+            echo "Missing Playwright HTML report at frontend/playwright-report/index.html"
+            exit 1
+          fi
+
+          if [ ! -f "test-results/playwright-results.json" ]; then
+            echo "Missing Playwright JSON report at frontend/test-results/playwright-results.json"
+            exit 1
+          fi
+
+          HAS_RETRIES_OR_FAILURES=$(node -e '
+          const fs = require("node:fs");
+
+          const reportPath = "test-results/playwright-results.json";
+          const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+
+          const statusesRequiringTrace = new Set(["failed", "timedOut", "interrupted", "flaky"]);
+
+          let requiresTraceArtifacts = false;
+          const stack = [report];
+
+          while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current || typeof current !== "object") {
+              continue;
+            }
+
+            const withRetry = current;
+            if (typeof withRetry.retry === "number" && withRetry.retry > 0) {
+              requiresTraceArtifacts = true;
+              break;
+            }
+
+            const withStatus = current;
+            if (typeof withStatus.status === "string" && statusesRequiringTrace.has(withStatus.status)) {
+              requiresTraceArtifacts = true;
+              break;
+            }
+
+            for (const value of Object.values(current)) {
+              if (Array.isArray(value)) {
+                for (const child of value) {
+                  stack.push(child);
+                }
+              } else if (value && typeof value === "object") {
+                stack.push(value);
+              }
+            }
+          }
+
+          process.stdout.write(requiresTraceArtifacts ? "true" : "false");
+          ')
+
+          if [ "$HAS_RETRIES_OR_FAILURES" = "true" ]; then
+            TRACE_COUNT=$(find test-results -type f -name 'trace*.zip' | wc -l | tr -d ' ')
+            if [ "$TRACE_COUNT" = "0" ]; then
+              echo "Expected Playwright trace artifacts for retries/failures, but none were found in frontend/test-results."
+              exit 1
+            fi
+            echo "Detected retries/failures and found ${TRACE_COUNT} trace artifact(s)."
+          else
+            echo "No retries/failures detected; trace artifact check not required."
+          fi
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-playwright-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: error

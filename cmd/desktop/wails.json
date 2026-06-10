@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Self Systems",
+  "outputfilename": "SelfSystems",
+  "frontend:dir": "../../frontend",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://localhost:5173",
+  "author": {
+    "name": "No_Name",
+    "email": "shadoinkk@gmail.com"
+  },
+  "info": {
+    "productName": "Self Systems",
+    "productVersion": "1.0.0",
+    "productIdentifier": "com.selfsystems.app",
+    "copyright": "Copyright 2026",
+    "comments": "A local-first personal knowledge and task management system."
+  }
+}
