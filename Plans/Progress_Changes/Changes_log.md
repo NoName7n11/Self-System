@@ -227,7 +227,7 @@ _These sessions were completed but their log entries were lost when the conversa
 - Step 02: Updated internal/sync/outbox_worker_test.go ``because Finding 3 required an exact regression test (TestMergeReplay_SkippedRowInterleaving) asserting no sequence reuse or dropped events when an untranslatable event store row and direct hub event are interleaved.``
 - Step 03: Updated Plans/Progress Changes/Changes.md ``because the final correctness and verification steps needed to be documented as Change 11.``
 
-## Session 59 - Change 8: Resource Lifecycle (Duplicate Detection + Archive System)
+## Session 27 - Change 8: Resource Lifecycle (Duplicate Detection + Archive System)
 
 - Step 01: Updated internal/domain/entities.go ``because Resource needed SaveCount, Archived, ArchiveReason, ArchivedAt, SimilarTo fields (with json tags) and a new SimilarResource entity for the similarity join table.``
 - Step 02: Updated internal/domain/repositories.go ``because ResourceRepository needed FindByURL, IncrementCounter, ListArchived, Archive, Restore, BulkArchive, BulkRestore; added SimilarResourceRepository interface and ErrDuplicateResource sentinel.``
@@ -244,7 +244,7 @@ _These sessions were completed but their log entries were lost when the conversa
 - Step 13: Created test/integration/resource_lifecycle_integration_test.go ``because duplicate detection, archive/restore, bulk ops, and dead-link reason were all WS5 CI requirements.``
 - Step 14: Ran go test ./... (2026-06-08, pass) ``because all lifecycle integration tests and full suite needed to pass with zero regressions.``
 
-## Session 60 - Change 9: Wails Desktop Integration + Change 10: GBUS Behavioral Model
+## Session 28 - Change 9: Wails Desktop Integration + Change 10: GBUS Behavioral Model
 
 - Step 01: Created internal/gbus/signals.go ``because GBUS needed 10 signal type constants, SignalWeights map, and GBUSSignalPayload struct as the shared signal schema.``
 - Step 02: Created internal/gbus/emitter.go ``because async fire-and-forget signal emission to the event store (aggregate_type=gbus_signal) was needed without blocking primary operations.``
@@ -275,3 +275,41 @@ _These sessions were completed but their log entries were lost when the conversa
 - Step 27: Updated Makefile ``because wails-dev, wails-build-windows, wails-build-linux, and gbus-train targets were needed for developer workflow.``
 - Step 28: Updated .github/workflows/release.yml ``because a build-desktop job was needed to produce Windows and Linux desktop binaries via wails build on every release tag.``
 - Step 29: Ran go test ./... (2026-06-08, pass) + go test -tags desktop ./internal/desktop/... (pass) ``because all new packages and full suite needed to pass with zero regressions.``
+
+## Session 29 - Change-Documenter Skill and Session Tracking Infrastructure
+
+- Step 01: Created .claude/skills/change-documenter/SKILL.md ``because the mandatory 3-doc end-of-session rule needed an automated agent that detects mode (Progress_Changes vs Phase), reads current doc state, and writes all required files in one invocation.``
+- Step 02: Updated CLAUDE.md ``because the Session Documentation Rules section needed a reference to /change-documenter and a note that the agent also handles Phase mode (Phase_X_Workstream.md, Phase_X_Completion_Checklist.md, Phase_X_Timeline.md).``
+- Step 03: Created .claude/hooks/change-doc-tracker.js ``because a PostToolUse hook was needed to capture every Edit/Write tool call into .claude/change-doc-session.jsonl so the skill has an authoritative file-change log rather than relying on model memory.``
+- Step 04: Created .claude/hooks/change-doc-reset.js ``because a SessionStart hook was needed to clear the scratch log and write the change-doc-active flag at the start of each session so carryover from prior sessions is eliminated.``
+- Step 05: Created .claude/hooks/change-doc-prompt.js ``because a UserPromptSubmit hook was needed to inject per-turn documenter-mode context (including live file-change summary from the scratch log) so the model stays document-aware throughout the session and drafts content incrementally rather than reconstructing at invocation.``
+- Step 06: Updated .claude/settings.local.json ``because SessionStart (change-doc-reset.js), PostToolUse (change-doc-tracker.js), and UserPromptSubmit (change-doc-prompt.js) hooks needed to be registered in project-level settings to activate parallel background tracking.``
+- Step 07: Updated .claude/skills/change-documenter/SKILL.md ``because the Session Scratch Log section and updated Execution Steps (read .claude/change-doc-session.jsonl first) were needed to instruct the skill to consume the accumulated hook data.``
+
+## Session 30 - Change 9: Wails IPC Completion + wails dev Truth-Test
+
+- Step 01: Updated internal/desktop/app.go ``because WS2 required the full IPC surface across all 5 stores: removed the //go:build desktop tag (it broke wails generate module's internal Go parser, which doesn't pass -tags through), added parseOptionalTime/parseRequiredTime/optionalString helpers, and added UpdateCategory, DeleteCategory, UpdateTodo, DeleteTodo, CreateReminder, UpdateReminder, DeleteReminder IPC methods plus a CreateTodo signature change.``
+- Step 02: Updated internal/desktop/app_test.go ``because the //go:build desktop tag had to be removed for the same reason as app.go, and go build ./... was verified to still pass with the tag gone.``
+- Step 03: Updated frontend/src/stores/useResourceStore.ts ``because updateSelectedResource and deleteSelectedResource needed to route through ipcCall("desktop.App.UpdateResource"/"DeleteResource") with REST fallback, completing resource-store IPC wiring.``
+- Step 04: Updated frontend/src/stores/useTaskStore.ts ``because all 8 todo/reminder operations (loadTodos, loadReminders, addTodo, updateSelectedTodo, deleteSelectedTodo, addReminder, updateSelectedReminder, deleteSelectedReminder) needed ipcCall wiring to GetTodos/CreateTodo/UpdateTodo/DeleteTodo/GetReminders/CreateReminder/UpdateReminder/DeleteReminder — previously only the resource store was wired.``
+- Step 05: Created cmd/desktop/wails.json ``because wails generate module requires wails.json to be colocated with the main package directory (cmd/desktop), not the repo root; frontend:dir set to ../../frontend.``
+- Step 06: Deleted wails.json (repo root) ``because it was superseded by cmd/desktop/wails.json.``
+- Step 07: Updated Makefile ``because wails-dev, wails-build-windows, wails-build-linux targets needed to cd into cmd/desktop before invoking wails, matching the new wails.json location.``
+- Step 08: Updated internal/config/config.go ``because config.Load() failed with "Config File config.default Not Found" when run from cmd/desktop (wails's working directory) — added v.AddConfigPath("../../config") as a second search path, non-invasive to the existing ./config path used from the repo root.``
+- Step 09: Generated frontend/wailsjs/ via wails generate module ``because WS2 required TypeScript bindings for all 20 App IPC methods (ArchiveResource, CreateCategory, CreateReminder, CreateResource, CreateTodo, DeleteCategory, DeleteReminder, DeleteResource, DeleteTodo, GetCategories, GetReminders, GetResourceByID, GetResources, GetTodos, NotifyProcessingComplete, RestoreResource, SearchResources, UpdateCategory, UpdateReminder, UpdateResource, UpdateTodo) — confirmed all present in frontend/wailsjs/go/desktop/App.d.ts.``
+- Step 10: Updated cmd/desktop/main.go ``because wails dev crashed at launch with "Error: AssetServer options invalid: either Assets, Handler or Middleware must be set" — AssetServer.Assets was nil. Added a frontendDistFS() helper using os.DirFS resolved via runtime.Caller (so it works regardless of process cwd) and set AssetServer.Assets to it. go build ./... verified to still pass.``
+- Step 11: Ran wails dev (2026-06-10) ``because step 5 of the user's do-list ("wails dev launches native window + IPC works") is the truth-test for Change 9 — after the AssetServer fix, the SelfSystems-dev binary launched successfully (WebView2 environment created, window titled "Self Systems", PID confirmed via Get-Process), passing the truth-test. wails generate module's automatic go mod tidy step also confirmed wails as a resolved dependency.``
+
+## Session 31 - Change 9: wails build Production Binary Fix
+
+- Step 01: Updated internal/config/config.go ``because the first wails build succeeded but the resulting cmd/desktop/build/bin/SelfSystems.exe failed to launch with "Config File config.default Not Found" — the binary's cwd (cmd/desktop/build/bin/) is 4 directories below the repo root, but only ./config and ../../config search paths existed; added ../../../config (wrong depth, still failed) then corrected to ../../../../config.``
+- Step 02: Ran go build ./... + wails build (2026-06-10, twice) ``because each config path correction required a full rebuild to verify; the second rebuild produced a working SelfSystems.exe.``
+- Step 03: Verified standalone launch (2026-06-10) ``because the user double-clicked cmd/desktop/build/bin/SelfSystems.exe directly (no wails dev, no Vite server running) and confirmed it opened fast with no config error — completing the wails build half of the user's do-list step 5 truth-test.``
+
+## Session 32 - Change 9: IPC CRUD Round-Trip Fix (Field-Casing Normalization)
+
+- Step 01: Added chrome-devtools MCP server (`claude mcp add chrome-devtools npx chrome-devtools-mcp@latest`) ``because verifying the IPC CRUD round-trip in the live wails dev window required reading browser console errors, and no GUI/browser automation tool was previously available.``
+- Step 02: Updated frontend/src/api/client.ts ``because normalizeResource, normalizeTodo, and normalizeReminder (which map raw Go JSON field names like CategoryName/ID/CreatedAt to the camelCase ResourceItem/TodoItem/ReminderItem shape) were private to client.ts but needed to be reused for IPC responses; exported all three.``
+- Step 03: Updated frontend/src/stores/useResourceStore.ts ``because raw `desktop.App.GetResources/CreateResource/UpdateResource` IPC responses return domain.Resource with PascalCase/untagged Go field names (e.g. CategoryName), but the frontend expects camelCase (categoryName) — this caused `Cannot read properties of undefined (reading 'trim')` crashes in Sidebar, GraphControls, GraphCanvas, and ResourceList when running under wails dev. Wrapped all three IPC results with normalizeResource.``
+- Step 04: Updated frontend/src/stores/useTaskStore.ts ``because the same raw-field-casing mismatch affected GetTodos/CreateTodo/UpdateTodo and GetReminders/CreateReminder/UpdateReminder IPC responses; wrapped all six with normalizeTodo/normalizeReminder.``
+- Step 05: Verified full CRUD round-trip in the live wails dev window via chrome-devtools MCP (2026-06-10) ``because step 5 of the user's do-list ("wails dev native window + IPC CRUD works") required proof, not just launch — created/edited/deleted a resource (Google → Google Search → deleted), created/marked-done/deleted a todo, and created/deleted a reminder, all via IPC with no console errors after the normalization fix. Completes the IPC CRUD round-trip half of the truth-test (WS2 done criterion).``
