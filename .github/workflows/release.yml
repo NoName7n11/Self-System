@@ -74,9 +74,11 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             artifact: SelfSystems.exe
+            tags: ""
           - os: ubuntu-latest
             platform: linux/amd64
             artifact: SelfSystems
+            tags: "webkit2_41"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -108,7 +110,7 @@ jobs:
 
       - name: Build desktop app
         working-directory: cmd/desktop
-        run: wails build -platform ${{ matrix.platform }} -o ${{ matrix.artifact }}
+        run: wails build -platform ${{ matrix.platform }} -tags "${{ matrix.tags }}" -o ${{ matrix.artifact }}
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4
