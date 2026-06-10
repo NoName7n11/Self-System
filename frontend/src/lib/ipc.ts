@@ -3,8 +3,9 @@
  * falls back to REST fetch for browser / dev-server mode.
  *
  * After running `wails generate module`, Wails places generated TypeScript
- * bindings in frontend/src/wailsjs/go/. Import from there to get typed
- * wrappers without going through this generic bridge.
+ * bindings in frontend/wailsjs/go/ (canonical Wails location, regenerated on
+ * every `wails build`). Import from there (e.g. `../../wailsjs/go/desktop/App`)
+ * to get typed wrappers without going through this generic bridge.
  *
  * Detection: Wails injects `window.go` when the WebView is initialised.
  * In browser / Vite dev-server mode, `window.go` is undefined.

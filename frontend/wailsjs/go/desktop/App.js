@@ -70,6 +70,10 @@ export function SearchResources(arg1, arg2) {
   return window['go']['desktop']['App']['SearchResources'](arg1, arg2);
 }
 
+export function StartTray() {
+  return window['go']['desktop']['App']['StartTray']();
+}
+
 export function UpdateCategory(arg1, arg2, arg3) {
   return window['go']['desktop']['App']['UpdateCategory'](arg1, arg2, arg3);
 }

@@ -2,8 +2,11 @@ package desktop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -46,6 +49,31 @@ type App struct {
 	categories *service.CategoryService
 	todos      *service.TodoService
 	reminders  *service.ReminderService
+	statePath  string
+}
+
+// windowState is the persisted window geometry, saved on shutdown and
+// restored on startup so the app reopens where the user left it.
+type windowState struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+	X      int `json:"x"`
+	Y      int `json:"y"`
+}
+
+// windowStatePath returns the file used to persist window geometry. It lives
+// under the OS user-config dir; on failure we fall back to the working dir so
+// the feature degrades gracefully rather than panicking.
+func windowStatePath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "selfsystems-window.json"
+	}
+	appDir := filepath.Join(dir, "SelfSystems")
+	if mkErr := os.MkdirAll(appDir, 0o755); mkErr != nil {
+		return "selfsystems-window.json"
+	}
+	return filepath.Join(appDir, "window.json")
 }
 
 // AppOptions contains all services the desktop app needs.
@@ -63,19 +91,89 @@ func NewApp(opts AppOptions) *App {
 		categories: opts.Categories,
 		todos:      opts.Todos,
 		reminders:  opts.Reminders,
+		statePath:  windowStatePath(),
 	}
 }
 
 // Startup is called when the application starts. The context is saved so
 // Wails runtime functions (notifications, window ops) can be called later.
+// It also restores the saved window geometry, initializes the OS notification
+// subsystem, and registers the native file-drop handler.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	a.wireRuntime(ctx)
 	slog.Info("Self Systems desktop app started")
 }
 
-// Shutdown is called when the application is about to quit.
+// wireRuntime restores window geometry and registers notifications, file-drop,
+// and the system tray. These call Wails runtime functions that log.Fatal (which
+// calls os.Exit) when handed anything other than the real lifecycle context, so
+// we first confirm the context carries the Wails frontend value. Unit tests pass
+// a bare context.Background and fall through this guard untouched.
+func (a *App) wireRuntime(ctx context.Context) {
+	if ctx == nil || ctx.Value("frontend") == nil {
+		slog.Debug("non-Wails context; skipping desktop runtime wiring")
+		return
+	}
+
+	a.restoreWindowState()
+
+	if err := runtime.InitializeNotifications(ctx); err != nil {
+		slog.Warn("initialize notifications", "error", err)
+	}
+
+	runtime.OnFileDrop(ctx, func(_, _ int, paths []string) {
+		// Emit dropped file paths to the frontend, which creates a resource
+		// per file via the CreateResource IPC binding.
+		runtime.EventsEmit(ctx, "files:dropped", paths)
+	})
+
+	a.StartTray()
+}
+
+// Shutdown is called when the application is about to quit. It persists the
+// current window geometry so the next launch restores it.
 func (a *App) Shutdown(_ context.Context) {
+	a.saveWindowState()
 	slog.Info("Self Systems desktop app shutting down")
+}
+
+// restoreWindowState reads the persisted geometry and applies it. Missing or
+// unreadable state is ignored (first launch uses the defaults from main.go).
+func (a *App) restoreWindowState() {
+	if a.ctx == nil || a.statePath == "" {
+		return
+	}
+	data, err := os.ReadFile(a.statePath)
+	if err != nil {
+		return
+	}
+	var st windowState
+	if err := json.Unmarshal(data, &st); err != nil {
+		return
+	}
+	if st.Width > 0 && st.Height > 0 {
+		runtime.WindowSetSize(a.ctx, st.Width, st.Height)
+	}
+	runtime.WindowSetPosition(a.ctx, st.X, st.Y)
+}
+
+// saveWindowState writes the current geometry to disk. Errors are logged but
+// not fatal — a failed save just means the next launch uses defaults.
+func (a *App) saveWindowState() {
+	if a.ctx == nil || a.statePath == "" {
+		return
+	}
+	w, h := runtime.WindowGetSize(a.ctx)
+	x, y := runtime.WindowGetPosition(a.ctx)
+	data, err := json.Marshal(windowState{Width: w, Height: h, X: x, Y: y})
+	if err != nil {
+		slog.Warn("marshal window state", "error", err)
+		return
+	}
+	if err := os.WriteFile(a.statePath, data, 0o644); err != nil {
+		slog.Warn("write window state", "error", err)
+	}
 }
 
 // ── Resource IPC methods ──────────────────────────────────────────────────────
@@ -248,4 +346,16 @@ func (a *App) NotifyProcessingComplete(resourceTitle string) {
 	runtime.EventsEmit(a.ctx, "processing:complete", map[string]any{
 		"title": resourceTitle,
 	})
+
+	// Fire a native OS notification when available so the user is alerted even
+	// when the window is minimized to the tray / background.
+	if runtime.IsNotificationAvailable(a.ctx) {
+		if err := runtime.SendNotification(a.ctx, runtime.NotificationOptions{
+			ID:    fmt.Sprintf("processing-complete-%d", time.Now().UnixNano()),
+			Title: "Processing complete",
+			Body:  fmt.Sprintf("%q finished deep processing.", resourceTitle),
+		}); err != nil {
+			slog.Warn("send notification", "error", err)
+		}
+	}
 }

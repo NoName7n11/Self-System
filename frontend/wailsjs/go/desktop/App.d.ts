@@ -36,6 +36,8 @@ export function RestoreResource(arg1:string):Promise<void>;
 
 export function SearchResources(arg1:string,arg2:number):Promise<Array<domain.Resource>>;
 
+export function StartTray():Promise<void>;
+
 export function UpdateCategory(arg1:string,arg2:string,arg3:string):Promise<domain.Category>;
 
 export function UpdateReminder(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<domain.Reminder>;

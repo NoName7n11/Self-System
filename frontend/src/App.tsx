@@ -9,6 +9,7 @@ import SettingsPanel from "./components/settings/SettingsPanel";
 import ResourceForm from "./components/resource/ResourceForm";
 import ResourceList from "./components/resource/ResourceList";
 import TaskBoard from "./components/tasks/TaskBoard";
+import { useFileDrop } from "./hooks/useFileDrop";
 import { useFilteredResources } from "./hooks/useFilteredResources";
 import { useLayoutStore } from "./stores/useLayoutStore";
 import { useResourceStore } from "./stores/useResourceStore";
@@ -24,6 +25,8 @@ export default function App() {
   const sidebarCollapsed = useLayoutStore((state) => state.sidebarCollapsed);
   const activeSection = useLayoutStore((state) => state.activeSection);
   const filteredResources = useFilteredResources();
+
+  useFileDrop();
 
   useEffect(() => {
     void loadResources();

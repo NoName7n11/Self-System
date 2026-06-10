@@ -109,6 +109,10 @@ func main() {
 		OnShutdown:               app.Shutdown,
 		Bind:                     []interface{}{app},
 		EnableDefaultContextMenu: false,
+		HideWindowOnClose:        true,
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		Windows: &windows.Options{
 			Theme: windows.Dark,
 		},
