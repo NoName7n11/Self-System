@@ -34,7 +34,7 @@ type DatabaseConfig struct {
 }
 
 type AIConfig struct {
-	PrimaryProvider string           `mapstructure:"primary_provider"`
+	PrimaryProvider string `mapstructure:"primary_provider"`
 	// ClassificationThreshold is the minimum confidence for auto-save.
 	// Below this, the resource is flagged for review (NeedsReview = true). Default 0.85.
 	ClassificationThreshold float64          `mapstructure:"classification_threshold"`
@@ -52,21 +52,21 @@ type AIProviderConfig struct {
 }
 
 type FeatureConfig struct {
-	SkimEnabled                bool `mapstructure:"skim_enabled"`
-	DeepEnabled                bool `mapstructure:"deep_enabled"`
-	UnifiedChatEnabled         bool `mapstructure:"unified_chat_enabled"`
-	ReminderEnabled            bool `mapstructure:"reminder_enabled"`
-	TodoEnabled                bool `mapstructure:"todo_enabled"`
-	EventsResourceEnabled      bool `mapstructure:"events_resource_enabled"`
-	EventsCategoryEnabled      bool `mapstructure:"events_category_enabled"`
-	EventsTodoEnabled          bool `mapstructure:"events_todo_enabled"`
-	EventsReminderEnabled      bool `mapstructure:"events_reminder_enabled"`
+	SkimEnabled           bool `mapstructure:"skim_enabled"`
+	DeepEnabled           bool `mapstructure:"deep_enabled"`
+	UnifiedChatEnabled    bool `mapstructure:"unified_chat_enabled"`
+	ReminderEnabled       bool `mapstructure:"reminder_enabled"`
+	TodoEnabled           bool `mapstructure:"todo_enabled"`
+	EventsResourceEnabled bool `mapstructure:"events_resource_enabled"`
+	EventsCategoryEnabled bool `mapstructure:"events_category_enabled"`
+	EventsTodoEnabled     bool `mapstructure:"events_todo_enabled"`
+	EventsReminderEnabled bool `mapstructure:"events_reminder_enabled"`
 	// AutoArchiveDeadLinks enables daily HTTP HEAD checks; 404/connection-refused
 	// resources are auto-archived with reason "dead_link". Default: false.
-	AutoArchiveDeadLinks       bool `mapstructure:"auto_archive_dead_links"`
+	AutoArchiveDeadLinks bool `mapstructure:"auto_archive_dead_links"`
 	// AutoArchiveExpiredEvents archives resources whose extracted event_date is in
 	// the past with reason "expired". Default: false.
-	AutoArchiveExpiredEvents   bool `mapstructure:"auto_archive_expired_events"`
+	AutoArchiveExpiredEvents bool `mapstructure:"auto_archive_expired_events"`
 }
 
 type ProcessingConfig struct {
@@ -125,7 +125,7 @@ func Load() (Config, error) {
 	v.SetConfigName("config.default")
 	v.SetConfigType("yaml")
 	v.AddConfigPath("./config")
-	v.AddConfigPath("../../config")    // running from a subdirectory (e.g. cmd/desktop/)
+	v.AddConfigPath("../../config")       // running from a subdirectory (e.g. cmd/desktop/)
 	v.AddConfigPath("../../../../config") // running from cmd/desktop/build/bin/ (wails build output)
 
 	v.SetEnvPrefix("SS")

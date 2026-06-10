@@ -40,7 +40,7 @@ type SQLiteTxStore struct {
 
 func (s *SQLiteTxStore) Commit() error   { return s.tx.Commit() }
 func (s *SQLiteTxStore) Rollback() error { return s.tx.Rollback() }
-func (s *SQLiteTxStore) Conn() TxConn   { return s.tx }
+func (s *SQLiteTxStore) Conn() TxConn    { return s.tx }
 
 func (s *SQLiteTxStore) Append(ctx context.Context, event Event) (AppendResult, error) {
 	return appendEvent(ctx, s.tx, event)

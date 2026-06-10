@@ -25,8 +25,8 @@ type BackfillConfig struct {
 
 // BackfillResult reports the outcome of a backfill run.
 type BackfillResult struct {
-	Processed     int           // ResourceImported events appended
-	Skipped       int           // resources that already had events
+	Processed     int // ResourceImported events appended
+	Skipped       int // resources that already had events
 	CorrelationID string
 	Duration      time.Duration
 }

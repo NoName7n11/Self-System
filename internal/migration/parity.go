@@ -22,11 +22,11 @@ type Divergence struct {
 
 // ParityReport summarises a parity check run.
 type ParityReport struct {
-	Checked            int
-	Divergences        []Divergence
-	ExtraInProjection  []string // IDs in projection with no events (not yet backfilled)
-	ExtraInEvents      []string // IDs in events but missing from projection (e.g. deleted)
-	Duration           time.Duration
+	Checked           int
+	Divergences       []Divergence
+	ExtraInProjection []string // IDs in projection with no events (not yet backfilled)
+	ExtraInEvents     []string // IDs in events but missing from projection (e.g. deleted)
+	Duration          time.Duration
 }
 
 // IsClean returns true when the report has no divergences and no extra IDs.
@@ -268,4 +268,3 @@ func FormatReport(r ParityReport) string {
 	}
 	return result
 }
-

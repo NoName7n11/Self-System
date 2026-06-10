@@ -8,6 +8,7 @@ vi.mock("../api/client", () => ({
   createResource: vi.fn(),
   updateResource: vi.fn(),
   deleteResource: vi.fn(),
+  normalizeResource: vi.fn((raw: unknown) => raw),
 }));
 
 function resetResourceStore() {

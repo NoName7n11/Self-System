@@ -13,8 +13,8 @@ import (
 
 // inMemoryFeatureStore is a simple in-memory FeatureStore for aggregator tests.
 type inMemoryFeatureStore struct {
-	catFeatures map[string]CategoryFeature  // key: categoryID+"|"+signalType
-	resFeatures map[string]ResourceFeature  // key: resourceID+"|"+signalType
+	catFeatures map[string]CategoryFeature // key: categoryID+"|"+signalType
+	resFeatures map[string]ResourceFeature // key: resourceID+"|"+signalType
 }
 
 func newInMemoryFeatureStore() *inMemoryFeatureStore {

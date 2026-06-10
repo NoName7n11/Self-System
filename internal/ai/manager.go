@@ -8,12 +8,12 @@ import (
 )
 
 type Manager struct {
-	primary              string
-	fallback             string
-	providers            map[string]Provider
-	order                []string
-	embeddingProviders   []EmbeddingProvider
-	enrichmentProviders  []EnrichmentProvider
+	primary             string
+	fallback            string
+	providers           map[string]Provider
+	order               []string
+	embeddingProviders  []EmbeddingProvider
+	enrichmentProviders []EnrichmentProvider
 }
 
 func NewManager(primary string) *Manager {

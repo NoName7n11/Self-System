@@ -138,7 +138,9 @@ func (p *OpenAIEnrichmentProvider) Enrich(ctx context.Context, input EnrichmentI
 
 	var decoded struct {
 		Choices []struct {
-			Message struct{ Content string `json:"content"` } `json:"message"`
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(body, &decoded); err != nil {

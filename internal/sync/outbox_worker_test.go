@@ -368,7 +368,7 @@ func TestMergeReplay_SkipsUntranslatableStored(t *testing.T) {
 // and no dropped event.
 func TestMergeReplay_SkippedRowInterleaving(t *testing.T) {
 	stored := []eventstore.Event{
-		{Sequence: 1, AggregateID: "sig-1", EventType: "gbus.resource_opened", Payload: json.RawMessage(`{}`)}, // Untranslatable, skipped
+		{Sequence: 1, AggregateID: "sig-1", EventType: "gbus.resource_opened", Payload: json.RawMessage(`{}`)},                                         // Untranslatable, skipped
 		{Sequence: 3, AggregateID: "res-1", EventType: eventstore.EventTypeResourceCreated, Payload: json.RawMessage(`{"url":"https://example.com"}`)}, // Translatable, kept
 	}
 	hubEvents := []Event{

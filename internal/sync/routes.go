@@ -15,14 +15,14 @@ import (
 
 // EventsHealthSnapshot is the response body for GET /api/v1/sync/events/health.
 type EventsHealthSnapshot struct {
-	LatestStoreSequence  int64   `json:"latest_store_sequence"`
-	LastPublishedSeq     int64   `json:"last_published_sequence"`
-	OutboxLagSequences   int64   `json:"outbox_lag_sequences"`
-	AppendsTotal         int64   `json:"appends_total"`
-	OCCRetriesTotal      int64   `json:"occ_retries_total"`
-	ProjectorApplyCount  int64   `json:"projector_apply_count"`
+	LatestStoreSequence   int64   `json:"latest_store_sequence"`
+	LastPublishedSeq      int64   `json:"last_published_sequence"`
+	OutboxLagSequences    int64   `json:"outbox_lag_sequences"`
+	AppendsTotal          int64   `json:"appends_total"`
+	OCCRetriesTotal       int64   `json:"occ_retries_total"`
+	ProjectorApplyCount   int64   `json:"projector_apply_count"`
 	ProjectorAvgLatencyMs float64 `json:"projector_avg_latency_ms"`
-	RedactionsTotal      int64   `json:"redactions_total"`
+	RedactionsTotal       int64   `json:"redactions_total"`
 }
 
 const (
@@ -33,8 +33,8 @@ const (
 
 type bootstrapRouteOptions struct {
 	replayManager *OfflineReplayManager
-	eventStore    eventstore.Store          // optional; enables durable WS reconnect replay
-	outboxWorker  *OutboxWorker             // optional; exposes outbox lag in events_health
+	eventStore    eventstore.Store               // optional; enables durable WS reconnect replay
+	outboxWorker  *OutboxWorker                  // optional; exposes outbox lag in events_health
 	eventObs      *eventstore.EventObservability // optional; exposes event metrics in events_health
 }
 

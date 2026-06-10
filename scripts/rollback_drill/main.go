@@ -3,17 +3,17 @@
 // This program exercises the feature-flag rollback procedure documented in
 // DEPLOYMENT.md Section 8 without touching any production data. It:
 //
-//   Phase 1 — Flag ON:  creates resources via the event-sourced write path
-//             and verifies events appear in the events table and the projection
-//             table is populated.
+//	Phase 1 — Flag ON:  creates resources via the event-sourced write path
+//	          and verifies events appear in the events table and the projection
+//	          table is populated.
 //
-//   Phase 2 — Flag OFF: creates resources via the direct-write path and
-//             verifies NO new events are appended for those resources.
+//	Phase 2 — Flag OFF: creates resources via the direct-write path and
+//	          verifies NO new events are appended for those resources.
 //
-//   Phase 3 — Parity: runs CheckResourceParity and verifies that the Phase 1
-//             resources are clean (parity) while Phase 2 resources appear as
-//             "extra in projection" (no backing events), confirming the drill
-//             matches expected post-rollback state.
+//	Phase 3 — Parity: runs CheckResourceParity and verifies that the Phase 1
+//	          resources are clean (parity) while Phase 2 resources appear as
+//	          "extra in projection" (no backing events), confirming the drill
+//	          matches expected post-rollback state.
 //
 // Exit code 0 = drill passed.  Exit code 1 = drill failed (reason printed).
 //

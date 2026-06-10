@@ -24,9 +24,9 @@ func (s *stubStore) ReadByAggregate(_ context.Context, _ string, _, _ int) ([]ev
 func (s *stubStore) ReadBySequence(_ context.Context, _ int64, _ int) ([]eventstore.Event, error) {
 	return s.events, nil
 }
-func (s *stubStore) Snapshot(_ context.Context, _ eventstore.Snapshot) error   { return nil }
-func (s *stubStore) Redact(_ context.Context, _ string) error                   { return nil }
-func (s *stubStore) LatestSequence(_ context.Context) (int64, error)            { return 0, nil }
+func (s *stubStore) Snapshot(_ context.Context, _ eventstore.Snapshot) error { return nil }
+func (s *stubStore) Redact(_ context.Context, _ string) error                { return nil }
+func (s *stubStore) LatestSequence(_ context.Context) (int64, error)         { return 0, nil }
 func (s *stubStore) WithTx(_ context.Context, fn func(eventstore.TxStore) error) error {
 	return fn(nil)
 }

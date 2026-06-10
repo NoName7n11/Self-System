@@ -5,19 +5,19 @@ import "time"
 const (
 	AggregateTypeResource = "resource"
 
-	EventTypeResourceCreated          = "ResourceCreated"
-	EventTypeResourceImported         = "ResourceImported" // backfill of pre-existing row
-	EventTypeResourceUpdated          = "ResourceUpdated"
-	EventTypeResourceDeleted          = "ResourceDeleted"
-	EventTypeResourceSummaryUpdated   = "ResourceSummaryUpdated"
-	EventTypeResourceCategoryAssigned = "ResourceCategoryAssigned"
-	EventTypeResourceArchived         = "ResourceArchived"
-	EventTypeResourceUnarchived       = "ResourceUnarchived"
-	EventTypeResourceSkimCompleted    = "ResourceSkimCompleted"
-	EventTypeResourcePDFExtracted     = "ResourcePDFExtracted"
-	EventTypeResourceImageProcessed   = "ResourceImageProcessed"
-	EventTypeResourceEventDetected    = "ResourceEventDetected"
-	EventTypeResourceClassified       = "ResourceClassified"
+	EventTypeResourceCreated            = "ResourceCreated"
+	EventTypeResourceImported           = "ResourceImported" // backfill of pre-existing row
+	EventTypeResourceUpdated            = "ResourceUpdated"
+	EventTypeResourceDeleted            = "ResourceDeleted"
+	EventTypeResourceSummaryUpdated     = "ResourceSummaryUpdated"
+	EventTypeResourceCategoryAssigned   = "ResourceCategoryAssigned"
+	EventTypeResourceArchived           = "ResourceArchived"
+	EventTypeResourceUnarchived         = "ResourceUnarchived"
+	EventTypeResourceSkimCompleted      = "ResourceSkimCompleted"
+	EventTypeResourcePDFExtracted       = "ResourcePDFExtracted"
+	EventTypeResourceImageProcessed     = "ResourceImageProcessed"
+	EventTypeResourceEventDetected      = "ResourceEventDetected"
+	EventTypeResourceClassified         = "ResourceClassified"
 	EventTypeResourceEmbedded           = "ResourceEmbedded"
 	EventTypeResourceEnriched           = "ResourceEnriched"
 	EventTypeResourceCounterIncremented = "ResourceCounterIncremented"
@@ -27,13 +27,13 @@ const (
 
 // ResourceCreatedPayload is the v1 payload for ResourceCreated events.
 type ResourceCreatedPayload struct {
-	URL          string    `json:"url"`
-	Host         string    `json:"host"`
-	Title        string    `json:"title"`
-	Summary      string    `json:"summary"`
-	CategoryID   string    `json:"category_id"`
-	CategoryName string    `json:"category_name"`
-	UserOverride bool      `json:"user_override"`
+	URL          string `json:"url"`
+	Host         string `json:"host"`
+	Title        string `json:"title"`
+	Summary      string `json:"summary"`
+	CategoryID   string `json:"category_id"`
+	CategoryName string `json:"category_name"`
+	UserOverride bool   `json:"user_override"`
 	// ExtractedDataJSON carries the resource's extracted_data blob (classification
 	// confidence/source/needs_review set at create time). Optional and additive —
 	// empty for events written before Change 7. Projectors write it verbatim into
@@ -80,12 +80,12 @@ type ResourcePDFExtractedPayload struct {
 // ResourceImageProcessedPayload is the v1 payload for ResourceImageProcessed events.
 // Emitted by the deep processing worker after image classification and thumbnail generation.
 type ResourceImageProcessedPayload struct {
-	Format      string `json:"format"`
-	Width       int    `json:"width"`
-	Height      int    `json:"height"`
-	ImageType   string `json:"image_type"`
-	HasThumbnail bool  `json:"has_thumbnail"`
-	CompletedAt string `json:"completed_at"`
+	Format       string `json:"format"`
+	Width        int    `json:"width"`
+	Height       int    `json:"height"`
+	ImageType    string `json:"image_type"`
+	HasThumbnail bool   `json:"has_thumbnail"`
+	CompletedAt  string `json:"completed_at"`
 }
 
 // ResourceEnrichedPayload is the v1 payload for ResourceEnriched events.

@@ -17,11 +17,11 @@ type EventObservability struct {
 
 // EventObservabilitySnapshot is a consistent point-in-time read of all counters.
 type EventObservabilitySnapshot struct {
-	AppendsTotal           int64   `json:"appends_total"`
-	OCCRetriesTotal        int64   `json:"occ_retries_total"`
-	ProjectorApplyCount    int64   `json:"projector_apply_count"`
-	ProjectorAvgLatencyMs  float64 `json:"projector_avg_latency_ms"`
-	RedactionsTotal        int64   `json:"redactions_total"`
+	AppendsTotal          int64   `json:"appends_total"`
+	OCCRetriesTotal       int64   `json:"occ_retries_total"`
+	ProjectorApplyCount   int64   `json:"projector_apply_count"`
+	ProjectorAvgLatencyMs float64 `json:"projector_avg_latency_ms"`
+	RedactionsTotal       int64   `json:"redactions_total"`
 }
 
 func NewEventObservability() *EventObservability {

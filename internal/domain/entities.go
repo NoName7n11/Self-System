@@ -33,7 +33,7 @@ type ResourceExtractedData struct {
 	// Classification (Change 7 WS1)
 	ClassificationConfidence float64 `json:"classification_confidence,omitempty"`
 	ClassificationSource     string  `json:"classification_source,omitempty"` // "ai" | "heuristic"
-	NeedsReview              bool     `json:"needs_review,omitempty"`          // true when confidence < threshold
+	NeedsReview              bool    `json:"needs_review,omitempty"`          // true when confidence < threshold
 
 	// Deep tier (AI enrichment — Change 7)
 	KeyPoints []string `json:"key_points,omitempty"`
@@ -75,15 +75,15 @@ type Resource struct {
 	UserOverride  bool
 	ExtractedData ResourceExtractedData
 	// SaveCount tracks how many times this URL has been submitted. Starts at 1.
-	SaveCount     int           `json:"save_count"`
+	SaveCount int `json:"save_count"`
 	// Archived is true when the resource has been soft-archived.
 	Archived      bool          `json:"archived"`
 	ArchiveReason ArchiveReason `json:"archive_reason"`
 	ArchivedAt    *time.Time    `json:"archived_at,omitempty"`
 	// SimilarTo holds resource IDs that are content-similar (cosine > threshold).
-	SimilarTo     []string      `json:"similar_to,omitempty"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	SimilarTo []string `json:"similar_to,omitempty"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // SimilarResource links two resources that share high embedding similarity.

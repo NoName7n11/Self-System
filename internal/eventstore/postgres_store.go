@@ -34,7 +34,7 @@ type PostgresTxStore struct {
 
 func (s *PostgresTxStore) Commit() error   { return s.tx.Commit() }
 func (s *PostgresTxStore) Rollback() error { return s.tx.Rollback() }
-func (s *PostgresTxStore) Conn() TxConn   { return s.tx }
+func (s *PostgresTxStore) Conn() TxConn    { return s.tx }
 
 func (s *PostgresTxStore) Append(ctx context.Context, event Event) (AppendResult, error) {
 	return pgAppendEvent(ctx, s.tx, event)

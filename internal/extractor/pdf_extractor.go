@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	pdfSmallMaxPages = 5
-	pdfSmallMaxBytes = 2 << 20 // 2 MiB
+	pdfSmallMaxPages  = 5
+	pdfSmallMaxBytes  = 2 << 20 // 2 MiB
 	pdfMediumMaxPages = 50
 
 	pdfMaxExtractRunes = 20000 // upper bound on extracted text kept in memory

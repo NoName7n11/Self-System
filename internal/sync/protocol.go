@@ -23,11 +23,11 @@ const (
 
 	EventVersionCurrent = 1
 
-	EventSourceHTTPMutation  = "http.mutation"
-	EventSourceChatCommand   = "chat.command"
-	EventSourceSyncPublish   = "sync.publish"
-	EventSourceSyncReplay    = "sync.replay"
-	EventSourceOutboxWorker  = "outbox.worker"
+	EventSourceHTTPMutation = "http.mutation"
+	EventSourceChatCommand  = "chat.command"
+	EventSourceSyncPublish  = "sync.publish"
+	EventSourceSyncReplay   = "sync.replay"
+	EventSourceOutboxWorker = "outbox.worker"
 )
 
 type eventTypeRule struct {

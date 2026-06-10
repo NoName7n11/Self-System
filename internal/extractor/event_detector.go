@@ -168,9 +168,9 @@ func findNearestDate(text string) (time.Time, string) {
 	cleaned := ordinalRe.ReplaceAllString(text, "$1")
 
 	type candidate struct {
-		idx  int
-		raw  string
-		t    time.Time
+		idx int
+		raw string
+		t   time.Time
 	}
 	var best *candidate
 

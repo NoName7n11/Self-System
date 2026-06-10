@@ -396,4 +396,3 @@ func TestResourceServiceEventSourcedIdempotentEventID(t *testing.T) {
 		t.Fatalf("expected 1 event after idempotent append, got %d", len(events2))
 	}
 }
-

@@ -104,10 +104,10 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: frontendDistFS(),
 		},
-		BackgroundColour:        &options.RGBA{R: 17, G: 17, B: 17, A: 255},
-		OnStartup:               app.Startup,
-		OnShutdown:              app.Shutdown,
-		Bind:                    []interface{}{app},
+		BackgroundColour:         &options.RGBA{R: 17, G: 17, B: 17, A: 255},
+		OnStartup:                app.Startup,
+		OnShutdown:               app.Shutdown,
+		Bind:                     []interface{}{app},
 		EnableDefaultContextMenu: false,
 		Windows: &windows.Options{
 			Theme: windows.Dark,

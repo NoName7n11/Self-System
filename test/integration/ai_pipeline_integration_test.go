@@ -16,11 +16,11 @@ import (
 // ---- shared setup -----------------------------------------------------------
 
 type aiPipelineFixture struct {
-	mock        *ai.MockProvider
-	catSvc      *service.CategoryService
-	resourceSvc *service.ResourceService
+	mock         *ai.MockProvider
+	catSvc       *service.CategoryService
+	resourceSvc  *service.ResourceService
 	embeddingSvc *service.EmbeddingService
-	deepProc    *service.DeepProcessor
+	deepProc     *service.DeepProcessor
 }
 
 func newAIPipelineFixture(t *testing.T) aiPipelineFixture {

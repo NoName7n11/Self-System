@@ -21,6 +21,8 @@ vi.mock("../api/client", () => ({
   createReminder: vi.fn(),
   updateReminder: vi.fn(),
   deleteReminder: vi.fn(),
+  normalizeTodo: vi.fn((raw: unknown) => raw),
+  normalizeReminder: vi.fn((raw: unknown) => raw),
 }));
 
 function resetTaskStore() {

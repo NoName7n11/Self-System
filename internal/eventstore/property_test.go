@@ -362,7 +362,10 @@ func TestEventVersionMonotonicityVariants(t *testing.T) {
 // TestProjectionDeterminismSeeds runs the projection-determinism property
 // across a fixed set of seeds — the same cases the fuzz test uses as corpus.
 func TestProjectionDeterminismSeeds(t *testing.T) {
-	cases := []struct{ m, k int; seed int64 }{
+	cases := []struct {
+		m, k int
+		seed int64
+	}{
 		{2, 2, 1},
 		{3, 4, 42},
 		{5, 3, 99},

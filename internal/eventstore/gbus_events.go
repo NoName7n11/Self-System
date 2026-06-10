@@ -11,10 +11,10 @@ const AggregateTypeGBUSSignal = "gbus_signal"
 // deep processing completion, category overrides, etc.) and consumed by
 // the GBUS feature store aggregation pipeline.
 const (
-	EventTypeGBUSResourceOpened          = "gbus.resource_opened"
-	EventTypeGBUSResourceDeepProcessed   = "gbus.resource_deep_processed"
-	EventTypeGBUSCategoryOverridden      = "gbus.category_overridden"
-	EventTypeGBUSCategoryAccepted        = "gbus.category_accepted"
-	EventTypeGBUSSearchPerformed         = "gbus.search_performed"
-	EventTypeGBUSChatCommandExecuted     = "gbus.chat_command_executed"
+	EventTypeGBUSResourceOpened        = "gbus.resource_opened"
+	EventTypeGBUSResourceDeepProcessed = "gbus.resource_deep_processed"
+	EventTypeGBUSCategoryOverridden    = "gbus.category_overridden"
+	EventTypeGBUSCategoryAccepted      = "gbus.category_accepted"
+	EventTypeGBUSSearchPerformed       = "gbus.search_performed"
+	EventTypeGBUSChatCommandExecuted   = "gbus.chat_command_executed"
 )

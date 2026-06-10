@@ -41,8 +41,8 @@ func optionalString(s string) *string {
 // App is the Wails application struct. Every exported method becomes an IPC
 // binding callable from the frontend via the generated TypeScript bindings.
 type App struct {
-	ctx       context.Context
-	resources *service.ResourceService
+	ctx        context.Context
+	resources  *service.ResourceService
 	categories *service.CategoryService
 	todos      *service.TodoService
 	reminders  *service.ReminderService
