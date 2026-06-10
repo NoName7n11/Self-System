@@ -144,3 +144,20 @@ Done criteria:
 - [x] CI produces Windows and Linux binaries on every release tag.
 - [ ] Frontend works identically in browser mode (REST) and desktop mode (IPC).
 - [x] README accurately reflects the current state of the frontend integration.
+
+## Manual GUI Smoke Test (run before marking Change 9 Complete)
+
+The WS3 + WS2-runtime done criteria above cannot be verified in CI (a windowed
+app cannot launch headless). Run `cmd/desktop/build/bin/SelfSystems.exe` (or
+`wails dev` from `cmd/desktop/`) and tick each item once confirmed on a desktop.
+Each maps to the `[ ]` runtime criteria above — when all pass, flip those
+criteria + Milestones 9A/9B/9C/9E + the Definition of Done items to `[x]` and
+set `Status: Complete`.
+
+- [ ] App launches in a native window (not a browser tab); frontend renders. → WS1 done criteria, DoD "runs as native desktop app".
+- [ ] Create / edit / delete a resource and a todo succeed with **no** local HTTP server running (proves IPC round-trip, not REST). → WS2 "All CRUD via IPC", DoD "all local CRUD use IPC".
+- [ ] Close the window → app keeps running, icon stays in the system tray; tray **Show** restores the window; tray **Quit** exits. → WS3 "minimizes to system tray".
+- [ ] Drag a PDF (or image) file onto the window → a new resource is created with that file. → WS3 "Dragging a PDF … creates a resource".
+- [ ] Trigger deep processing of a resource → a native OS notification fires on completion. → WS3 "OS notification fires".
+- [ ] Resize / move the window, quit, relaunch → window reopens at the same size and position. → WS3 window-state task.
+- [ ] Repeat the launch + a basic CRUD check on Linux (or confirm via the CI Linux artifact run on a Linux box). → DoD "native desktop app on Windows and Linux".
