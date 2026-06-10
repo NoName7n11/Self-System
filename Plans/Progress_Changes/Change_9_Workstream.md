@@ -47,19 +47,19 @@ Expose backend operations as Wails IPC methods so the frontend calls Go directly
 
 Key tasks:
 - [x] Expose IPC methods on the App struct: `GetResources`, `CreateResource`, `UpdateResource`, `DeleteResource`, `GetCategories`, `CreateCategory`, `GetTodos`, `CreateTodo`, `GetReminders`, `CreateReminder`.
-- [ ] Run `wails generate module` to produce TypeScript bindings in `frontend/src/wailsjs/`.
+- [x] Run `wails generate module` to produce TypeScript bindings in `frontend/wailsjs/` (Wails' canonical location under `frontend:dir`; regenerated on every `wails build`).
 - [x] Update Zustand stores to use IPC bindings instead of `fetch()` when running inside Wails (detect via `window.go` flag).
 - [x] Keep REST client as fallback for browser/dev mode.
-- [ ] Test all CRUD operations via IPC round-trip (requires `wails dev` proven launch).
+- [ ] Test all CRUD operations via IPC round-trip (requires `wails dev` proven launch — needs manual GUI verification).
 
 Deliverables:
 - [x] Updated `internal/desktop/app.go` with all IPC method signatures (resource, category, todo, reminder CRUD).
-- [ ] Generated `frontend/src/wailsjs/` (requires `wails generate module` run).
+- [x] Generated `frontend/wailsjs/` (go/desktop/App.{d.ts,js} with 21 IPC methods, go/models.ts, runtime/).
 - [x] Updated Zustand stores with IPC/REST toggle (useResourceStore, useTaskStore).
 - [x] `frontend/src/lib/ipc.ts` — thin wrapper: uses Wails runtime when available, fetch otherwise.
 
 Done criteria:
-- [ ] All CRUD operations work via IPC when running as a desktop app.
+- [ ] All CRUD operations work via IPC when running as a desktop app (code path + bindings complete; runtime round-trip needs manual GUI verification).
 - [x] Same frontend code works in browser mode (dev) over REST.
 - [x] No duplicate state management — same stores, different transport.
 
@@ -69,18 +69,18 @@ Objective:
 Add system tray, OS notifications, and file drag-and-drop — features that make it feel like a real desktop app.
 
 Key tasks:
-- [ ] System tray: app minimizes to tray instead of closing; tray icon shows sync status.
-- [ ] OS notifications: trigger native OS notification when deep processing completes or reminder fires. Use Wails runtime notification API.
-- [ ] File drag-and-drop: user can drag a PDF or image file onto the app window to create a resource. Wire into resource creation flow.
-- [ ] App window state persistence: remember window size and position across launches.
+- [ ] System tray: app minimizes to tray instead of closing; tray icon shows sync status. (Minimize-to-tray + Show/Quit menu implemented via `HideWindowOnClose` + energye/systray; **"tray icon shows sync status" not implemented**; runtime behavior needs manual GUI verification.)
+- [ ] OS notifications: trigger native OS notification when deep processing completes or reminder fires. (`SendNotification` wired into `NotifyProcessingComplete`; reminder-fire path not wired; runtime firing needs manual GUI verification.)
+- [ ] File drag-and-drop: user can drag a PDF or image file onto the app window to create a resource. (Backend `OnFileDrop` + frontend `useFileDrop` → `CreateResource` implemented; runtime drop needs manual GUI verification.)
+- [ ] App window state persistence: remember window size and position across launches. (Save-on-shutdown / restore-on-startup implemented; runtime persistence needs manual GUI verification.)
 
 Deliverables:
-- [ ] System tray wiring in `cmd/desktop/main.go`.
-- [ ] Notification calls in `internal/desktop/app.go` at processing completion / reminder trigger.
-- [ ] Drag-and-drop handler in frontend wired to `CreateResource` IPC method.
-- [ ] Window state persistence using Wails built-in config.
+- [x] System tray wiring in `cmd/desktop/main.go` (`HideWindowOnClose: true`) and `internal/desktop/tray.go` (energye/systray `Register` with Show/Quit, embedded icon).
+- [x] Notification calls in `internal/desktop/app.go` — `runtime.SendNotification` in `NotifyProcessingComplete`, `InitializeNotifications` in `Startup`.
+- [x] Drag-and-drop handler in frontend (`frontend/src/hooks/useFileDrop.ts`, mounted in `App.tsx`) wired to the `CreateResource` IPC method via the backend `files:dropped` event.
+- [x] Window state persistence — `windowState` save/restore in `internal/desktop/app.go` (JSON under OS user-config dir).
 
-Done criteria:
+Done criteria (all require manual GUI verification — `wails build` proves the code compiles + links into the binary, but a windowed app cannot be launched headless in CI):
 - [ ] App minimizes to system tray and can be restored from tray icon.
 - [ ] OS notification fires when a resource finishes deep processing.
 - [ ] Dragging a PDF onto the window creates a resource with the file as source.
@@ -93,7 +93,7 @@ Wire the Wails build into CI for both Windows and Linux targets.
 Key tasks:
 - [x] Add `wails build -platform windows/amd64` to the release workflow.
 - [x] Add `wails build -platform linux/amd64` to the release workflow.
-- [x] Verify both binaries launch and connect to SQLite correctly.
+- [ ] Verify both binaries launch and connect to SQLite correctly (needs manual GUI verification — not launched in CI).
 - [x] Update `DEPLOYMENT.md` with desktop build and distribution instructions.
 - [x] Update `README.md` to replace "Add frontend scaffolding (Wails + React)" with current status.
 

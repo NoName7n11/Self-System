@@ -124,6 +124,16 @@ WS5 delivered: `internal/desktop/app_test.go` with unit tests for the IPC method
 - **WS3 (not started):** no system tray, no `OnFileDrop` drag-and-drop, no window-state persistence are wired in `cmd/desktop/main.go`'s run options (only `EnableDefaultContextMenu: false` + dark theme). `NotifyProcessingComplete` exists as an `App` method but nothing invokes it.
 - **WS1/WS5 (unverified runtime):** the binary compiles and links green in CI, but `wails dev`/`wails build` were never launched to confirm the app runs in a native window, so the "binary starts, `/health` responds" smoke test and `wails dev` native-window done-criteria remain unproven. Frontend transport-toggle tests cover only the 2 wired stores, not all stores.
 
+**WS2 bindings + WS3 native features implemented — code-complete and build-proven (2026-06-11):**
+- **WS2:** ran `wails generate module` → `frontend/wailsjs/` (`go/desktop/App.{d.ts,js}` with 21 IPC methods, `go/models.ts`, `runtime/`); corrected the stale `frontend/src/wailsjs/` path in `ipc.ts`. Audited transport: resource + task stores use `ipcCall` (full CRUD, REST fallback); there is no standalone category-CRUD UI; `sync` stays REST/WebSocket by design, `chat` is a server command parser, `layout` is local UI — so the IPC surface covers all local CRUD the frontend actually performs.
+- **WS3 system tray:** Wails v2.12 has no native tray API, so added `internal/desktop/tray.go` using the energye/systray fork (`systray.Register`, non-blocking) with Show/Quit menu items and a go:embed'd icon (`.ico`/`.png` by GOOS), plus `HideWindowOnClose: true` in `main.go` for minimize-to-tray. (Tray "sync status" indicator not implemented.)
+- **WS3 OS notifications:** `runtime.SendNotification` wired into `NotifyProcessingComplete` (guarded by `IsNotificationAvailable`), `InitializeNotifications` in `Startup`. (Reminder-fire path not wired.)
+- **WS3 drag-and-drop:** `DragAndDrop{EnableFileDrop: true}` + `runtime.OnFileDrop` in `Startup` emit a `files:dropped` event; new `frontend/src/hooks/useFileDrop.ts` (mounted in `App.tsx`) creates one resource per dropped path via the `CreateResource` IPC binding.
+- **WS3 window-state persistence:** `windowState` save-on-shutdown / restore-on-startup (JSON under the OS user-config dir) via the Wails window runtime API.
+- **Context guard:** `Startup` now delegates to `wireRuntime(ctx)`, which short-circuits when `ctx.Value("frontend")` is nil — Wails runtime fns `log.Fatal` (os.Exit) on a non-lifecycle context, which would otherwise crash `app_test.go`.
+- **Build/test gate:** `wails build` green (`SelfSystems.exe` 18.9 MB, up from 7.5 MB), `go build ./...` + `go test ./...` green, frontend Vitest 197/197.
+- **Still NOT Complete:** every WS3 Done criterion and the WS2 "all CRUD via IPC at runtime" criterion remain `[ ]` — they require launching the windowed binary (minimize-to-tray, notification firing, PDF-drop, IPC round-trip), which cannot be done headless in CI. Change 9 stays `In Progress` pending a manual GUI smoke test on a desktop.
+
 ## Why this approach
 The app is described as a local-first desktop app throughout the Outline and ADRs, but the frontend is currently a standalone web app over REST. Wails integration is what makes it actually a desktop application. Done after the backend pipeline is solid to avoid rework.
 
