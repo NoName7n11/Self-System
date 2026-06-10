@@ -115,17 +115,17 @@ Validate IPC bindings and desktop build correctness with automated checks.
 Key tasks:
 - [x] Unit tests for IPC method signatures (verify correct service delegation).
 - [x] Smoke test: `wails build` succeeds, binary starts, `/health` responds (for the embedded HTTP server path).
-- [ ] Frontend Vitest tests: IPC mock → verify stores use IPC path when `window.go` is set.
+- [x] Frontend Vitest tests: IPC mock → verify stores use IPC path when `window.go` is set.
 - [x] Frontend Vitest tests: REST fallback → verify stores use fetch when not in Wails context.
 
 Deliverables:
 - [x] `internal/desktop/app_test.go` — IPC method unit tests.
-- [ ] Updated `frontend/src/stores/*.test.ts` — IPC/REST toggle coverage for task/reminder stores.
-- [ ] CI smoke gate proven green.
+- [x] Updated `frontend/src/stores/*.test.ts` — IPC/REST toggle coverage for task/reminder stores.
+- [x] CI smoke gate proven green.
 
 Done criteria:
 - [x] All Go IPC unit tests pass.
-- [ ] Frontend store tests cover both IPC and REST transport paths for all stores.
+- [x] Frontend store tests cover both IPC and REST transport paths for all stores.
 - [ ] CI build gate succeeds for Windows and Linux targets.
 
 ## Planned Milestones

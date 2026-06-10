@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createResource, deleteResource, listResources, updateResource } from "../api/client";
 import { useResourceStore } from "./useResourceStore";
@@ -682,5 +682,115 @@ describe("useResourceStore", () => {
     expect(state.error).toBe("mock delete resource error");
     expect(state.resources).toHaveLength(1);
     expect(state.selectedResourceId).toBe("res-1");
+  });
+
+  describe("IPC mode (window.go)", () => {
+    type WailsWindow = Window & {
+      go?: { desktop: { App: Record<string, (...args: unknown[]) => Promise<unknown>> } };
+    };
+
+    afterEach(() => {
+      delete (window as WailsWindow).go;
+    });
+
+    it("loads resources via IPC when window.go is present", async () => {
+      const getResources = vi.fn().mockResolvedValue([
+        {
+          id: "res-1",
+          url: "https://example.com",
+          host: "example.com",
+          title: "Resource One",
+          summary: "Summary",
+          categoryId: "cat-1",
+          categoryName: "Research",
+          userOverride: false,
+          createdAt: "2026-04-20T10:00:00.000Z",
+          updatedAt: "2026-04-20T10:00:00.000Z",
+        },
+      ]);
+      (window as WailsWindow).go = { desktop: { App: { GetResources: getResources } } };
+
+      await useResourceStore.getState().loadResources();
+
+      expect(getResources).toHaveBeenCalledWith(50, 0);
+      expect(listResources).not.toHaveBeenCalled();
+      expect(useResourceStore.getState().resources).toHaveLength(1);
+    });
+
+    it("creates resource via IPC when window.go is present", async () => {
+      const createResourceIpc = vi.fn().mockResolvedValue({
+        id: "res-2",
+        url: "https://example.com/new",
+        host: "example.com",
+        title: "New Resource",
+        summary: "Create draft summary",
+        categoryId: "cat-2",
+        categoryName: "Research",
+        userOverride: false,
+        createdAt: "2026-04-21T09:00:00.000Z",
+        updatedAt: "2026-04-21T09:00:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { CreateResource: createResourceIpc } } };
+
+      useResourceStore.getState().updateDraft("url", "https://example.com/new");
+      useResourceStore.getState().updateDraft("title", "New Resource");
+      useResourceStore.getState().updateDraft("summary", "Create draft summary");
+      useResourceStore.getState().updateDraft("categoryName", "Research");
+
+      await useResourceStore.getState().addResource();
+
+      expect(createResourceIpc).toHaveBeenCalledWith(
+        "https://example.com/new",
+        "New Resource",
+        "Create draft summary",
+        "Research",
+      );
+      expect(createResource).not.toHaveBeenCalled();
+      expect(useResourceStore.getState().resources[0]?.id).toBe("res-2");
+    });
+
+    it("updates resource via IPC when window.go is present", async () => {
+      seedSelectedResource();
+      const updateResourceIpc = vi.fn().mockResolvedValue({
+        id: "res-1",
+        url: "https://example.com",
+        host: "example.com",
+        title: "Resource One Updated",
+        summary: "Updated Summary",
+        categoryId: "cat-1",
+        categoryName: "Research",
+        userOverride: false,
+        createdAt: "2026-04-20T10:00:00.000Z",
+        updatedAt: "2026-04-21T08:30:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { UpdateResource: updateResourceIpc } } };
+
+      useResourceStore.getState().updateDraft("title", "Resource One Updated");
+      useResourceStore.getState().updateDraft("summary", "Updated Summary");
+
+      await useResourceStore.getState().updateSelectedResource();
+
+      expect(updateResourceIpc).toHaveBeenCalledWith(
+        "res-1",
+        "https://example.com",
+        "Resource One Updated",
+        "Updated Summary",
+        "Research",
+      );
+      expect(updateResource).not.toHaveBeenCalled();
+      expect(useResourceStore.getState().resources[0]?.title).toBe("Resource One Updated");
+    });
+
+    it("deletes resource via IPC when window.go is present", async () => {
+      seedSelectedResource();
+      const deleteResourceIpc = vi.fn().mockResolvedValue(undefined);
+      (window as WailsWindow).go = { desktop: { App: { DeleteResource: deleteResourceIpc } } };
+
+      await useResourceStore.getState().deleteSelectedResource();
+
+      expect(deleteResourceIpc).toHaveBeenCalledWith("res-1");
+      expect(deleteResource).not.toHaveBeenCalled();
+      expect(useResourceStore.getState().resources).toHaveLength(0);
+    });
   });
 });

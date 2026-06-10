@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTaskStore } from "./useTaskStore";
 import {
@@ -773,5 +773,205 @@ describe("useTaskStore", () => {
     expect(state.error).toBe("mock reminder list failure");
     expect(state.reminders).toHaveLength(1);
     expect(state.selectedReminderId).toBe("rem-1");
+  });
+
+  describe("IPC mode (window.go)", () => {
+    type WailsWindow = Window & {
+      go?: { desktop: { App: Record<string, (...args: unknown[]) => Promise<unknown>> } };
+    };
+
+    afterEach(() => {
+      delete (window as WailsWindow).go;
+    });
+
+    it("loads todos via IPC when window.go is present", async () => {
+      const getTodos = vi.fn().mockResolvedValue([
+        {
+          id: "todo-1",
+          title: "Draft roadmap",
+          details: "link task to resource",
+          status: "open",
+          dueAt: "2026-04-20T10:30:00.000Z",
+          resourceId: "res-1",
+          createdAt: "2026-04-18T12:00:00.000Z",
+          updatedAt: "2026-04-18T12:00:00.000Z",
+        },
+      ]);
+      (window as WailsWindow).go = { desktop: { App: { GetTodos: getTodos } } };
+
+      await useTaskStore.getState().loadTodos();
+
+      expect(getTodos).toHaveBeenCalledWith(50, 0);
+      expect(listTodos).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().todos).toHaveLength(1);
+    });
+
+    it("creates todo via IPC when window.go is present", async () => {
+      const createTodoIpc = vi.fn().mockResolvedValue({
+        id: "todo-1",
+        title: "Draft roadmap",
+        details: "link task to resource",
+        status: "open",
+        dueAt: "2026-04-20T10:30:00.000Z",
+        resourceId: "res-1",
+        createdAt: "2026-04-18T12:00:00.000Z",
+        updatedAt: "2026-04-18T12:00:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { CreateTodo: createTodoIpc } } };
+
+      useTaskStore.getState().updateTodoDraft("title", "Draft roadmap");
+      useTaskStore.getState().updateTodoDraft("details", "link task to resource");
+      useTaskStore.getState().updateTodoDraft("dueAt", "2026-04-20T10:30");
+      useTaskStore.getState().updateTodoDraft("resourceId", "res-1");
+
+      await useTaskStore.getState().addTodo();
+
+      expect(createTodoIpc).toHaveBeenCalledWith(
+        "Draft roadmap",
+        "link task to resource",
+        expect.any(String),
+        "res-1",
+      );
+      expect(createTodo).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().todos).toHaveLength(1);
+    });
+
+    it("updates todo via IPC when window.go is present", async () => {
+      seedSelectedTodo();
+      const updateTodoIpc = vi.fn().mockResolvedValue({
+        id: "todo-1",
+        title: "Draft roadmap updated",
+        details: "link task to resource",
+        status: "in_progress",
+        dueAt: "2026-04-20T10:30:00.000Z",
+        resourceId: "res-1",
+        createdAt: "2026-04-18T12:00:00.000Z",
+        updatedAt: "2026-04-18T12:30:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { UpdateTodo: updateTodoIpc } } };
+
+      useTaskStore.getState().updateTodoDraft("title", "Draft roadmap updated");
+      useTaskStore.getState().updateTodoDraft("status", "in_progress");
+
+      await useTaskStore.getState().updateSelectedTodo();
+
+      expect(updateTodoIpc).toHaveBeenCalledWith(
+        "todo-1",
+        "Draft roadmap updated",
+        "link task to resource",
+        expect.any(String),
+        "in_progress",
+        "res-1",
+      );
+      expect(updateTodo).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().todos[0]?.title).toBe("Draft roadmap updated");
+    });
+
+    it("deletes todo via IPC when window.go is present", async () => {
+      seedSelectedTodo();
+      const deleteTodoIpc = vi.fn().mockResolvedValue(undefined);
+      (window as WailsWindow).go = { desktop: { App: { DeleteTodo: deleteTodoIpc } } };
+
+      await useTaskStore.getState().deleteSelectedTodo();
+
+      expect(deleteTodoIpc).toHaveBeenCalledWith("todo-1");
+      expect(deleteTodo).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().todos).toHaveLength(0);
+    });
+
+    it("loads reminders via IPC when window.go is present", async () => {
+      const getReminders = vi.fn().mockResolvedValue([
+        {
+          id: "rem-1",
+          title: "Check task links",
+          message: "verify related resource",
+          remindAt: "2026-04-21T09:00:00.000Z",
+          status: "scheduled",
+          resourceId: "res-1",
+          createdAt: "2026-04-18T12:00:00.000Z",
+          updatedAt: "2026-04-18T12:00:00.000Z",
+        },
+      ]);
+      (window as WailsWindow).go = { desktop: { App: { GetReminders: getReminders } } };
+
+      await useTaskStore.getState().loadReminders();
+
+      expect(getReminders).toHaveBeenCalledWith(50, 0);
+      expect(listReminders).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().reminders).toHaveLength(1);
+    });
+
+    it("creates reminder via IPC when window.go is present", async () => {
+      const createReminderIpc = vi.fn().mockResolvedValue({
+        id: "rem-1",
+        title: "Check task links",
+        message: "verify related resource",
+        remindAt: "2026-04-21T09:00:00.000Z",
+        status: "scheduled",
+        resourceId: "res-1",
+        createdAt: "2026-04-18T12:00:00.000Z",
+        updatedAt: "2026-04-18T12:00:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { CreateReminder: createReminderIpc } } };
+
+      useTaskStore.getState().updateReminderDraft("title", "Check task links");
+      useTaskStore.getState().updateReminderDraft("message", "verify related resource");
+      useTaskStore.getState().updateReminderDraft("remindAt", "2026-04-21T09:00");
+      useTaskStore.getState().updateReminderDraft("resourceId", "res-1");
+
+      await useTaskStore.getState().addReminder();
+
+      expect(createReminderIpc).toHaveBeenCalledWith(
+        "Check task links",
+        "verify related resource",
+        expect.any(String),
+        "res-1",
+      );
+      expect(createReminder).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().reminders).toHaveLength(1);
+    });
+
+    it("updates reminder via IPC when window.go is present", async () => {
+      seedSelectedReminder();
+      const updateReminderIpc = vi.fn().mockResolvedValue({
+        id: "rem-1",
+        title: "Check task links",
+        message: "updated message",
+        remindAt: "2026-04-21T09:00:00.000Z",
+        status: "sent",
+        resourceId: "res-1",
+        createdAt: "2026-04-18T12:00:00.000Z",
+        updatedAt: "2026-04-18T12:30:00.000Z",
+      });
+      (window as WailsWindow).go = { desktop: { App: { UpdateReminder: updateReminderIpc } } };
+
+      useTaskStore.getState().updateReminderDraft("message", "updated message");
+      useTaskStore.getState().updateReminderDraft("status", "sent");
+
+      await useTaskStore.getState().updateSelectedReminder();
+
+      expect(updateReminderIpc).toHaveBeenCalledWith(
+        "rem-1",
+        "Check task links",
+        "updated message",
+        expect.any(String),
+        "sent",
+        "res-1",
+      );
+      expect(updateReminder).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().reminders[0]?.message).toBe("updated message");
+    });
+
+    it("deletes reminder via IPC when window.go is present", async () => {
+      seedSelectedReminder();
+      const deleteReminderIpc = vi.fn().mockResolvedValue(undefined);
+      (window as WailsWindow).go = { desktop: { App: { DeleteReminder: deleteReminderIpc } } };
+
+      await useTaskStore.getState().deleteSelectedReminder();
+
+      expect(deleteReminderIpc).toHaveBeenCalledWith("rem-1");
+      expect(deleteReminder).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().reminders).toHaveLength(0);
+    });
   });
 });
