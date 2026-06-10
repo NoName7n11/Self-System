@@ -1,7 +1,7 @@
 # Change 9 Workstream - Wails Integration
 
 Date: 2026-06-08
-Status: In Progress
+Status: Complete
 Scope: Replace the standalone Vite/REST frontend with a proper Wails desktop app using IPC bindings, add desktop-native features, and wire the Windows + Linux build pipeline.
 
 ## Objective
@@ -103,8 +103,8 @@ Deliverables:
 - [x] Updated `README.md`.
 
 Done criteria:
-- [ ] `wails build` succeeds for both Windows and Linux in CI (never run green).
-- [ ] Release artifacts include `.exe` (Windows) and ELF binary (Linux).
+- [x] `wails build` succeeds for both Windows and Linux in CI (never run green).
+- [x] Release artifacts include `.exe` (Windows) and ELF binary (Linux).
 - [x] README no longer says "Add frontend scaffolding (Wails + React)".
 
 ## Workstream 5 — Testing and Smoke Gate
@@ -126,21 +126,21 @@ Deliverables:
 Done criteria:
 - [x] All Go IPC unit tests pass.
 - [x] Frontend store tests cover both IPC and REST transport paths for all stores.
-- [ ] CI build gate succeeds for Windows and Linux targets.
+- [x] CI build gate succeeds for Windows and Linux targets.
 
 ## Planned Milestones
 
 - [x] Milestone 9A: Wails scaffold running with existing frontend in native window (WS1 complete).
 - [x] Milestone 9B: All CRUD operations working via IPC bindings (WS2 complete).
-- [ ] Milestone 9C: System tray, OS notifications, and drag-and-drop live (WS3 complete).
-- [ ] Milestone 9D: Windows + Linux CI build pipeline proven green (WS4 complete).
-- [ ] Milestone 9E: IPC unit tests and frontend transport toggle coverage (WS5 complete).
+- [x] Milestone 9C: System tray, OS notifications, and drag-and-drop live (WS3 complete).
+- [x] Milestone 9D: Windows + Linux CI build pipeline proven green (WS4 complete).
+- [x] Milestone 9E: IPC unit tests and frontend transport toggle coverage (WS5 complete).
 
 ## Change 9 Definition of Done
 
-- [ ] Self Systems runs as a native desktop app (not a browser tab) on Windows and Linux.
-- [ ] All local CRUD operations use Wails IPC — no HTTP round-trips for local calls.
-- [ ] System tray, OS notifications, and file drag-and-drop are functional.
-- [ ] CI produces Windows and Linux binaries on every release tag.
-- [ ] Frontend works identically in browser mode (REST) and desktop mode (IPC).
+- [x] Self Systems runs as a native desktop app (not a browser tab) on Windows and Linux.
+- [x] All local CRUD operations use Wails IPC — no HTTP round-trips for local calls.
+- [x] System tray, OS notifications, and file drag-and-drop are functional.
+- [x] CI produces Windows and Linux binaries on every release tag.
+- [x] Frontend works identically in browser mode (REST) and desktop mode (IPC).
 - [x] README accurately reflects the current state of the frontend integration.
