@@ -36,7 +36,33 @@ func (a *App) StartTray() {
 		return
 	}
 
-	onReady := func() {
+	// systray.Register alone creates the tray window but never pumps its Win32
+	// message loop, so WM_*BUTTONUP never reaches it and clicks do nothing.
+	// RunWithExternalLoop's start() runs that pump.
+	//
+	// Win32 windows, message queues, and Shell_NotifyIcon (NIM_ADD/NIM_MODIFY)
+	// are thread-affine: they must all be called from the SAME OS thread that
+	// created the tray window. systray's package init() calls
+	// runtime.LockOSThread(), which only pins whichever goroutine ran init (the
+	// main goroutine) — but Wails calls OnStartup (and so StartTray) from a
+	// different goroutine, and RunWithExternalLoop's onReady callback runs on
+	// yet another, unlocked goroutine spawned internally by Register(). Calling
+	// SetIcon/SetTooltip/AddMenuItem from that onReady goroutine hits a
+	// different OS thread than the one that created the window, so
+	// Shell_NotifyIcon's NIM_MODIFY fails ("systray error: unable to set icon:
+	// Unspecified error") and the icon never appears; separately, GetMessage in
+	// start() can also end up pumping the wrong thread's queue, so clicks do
+	// nothing.
+	//
+	// Fix: run Register (via RunWithExternalLoop with onReady=nil, so it
+	// doesn't spawn that extra goroutine) and all the icon/menu setup calls
+	// synchronously, in a single goroutine locked to one OS thread, before
+	// entering the blocking message pump on that same thread.
+	go func() {
+		runtime.LockOSThread()
+
+		start, _ := systray.RunWithExternalLoop(nil, func() {})
+
 		systray.SetIcon(trayIcon())
 		systray.SetTitle("Self Systems")
 		systray.SetTooltip("Self Systems — local-first knowledge & tasks")
@@ -60,12 +86,7 @@ func (a *App) StartTray() {
 		// nothing. Left-click restores the window directly.
 		systray.SetOnRClick(func(menu systray.IMenu) { _ = menu.ShowMenu() })
 		systray.SetOnClick(func(_ systray.IMenu) { showWindow() })
-	}
 
-	// systray.Register alone creates the tray window but never pumps its Win32
-	// message loop, so WM_*BUTTONUP never reaches it and clicks do nothing.
-	// RunWithExternalLoop's start() runs that pump in its own goroutine,
-	// coexisting with Wails' own event loop.
-	start, _ := systray.RunWithExternalLoop(onReady, func() {})
-	start()
+		start()
+	}()
 }
