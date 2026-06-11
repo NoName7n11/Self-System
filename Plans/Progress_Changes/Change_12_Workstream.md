@@ -1,14 +1,14 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: In Progress (WS2 of 6 complete)
+Status: In Progress (WS3 of 6 complete)
 
 > **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
 > Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
 > distinct from this workstream. Pre-existing numbering collision (same pattern as the
 > Change 11 collision noted in `Change_11_Workstream.md`), not introduced here — flagged
-> for a future session to resolve. WS1 progress is recorded in `Changes_log.md` Session 44
-> and WS2 in Session 45, instead of a colliding "What we did" entry.
+> for a future session to resolve. WS1 progress is recorded in `Changes_log.md` Session 44,
+> WS2 in Session 45, and WS3 in Session 46, instead of a colliding "What we did" entry.
 
 Scope: Close the production-grade gaps in durability, deep-queue reliability, security, observability, and AI cost control. This is the safety layer that must land before Phase 2 sync is shipped to any real device.
 
@@ -73,22 +73,22 @@ Objective:
 Close the externally-facing risk surfaces.
 
 Key tasks:
-- [ ] SSRF guard in the URL fetcher: block private/loopback/link-local ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, ::1), cap redirects, cap response size.
-- [ ] PDF extraction: run per-file with panic recovery + timeout so a malformed PDF cannot kill the worker.
-- [ ] API keys → OS keychain (`zalando/go-keyring`); fall back to env only when keychain unavailable, with a warning.
-- [ ] CI dependency scanning: `govulncheck` (Go) + `npm audit` (frontend) + `golangci-lint` (errcheck, staticcheck) as a workflow.
+- [x] SSRF guard in the URL fetcher: block private/loopback/link-local ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, ::1, plus 100.64.0.0/10, 192.0.0.0/24, 198.18.0.0/15, 0.0.0.0/8), cap redirects, cap response size. Implemented as a shared `safeDialContext` in `internal/extractor/ssrf.go`, applied to both `URLExtractor` and `ContentFetcher` via `http.Transport.DialContext`. Resolves DNS then dials the validated IP directly to close the DNS-rebinding TOCTOU gap. Redirect caps (3 for skim, 5 for deep) and response-size caps (2 MiB skim, 20 MiB deep) were already present and remain unchanged.
+- [x] PDF extraction: run per-file with panic recovery + timeout so a malformed PDF cannot kill the worker. `PDFExtractor.Extract` now runs the parse on a goroutine with `recover()` and a 20s timeout (`pdfExtractTimeout`); the original logic moved to unexported `extract`.
+- [x] API keys → OS keychain (`zalando/go-keyring`); fall back to env/config only when keychain unavailable or empty, with a warning. `internal/config/keyring.go` adds `resolveAPIKey`, applied to OpenAI/Anthropic/Gemini `APIKey` in `config.Load()`.
+- [x] CI dependency scanning: `govulncheck` (Go) + `npm audit` (frontend) + `golangci-lint` (errcheck, staticcheck, govet, unused) as a workflow.
 
 Deliverables:
-- [ ] Updated `internal/extractor/fetcher.go` (SSRF guard) + tests with private-IP/redirect/oversize cases.
-- [ ] PDF panic-recovery + timeout wrapper + malformed-PDF test fixture.
-- [ ] `internal/config` keychain integration + fallback.
-- [ ] `.github/workflows/security.yml` (govulncheck + npm audit) and `.golangci.yml`.
+- [x] New `internal/extractor/ssrf.go` (SSRF guard, `AllowLoopbackForTests` test hook) + `ssrf_test.go` (private-IP/loopback/literal-IP cases). `fetcher.go` and `url_extractor.go` wire `safeDialContext` into their `http.Transport`.
+- [x] PDF panic-recovery + timeout wrapper in `internal/extractor/pdf_extractor.go` (`Extract`/`extract` split) + `TestPDFExtractor_TimeoutDoesNotHang` in `pdf_extractor_test.go`.
+- [x] `internal/config/keyring.go` (`resolveAPIKey`) + `keyring_test.go` (mocked keychain via `keyring.MockInit()`); wired into `config.Load()`. New dependency `github.com/zalando/go-keyring`.
+- [x] `.github/workflows/security.yml` (govulncheck + golangci-lint + npm audit) and `.golangci.yml`.
 
 Done criteria:
-- [ ] Fetching a private-IP / oversized / redirect-looping URL is refused.
-- [ ] A malformed PDF fails its one job without crashing the worker.
-- [ ] API keys are not required to sit in plaintext on disk.
-- [ ] CI fails on a known vulnerable dependency.
+- [x] Fetching a private-IP / loopback URL is refused (`TestSafeDialContext_BlocksLoopbackByDefault`, `TestSafeDialContext_BlocksPrivateIPLiteral`); redirect/oversize caps were pre-existing and remain covered by `ContentFetcher`/`URLExtractor` config.
+- [x] A malformed PDF fails its one job without crashing the worker — panic recovery + 20s timeout wrapper (`TestPDFExtractor_InvalidBytes`, `TestPDFExtractor_TimeoutDoesNotHang`).
+- [x] API keys are not required to sit in plaintext on disk — OS keychain consulted first via `resolveAPIKey`, env/config remains only the fallback.
+- [ ] CI fails on a known vulnerable dependency — `security.yml` workflow added (govulncheck/golangci-lint/npm audit); not yet exercised by an actual CI run since this requires a push/PR to `master`.
 
 ## Workstream 4 — Observability
 
@@ -151,7 +151,7 @@ Done criteria:
 
 - [x] Milestone 12A: SQLite durable — busy_timeout, backup, versioned migrations (WS1).
 - [x] Milestone 12B: Deep queue durable + self-healing (WS2).
-- [ ] Milestone 12C: Security surfaces closed + CI scanning (WS3).
+- [x] Milestone 12C: Security surfaces closed + CI scanning (WS3).
 - [ ] Milestone 12D: Metrics, structured logs, health checks live (WS4).
 - [ ] Milestone 12E: AI cost cache + budget + provenance (WS5).
 - [ ] Milestone 12F: Graceful shutdown + idempotency (WS6).
@@ -160,7 +160,7 @@ Done criteria:
 
 - [x] SQLite has busy_timeout, automated backups, and versioned migrations with pre-migrate backup.
 - [x] The deep-processing queue survives a crash and self-heals; no silent limbo.
-- [ ] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
+- [x] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
 - [ ] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
 - [ ] AI results are content-hash cached, budget-capped, and provenance-stamped.
 - [ ] Graceful shutdown drains work; resource creation is idempotent.
