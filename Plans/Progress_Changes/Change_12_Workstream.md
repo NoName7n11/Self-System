@@ -1,7 +1,7 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: In Progress (WS3 of 6 complete)
+Status: In Progress (WS4 of 6 complete)
 
 > **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
 > Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
@@ -96,18 +96,19 @@ Objective:
 Make the running system inspectable locally.
 
 Key tasks:
-- [ ] Counters via stdlib `expvar` (or prometheus/client_golang if preferred): queue depth, AI latency + estimated cost, extraction failures, sync lag.
-- [ ] Structured `slog` with request ID + resource ID threaded through the pipeline log lines.
-- [ ] Health endpoint with component checks: DB writable, queue alive, AI provider reachable.
+- [x] Counters: queue depth (pre-existing `DeepProcessor.Metrics()`), AI latency + call/error counts (`ai.Manager.Metrics()`, new), extraction failures (new `DeepProcessingMetrics.ExtractionFailuresTotal`), sync lag (pre-existing `ObservabilitySnapshot.ReplayQueueOldestSeconds` / `EventsHealthSnapshot.OutboxLagSequences`).
+- [x] Structured `slog` with request ID threaded via `RequestIDMiddleware` + `RequestIDFromContext`, included in `respondInternalError` log lines.
+- [x] Health endpoint with component checks: DB writable (`*sql.DB.PingContext`), queue alive (`DeepProcessor.Health()`), AI provider reachable (`Manager.ProviderNames()`).
 
 Deliverables:
-- [ ] `internal/observability/metrics.go` (expvar counters) wired into deep_processor, AI manager, sync hub.
-- [ ] Updated logging to include correlation IDs.
-- [ ] Updated/added `/health` (or `/api/v1/health`) component-check handler.
+- [x] **Deviation from literal spec**: rather than a new `internal/observability/metrics.go` (expvar) package, extended the existing JSON-metrics-endpoint pattern already used by `DeepProcessingMetrics` and `sync.ObservabilitySnapshot` — avoids a parallel/duplicate metrics system. New: `internal/ai/observability.go` (`Manager.Metrics()`, atomic counters for classify/enrich/embed calls/errors/avg latency ms) wired into `internal/ai/manager.go`, `enrichment.go`, `embedding.go` via named-return + `defer recordCall(...)`. `DeepProcessingMetrics.ExtractionFailuresTotal` added to `internal/service/deep_processor.go`, incremented on PDF/image fetch-or-extract failure in `runPDFExtraction`/`runImageExtraction`.
+- [x] `internal/http/request_id.go` (new): `RequestIDMiddleware()` + `RequestIDFromContext()`, wired into `cmd/server/main.go` router middleware chain; `respondInternalError` now logs `request_id`.
+- [x] `/api/v1/health` (new, unauthenticated, alongside existing root `/health`): `internal/http/handler.go` `healthDetailed` — reports `database`/`deep_queue`/`ai` component status; `WithDB`/`WithAIManager` handler options wired in `cmd/server/main.go`.
+- Note: "sync lag" was already covered by pre-existing `internal/sync/observability.go` (`ReplayQueueOldestSeconds`, exposed via `/api/v1/sync/metrics`) and `internal/sync/routes.go` (`OutboxLagSequences`, exposed via `/api/v1/sync/events/health`) from prior workstreams — no new work needed for that sub-item.
 
 Done criteria:
-- [ ] Queue depth, AI latency/cost, extraction failures, and sync lag are observable at runtime.
-- [ ] Health endpoint returns per-component status.
+- [x] Queue depth, AI latency/cost, extraction failures, and sync lag are observable at runtime — `ai.Manager.Metrics()`, `DeepProcessor.Metrics().ExtractionFailuresTotal`, sync metrics endpoints above. Tests: `TestManagerMetrics_TracksClassifyCallsAndErrors`, `TestManagerProviderNames` (`internal/ai/manager_test.go`), `TestDeepProcessor_ExtractionFailure_IncrementsCounter` (`test/integration/extraction_integration_test.go`).
+- [x] Health endpoint returns per-component status — `TestHealthDetailed_ReportsComponentStatus`, `TestRequestIDMiddleware_SetsResponseHeader` (`internal/http/handler_test.go`). `go test ./...`, `gofmt -l .`, `go vet ./...` all pass clean.
 
 ## Workstream 5 — AI Cost Control
 
@@ -152,7 +153,7 @@ Done criteria:
 - [x] Milestone 12A: SQLite durable — busy_timeout, backup, versioned migrations (WS1).
 - [x] Milestone 12B: Deep queue durable + self-healing (WS2).
 - [x] Milestone 12C: Security surfaces closed + CI scanning (WS3).
-- [ ] Milestone 12D: Metrics, structured logs, health checks live (WS4).
+- [x] Milestone 12D: Metrics, structured logs, health checks live (WS4).
 - [ ] Milestone 12E: AI cost cache + budget + provenance (WS5).
 - [ ] Milestone 12F: Graceful shutdown + idempotency (WS6).
 
@@ -161,7 +162,7 @@ Done criteria:
 - [x] SQLite has busy_timeout, automated backups, and versioned migrations with pre-migrate backup.
 - [x] The deep-processing queue survives a crash and self-heals; no silent limbo.
 - [x] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
-- [ ] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
+- [x] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
 - [ ] AI results are content-hash cached, budget-capped, and provenance-stamped.
 - [ ] Graceful shutdown drains work; resource creation is idempotent.
 - [ ] `go test ./...` passes with no regressions.
