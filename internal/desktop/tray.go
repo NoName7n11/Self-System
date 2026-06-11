@@ -25,42 +25,35 @@ func trayIcon() []byte {
 	return trayIconPNG
 }
 
-// StartTray registers a system-tray icon with Show / Quit menu items. It uses
-// systray.Register (non-blocking) rather than systray.Run so it coexists with
-// the Wails main event loop instead of taking it over. Wails v2 has no native
-// tray API, so this uses the energye/systray fork. Must be called after
-// Startup has populated a.ctx.
+// StartTray registers a system-tray icon with Show / Quit menu items. Wails v2
+// has no native tray API, so this uses the energye/systray fork. Must be called
+// after Startup has populated a.ctx.
 func (a *App) StartTray() {
 	if a.ctx == nil {
 		slog.Warn("StartTray called before Startup; skipping tray")
 		return
 	}
 
-	// systray.Register alone creates the tray window but never pumps its Win32
-	// message loop, so WM_*BUTTONUP never reaches it and clicks do nothing.
-	// RunWithExternalLoop's start() runs that pump.
+	// The tray window, its message queue, Shell_NotifyIcon (icon add/modify),
+	// and the message pump are all thread-affine on Windows: Win32 delivers a
+	// window's messages only to the OS thread that created it. systray's
+	// package init() locks only the main goroutine; Wails calls StartTray from
+	// a different goroutine, and energye/systray's RunWithExternalLoop spawns an
+	// unlocked goroutine for both onReady (so SetIcon races the wrong thread →
+	// "unable to set icon: Unspecified error", missing tray icon) and for the
+	// GetMessage pump (so window messages are never retrieved → dead clicks).
 	//
-	// Win32 windows, message queues, and Shell_NotifyIcon (NIM_ADD/NIM_MODIFY)
-	// are thread-affine: they must all be called from the SAME OS thread that
-	// created the tray window. systray's package init() calls
-	// runtime.LockOSThread(), which only pins whichever goroutine ran init (the
-	// main goroutine) — but Wails calls OnStartup (and so StartTray) from a
-	// different goroutine, and RunWithExternalLoop's onReady callback runs on
-	// yet another, unlocked goroutine spawned internally by Register(). Calling
-	// SetIcon/SetTooltip/AddMenuItem from that onReady goroutine hits a
-	// different OS thread than the one that created the window, so
-	// Shell_NotifyIcon's NIM_MODIFY fails ("systray error: unable to set icon:
-	// Unspecified error") and the icon never appears; separately, GetMessage in
-	// start() can also end up pumping the wrong thread's queue, so clicks do
-	// nothing.
-	//
-	// Fix: run Register (via RunWithExternalLoop with onReady=nil, so it
-	// doesn't spawn that extra goroutine) and all the icon/menu setup calls
-	// synchronously, in a single goroutine locked to one OS thread, before
-	// entering the blocking message pump on that same thread.
+	// Fix: do everything on ONE goroutine pinned to ONE OS thread — Register
+	// (window creation, via RunWithExternalLoop with onReady=nil), then all the
+	// icon/menu setup synchronously, then our own blocking message pump
+	// (pumpTrayMessages) instead of systray's start(), which would pump on a
+	// fresh unlocked goroutine.
 	go func() {
 		runtime.LockOSThread()
 
+		// onReady=nil so Register runs synchronously here and does NOT spawn the
+		// extra setup goroutine. start is systray's nativeStart (unlocked pump);
+		// we discard it in favor of pumpTrayMessages on this thread.
 		start, _ := systray.RunWithExternalLoop(nil, func() {})
 
 		systray.SetIcon(trayIcon())
@@ -81,12 +74,14 @@ func (a *App) StartTray() {
 		})
 
 		// energye/systray does NOT show the menu by default — it only appears
-		// when menu.ShowMenu() is called from a click handler (see the package
-		// note in systray.go). Without this, right-clicking the tray icon does
-		// nothing. Left-click restores the window directly.
+		// when menu.ShowMenu() is called from a click handler. Without this,
+		// right-clicking the tray icon does nothing. Left-click restores the
+		// window directly.
 		systray.SetOnRClick(func(menu systray.IMenu) { _ = menu.ShowMenu() })
 		systray.SetOnClick(func(_ systray.IMenu) { showWindow() })
 
-		start()
+		// Blocking pump on this locked thread (Windows). On other platforms this
+		// delegates to systray's own start().
+		pumpTrayMessages(start)
 	}()
 }
