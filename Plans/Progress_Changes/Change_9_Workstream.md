@@ -71,7 +71,7 @@ Add system tray, OS notifications, and file drag-and-drop — features that make
 Key tasks:
 - [x] System tray: app minimizes to tray instead of closing; tray icon shows sync status. (Verified 2026-06-11: minimize-to-tray + tray icon + right-click Show/Quit menu all work via `HideWindowOnClose` + energye/systray `RunWithExternalLoop`. **"tray icon shows sync status" not implemented** — tray has no dynamic icon/state.)
 - [x] OS notifications: trigger native OS notification when deep processing completes or reminder fires. (Verified 2026-06-11: native "Processing complete" toast fires on resource creation via `runtime.SendNotification`. Reminder-fire path not wired — desktop app has no reminder-due scheduler.)
-- [ ] File drag-and-drop: user can drag a PDF or image file onto the app window to create a resource. (BLOCKED — see done criteria below; this is an upstream Wails v2.12/WebView2 limitation, not missing code.)
+- [ ] File drag-and-drop: user can drag a PDF or image file onto the app window to create a resource. **DEFERRED 2026-06-11** — blocked by an upstream Wails v2.12/WebView2 ordering bug (see done criteria below), not missing code. Revisit when Wails ships a fix for `setupChromium()`'s `AllowExternalDrag` ordering, or upgrade past v2.12 once a fixed release exists. Does not block Change 9 closeout.
 - [x] App window state persistence: remember window size and position across launches. (Save-on-shutdown / restore-on-startup implemented and code-verified; cross-relaunch persistence still needs a manual graceful-restart check.)
 
 Deliverables:
@@ -83,7 +83,7 @@ Deliverables:
 Done criteria (`wails build` proves the code compiles + links into the binary; runtime behavior verified by manual GUI launch on 2026-06-11 unless noted):
 - [x] App minimizes to system tray and can be restored from tray icon. (Verified: close → tray icon remains; right-click → Show/Quit menu appears; Show restores window.)
 - [x] OS notification fires when a resource finishes deep processing. (Verified: native toast "Processing complete" appears on resource creation.)
-- [ ] Dragging a PDF onto the window creates a resource with the file as source. **BLOCKED — upstream Wails bug, not our code.** `DragAndDrop.DisableWebViewDrop: true` is set correctly in `cmd/desktop/main.go`, but Wails v2.12's `setupChromium()` calls `chromium.AllowExternalDrag(false)` *before* the WebView2 controller is initialized, so it always errors (`debug` build logs: `WAR | WebView failed to set AllowExternalDrag to false!`). Result: WebView2's own drop handler still wins and opens the dropped PDF in an Edge viewer instead of firing `runtime.OnFileDrop`. Our `OnFileDrop` registration + `useFileDrop.ts` + `--wails-drop-target` CSS are all correct and would work once Wails fixes the controller-readiness ordering (or exposes a post-init hook to retry `AllowExternalDrag`). No further fix possible from `internal/desktop`/`cmd/desktop` this session.
+- [ ] Dragging a PDF onto the window creates a resource with the file as source. **DEFERRED — upstream Wails bug, not our code.** `DragAndDrop.DisableWebViewDrop: true` is set correctly in `cmd/desktop/main.go`, but Wails v2.12's `setupChromium()` calls `chromium.AllowExternalDrag(false)` *before* the WebView2 controller is initialized, so it always errors (`debug` build logs: `WAR | WebView failed to set AllowExternalDrag to false!`). Result: WebView2's own drop handler still wins and opens the dropped PDF in an Edge viewer instead of firing `runtime.OnFileDrop`. Our `OnFileDrop` registration + `useFileDrop.ts` + `--wails-drop-target` CSS are all correct and would work once Wails fixes the controller-readiness ordering (or exposes a post-init hook to retry `AllowExternalDrag`). No further fix possible from `internal/desktop`/`cmd/desktop`. **Tracked as deferred scope, not a Change 9 blocker** — revisit on Wails upgrade.
 
 ## Workstream 4 — Build Pipeline (Windows + Linux)
 
@@ -132,7 +132,7 @@ Done criteria:
 
 - [x] Milestone 9A: Wails scaffold running with existing frontend in native window (WS1 complete). (Verified 2026-06-11 via launch + screenshot.)
 - [x] Milestone 9B: All CRUD operations working via IPC bindings (WS2 complete). (Verified 2026-06-11: create/edit/delete confirmed with no Gin server.)
-- [ ] Milestone 9C: System tray, OS notifications, and drag-and-drop live (WS3 complete). Tray + notifications verified 2026-06-11; drag-and-drop **BLOCKED by upstream Wails/WebView2 bug** (see WS3 done criteria) — milestone cannot close until Wails fixes this or a workaround is found.
+- [ ] Milestone 9C: System tray, OS notifications, and drag-and-drop live (WS3 complete). Tray + notifications verified 2026-06-11; drag-and-drop **DEFERRED** (upstream Wails/WebView2 ordering bug, see WS3 done criteria) — tracked as deferred scope, does not block Change 9 closeout.
 - [x] Milestone 9D: Windows + Linux CI build pipeline proven green (WS4 complete).
 - [ ] Milestone 9E: IPC unit tests and frontend transport toggle coverage (WS5 complete).
 
@@ -140,7 +140,7 @@ Done criteria:
 
 - [x] Self Systems runs as a native desktop app (not a browser tab) on Windows. (Linux launch still pending — user will verify via WSL later.)
 - [x] All local CRUD operations use Wails IPC — no HTTP round-trips for local calls. (Verified 2026-06-11.)
-- [ ] System tray, OS notifications, and file drag-and-drop are functional. Tray + notifications done; drag-and-drop BLOCKED by upstream Wails bug (see WS3).
+- [ ] System tray, OS notifications, and file drag-and-drop are functional. Tray + notifications done; drag-and-drop **DEFERRED** (upstream Wails bug, see WS3) — does not block Change 9 closeout.
 - [x] CI produces Windows and Linux binaries on every release tag.
 - [x] Frontend works identically in browser mode (REST) and desktop mode (IPC). (IPC path verified on desktop 2026-06-11; REST fallback covered by existing Vitest tests.)
 - [x] README accurately reflects the current state of the frontend integration.
@@ -157,7 +157,7 @@ set `Status: Complete`.
 - [x] App launches in a native window (not a browser tab); frontend renders. → WS1 done criteria, DoD "runs as native desktop app". (Verified 2026-06-11, Windows: `SelfSystems.exe` launched, window "Self Systems" 1280x820, React UI rendered via screenshot. Linux launch still pending.)
 - [x] Create / edit / delete a resource and a todo succeed with **no** local HTTP server running (proves IPC round-trip, not REST). → WS2 "All CRUD via IPC", DoD "all local CRUD use IPC". (Verified 2026-06-11: create, edit, and delete a resource all confirmed working with no Gin server running — full IPC round-trip, both read and write.)
 - [x] Close the window → app keeps running, icon stays in the system tray; tray **Show** restores the window; tray **Quit** exits. → WS3 "minimizes to system tray". (Verified 2026-06-11 after fixing `tray.go` to use `systray.RunWithExternalLoop` — `systray.Register` alone never pumped the tray window's Win32 message loop, so right-click did nothing. Now right-click shows Show/Quit, Show restores.)
-- [ ] Drag a PDF (or image) file onto the window → a new resource is created with that file. → WS3 "Dragging a PDF … creates a resource". **BLOCKED — upstream Wails/WebView2 ordering bug** (see WS3 done criteria for details). Tested 2026-06-11 with `DisableWebViewDrop: true` set; WebView2 still intercepts and opens the PDF in its own viewer. Not fixable from app code this session.
+- [ ] Drag a PDF (or image) file onto the window → a new resource is created with that file. → WS3 "Dragging a PDF … creates a resource". **DEFERRED — upstream Wails/WebView2 ordering bug** (see WS3 done criteria for details). Tested 2026-06-11 with `DisableWebViewDrop: true` set; WebView2 still intercepts and opens the PDF in its own viewer. Not fixable from app code; tracked as deferred scope, revisit on Wails upgrade.
 - [x] Trigger deep processing of a resource → a native OS notification fires on completion. → WS3 "OS notification fires". (Verified 2026-06-11: native "Processing complete" toast fired on resource creation.)
 - [ ] Resize / move the window, quit, relaunch → window reopens at the same size and position. → WS3 window-state task. (Not yet tested — requires a *graceful* quit via tray Quit or window close, since `Shutdown`/`saveWindowState` must run. Earlier launch tests force-killed the process.)
 - [ ] Repeat the launch + a basic CRUD check on Linux (or confirm via the CI Linux artifact run on a Linux box). → DoD "native desktop app on Windows and Linux".
