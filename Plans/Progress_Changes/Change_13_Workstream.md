@@ -1,7 +1,7 @@
 # Change 13 Workstream - Scale, Performance & Maintainability
 
 Date: 2026-06-10
-Status: Planned
+Status: In Progress (WS1 of 4 mostly complete — pgx migration done, Postgres integration run pending Docker access)
 Scope: Address scale ceilings and maintainability debt before they bite: Postgres driver migration, vector-search performance, the HTTP god-file split, graph rendering limits, and an explicit performance budget. Lower urgency than Changes 11/12 — no live Postgres deployment yet — but should land before the Postgres/sync path or large datasets solidify.
 
 ## Objective
@@ -21,18 +21,18 @@ Objective:
 Move off the maintenance-mode `lib/pq` to `jackc/pgx` for performance, context support, and active maintenance.
 
 Key tasks:
-- [ ] Replace `lib/pq` with `pgx` (stdlib `database/sql` adapter `pgx/stdlib` to minimize churn, or native pool if justified).
-- [ ] Verify all Postgres repository adapters + event store + migrations compile and pass against pgx.
-- [ ] Run the DSN-gated Postgres integration suite (`go test ./internal/repository/postgres -run Integration`) on pgx.
+- [x] Replace `lib/pq` with `pgx` (stdlib `database/sql` adapter `pgx/stdlib` to minimize churn, or native pool if justified). Used `pgx/stdlib` — `internal/repository/postgres/db.go` and `internal/eventstore/postgres_store_test.go` now `_ import "github.com/jackc/pgx/v5/stdlib"` and `sql.Open("pgx", ...)` (was `"postgres"`).
+- [x] Verify all Postgres repository adapters + event store + migrations compile and pass against pgx. `internal/eventstore/postgres_store.go`'s `isPostgresConcurrencyConflict` rewritten from `*pq.Error` (`.Code`/`.Constraint`) to `*pgconn.PgError` (`.Code`/`.ConstraintName`) for the `events_aggregate_version_unique` 23505 check.
+- [ ] Run the DSN-gated Postgres integration suite (`go test ./internal/repository/postgres -run Integration`) on pgx — not run this session: no local Docker/Postgres available (`docker info` fails). `go build ./...`, `go test ./...` (non-Postgres packages), `gofmt -l .`, `go vet ./...` all pass clean with the pgx driver.
 
 Deliverables:
-- [ ] Updated `go.mod` (pgx in, lib/pq out).
-- [ ] Updated Postgres adapters as needed for pgx.
-- [ ] Green Postgres integration run recorded.
+- [x] Updated `go.mod` (pgx in via `go get github.com/jackc/pgx/v5/stdlib` + `go mod tidy`; `lib/pq` no longer present).
+- [x] Updated Postgres adapters as needed for pgx — `internal/repository/postgres/db.go` (driver name `"pgx"`), `internal/eventstore/postgres_store.go` (`pgconn.PgError`), `internal/eventstore/postgres_store_test.go` (driver import + `sql.Open("pgx", ...)`). Migrations (`internal/repository/postgres/migrations/`) are plain SQL via `database/sql`, unaffected by the driver swap.
+- [ ] Green Postgres integration run recorded — pending access to a local Postgres instance (`make test-postgres` / `SS_POSTGRES_TEST_DSN`).
 
 Done criteria:
-- [ ] `lib/pq` removed from `go.mod`.
-- [ ] Postgres integration tests pass on pgx.
+- [x] `lib/pq` removed from `go.mod`.
+- [ ] Postgres integration tests pass on pgx — code compiles against pgx and the non-DB-dependent suite is green; the DSN-gated integration run itself has not been exercised in this environment (no Docker).
 
 ## Workstream 2 — Vector Search Performance
 
@@ -93,7 +93,7 @@ Done criteria:
 
 ## Planned Milestones
 
-- [ ] Milestone 13A: Postgres path on pgx, integration green (WS1).
+- [~] Milestone 13A: Postgres path on pgx, code green; integration run pending Docker access (WS1).
 - [ ] Milestone 13B: Vector search cached + benchmarked + scale-out documented (WS2).
 - [ ] Milestone 13C: HTTP handlers split per domain (WS3).
 - [ ] Milestone 13D: Graph LOD + perf budget doc (WS4).
