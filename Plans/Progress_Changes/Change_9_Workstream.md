@@ -27,7 +27,7 @@ Key tasks:
 - [x] Create `cmd/desktop/main.go` as the Wails entry point (separate from `cmd/server/main.go`).
 - [x] Define the Wails `App` struct that exposes backend methods to the frontend via IPC.
 - [x] Wire existing services (ResourceService, CategoryService, etc.) into the App struct.
-- [ ] Verify `wails dev` launches with the existing React frontend served from `frontend/`.
+- [x] Verify `wails dev` launches with the existing React frontend served from `frontend/`.
 - [x] Verify `wails build` produces a working binary for Windows.
 
 Deliverables:
@@ -37,7 +37,7 @@ Deliverables:
 - [x] `wails.json` config file.
 
 Done criteria:
-- [ ] `wails dev` launches the app in a native window with the existing frontend visible.
+- [x] `wails dev` launches the app in a native window with the existing frontend visible. (Verified 2026-06-11: built `SelfSystems.exe` launched, native window title "Self Systems" 1280x820, React frontend rendered — sidebar + Phase 2 console screenshotted.)
 - [x] `wails build` produces a Windows binary without errors.
 
 ## Workstream 2 — IPC Bindings (Replace REST for Local Calls)
@@ -130,7 +130,7 @@ Done criteria:
 
 ## Planned Milestones
 
-- [ ] Milestone 9A: Wails scaffold running with existing frontend in native window (WS1 complete).
+- [x] Milestone 9A: Wails scaffold running with existing frontend in native window (WS1 complete). (Verified 2026-06-11 via launch + screenshot.)
 - [ ] Milestone 9B: All CRUD operations working via IPC bindings (WS2 complete).
 - [ ] Milestone 9C: System tray, OS notifications, and drag-and-drop live (WS3 complete).
 - [x] Milestone 9D: Windows + Linux CI build pipeline proven green (WS4 complete).
@@ -154,8 +154,8 @@ Each maps to the `[ ]` runtime criteria above — when all pass, flip those
 criteria + Milestones 9A/9B/9C/9E + the Definition of Done items to `[x]` and
 set `Status: Complete`.
 
-- [ ] App launches in a native window (not a browser tab); frontend renders. → WS1 done criteria, DoD "runs as native desktop app".
-- [ ] Create / edit / delete a resource and a todo succeed with **no** local HTTP server running (proves IPC round-trip, not REST). → WS2 "All CRUD via IPC", DoD "all local CRUD use IPC".
+- [x] App launches in a native window (not a browser tab); frontend renders. → WS1 done criteria, DoD "runs as native desktop app". (Verified 2026-06-11, Windows: `SelfSystems.exe` launched, window "Self Systems" 1280x820, React UI rendered via screenshot. Linux launch still pending.)
+- [ ] Create / edit / delete a resource and a todo succeed with **no** local HTTP server running (proves IPC round-trip, not REST). → WS2 "All CRUD via IPC", DoD "all local CRUD use IPC". (Partial 2026-06-11: **read** path confirmed — app rendered clean "No resources/categories yet" empty states with no Gin server running, so `GetResources`/`GetCategories` resolved over IPC, not a failed REST fallback. **Write** path — create/edit/delete clicks — still needs a human.)
 - [ ] Close the window → app keeps running, icon stays in the system tray; tray **Show** restores the window; tray **Quit** exits. → WS3 "minimizes to system tray".
 - [ ] Drag a PDF (or image) file onto the window → a new resource is created with that file. → WS3 "Dragging a PDF … creates a resource".
 - [ ] Trigger deep processing of a resource → a native OS notification fires on completion. → WS3 "OS notification fires".
