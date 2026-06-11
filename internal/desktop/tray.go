@@ -44,14 +44,28 @@ func (a *App) StartTray() {
 		show := systray.AddMenuItem("Show", "Bring the window to the front")
 		quit := systray.AddMenuItem("Quit", "Exit Self Systems")
 
-		show.Click(func() {
+		showWindow := func() {
 			wruntime.WindowShow(a.ctx)
 			wruntime.WindowUnminimise(a.ctx)
-		})
+		}
+
+		show.Click(showWindow)
 		quit.Click(func() {
 			wruntime.Quit(a.ctx)
 		})
+
+		// energye/systray does NOT show the menu by default — it only appears
+		// when menu.ShowMenu() is called from a click handler (see the package
+		// note in systray.go). Without this, right-clicking the tray icon does
+		// nothing. Left-click restores the window directly.
+		systray.SetOnRClick(func(menu systray.IMenu) { _ = menu.ShowMenu() })
+		systray.SetOnClick(func(_ systray.IMenu) { showWindow() })
 	}
 
-	systray.Register(onReady, func() {})
+	// systray.Register alone creates the tray window but never pumps its Win32
+	// message loop, so WM_*BUTTONUP never reaches it and clicks do nothing.
+	// RunWithExternalLoop's start() runs that pump in its own goroutine,
+	// coexisting with Wails' own event loop.
+	start, _ := systray.RunWithExternalLoop(onReady, func() {})
+	start()
 }

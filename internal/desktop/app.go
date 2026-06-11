@@ -199,6 +199,11 @@ func (a *App) CreateResource(url, title, summary, categoryName string) (domain.R
 	if err != nil {
 		return domain.Resource{}, err
 	}
+	// The desktop app wires the resource service with the skim extractor only
+	// (no async deep-processor goroutine like cmd/server runs), so resource
+	// creation IS the completion signal here. Fire the OS notification so the
+	// WS3 notification path is observable (e.g. after a file drag-and-drop).
+	a.NotifyProcessingComplete(res.Title)
 	return res, nil
 }
 
@@ -340,7 +345,10 @@ func (a *App) DeleteReminder(id string) (bool, error) {
 // NotifyProcessingComplete triggers a native OS notification when deep
 // processing finishes for a resource.
 func (a *App) NotifyProcessingComplete(resourceTitle string) {
-	if a.ctx == nil {
+	// Guard on the Wails lifecycle context: every runtime call below log.Fatals
+	// (os.Exit) on a bare context. Unit tests call CreateResource with a
+	// context.Background, which carries no "frontend" value and falls through.
+	if a.ctx == nil || a.ctx.Value("frontend") == nil {
 		return
 	}
 	runtime.EventsEmit(a.ctx, "processing:complete", map[string]any{

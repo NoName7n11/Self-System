@@ -112,6 +112,10 @@ func main() {
 		HideWindowOnClose:        true,
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop: true,
+			// Without this, WebView2's own drag-drop handling stays enabled
+			// and intercepts the drop first (observed: dropping a PDF opened
+			// it in an Edge PDF reader window instead of firing OnFileDrop).
+			DisableWebViewDrop: true,
 		},
 		Windows: &windows.Options{
 			Theme: windows.Dark,

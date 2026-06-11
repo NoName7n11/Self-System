@@ -27,6 +27,10 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
+  /* Wails fires runtime.OnFileDrop only over elements marked with this CSS
+     drop-target property (DragAndDrop.CSSDropProperty / CSSDropValue defaults).
+     Marking the whole app surface makes the entire window a valid drop zone. */
+  --wails-drop-target: drop;
 }
 
 body {
