@@ -1,14 +1,14 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: In Progress (WS1 of 6 complete)
+Status: In Progress (WS2 of 6 complete)
 
 > **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
 > Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
 > distinct from this workstream. Pre-existing numbering collision (same pattern as the
 > Change 11 collision noted in `Change_11_Workstream.md`), not introduced here — flagged
 > for a future session to resolve. WS1 progress is recorded in `Changes_log.md` Session 44
-> instead of a colliding "What we did" entry.
+> and WS2 in Session 45, instead of a colliding "What we did" entry.
 
 Scope: Close the production-grade gaps in durability, deep-queue reliability, security, observability, and AI cost control. This is the safety layer that must land before Phase 2 sync is shipped to any real device.
 
@@ -53,19 +53,19 @@ Objective:
 The deep-processing queue is an in-memory channel today — lost on crash, leaving resources stuck "processing." Make it durable and self-healing.
 
 Key tasks:
-- [ ] DB-backed queue table (pending / in-progress / done / failed-retryable) replacing the volatile channel as the source of truth; the channel becomes a runtime dispatch buffer fed from the table.
-- [ ] Resume on restart: requeue in-progress/pending rows.
-- [ ] Retry with exponential backoff + max attempts.
-- [ ] Dead-letter state: exhausted jobs land in `failed, retryable`, never silent limbo. Surface count in metrics.
+- [x] DB-backed queue table (pending / in-progress / done / failed-retryable) replacing the volatile channel as the source of truth; the channel becomes a runtime dispatch buffer fed from the table (`internal/service/deep_queue_store.go`, fed by `runFeeder` in `deep_processor.go`).
+- [x] Resume on restart: `DeepQueueStore.ResumeStuck` requeues in-progress rows back to pending, called once in `Start()` before the feeder/workers start.
+- [x] Retry with exponential backoff + max attempts (`deepQueueBackoff`: base 30s, cap 30m, default max_attempts 5).
+- [x] Dead-letter state: exhausted jobs land in `failed_retryable` with `last_error` recorded; surfaced via `Metrics().DeadLetterTotal`.
 
 Deliverables:
-- [ ] Queue table migration + `internal/service/deep_queue_store.go`.
-- [ ] Updated `internal/service/deep_processor.go` (DB-backed enqueue/claim/complete/fail, resume-on-start).
-- [ ] Tests: crash-mid-job resume, retry/backoff, dead-letter transition.
+- [x] Queue table migration (`internal/repository/sqlite/migration.go` v3 `deep_queue`) + `internal/service/deep_queue_store.go`.
+- [x] Updated `internal/service/deep_processor.go` (DB-backed enqueue/claim/complete/fail via `WithQueueStore`, resume-on-start, `runFeeder`). Wired into `cmd/server/main.go` (`buildRepositories` now also returns the raw `*sql.DB` for sqlite; postgres returns nil, keeping `DeepQueueStore` a no-op there).
+- [x] Tests: `internal/service/deep_queue_store_test.go` (enqueue/claim/complete, dedup, retry/backoff, dead-letter, resume-stuck, nil-store no-op, backoff table) and `internal/service/deep_processor_queue_test.go` (crash-mid-job resume on restart, dead-letter transition end-to-end with metrics).
 
 Done criteria:
-- [ ] Killing the process mid-job leaves the job re-runnable on restart (not stuck).
-- [ ] Failed jobs reach a retryable dead-letter state with a recorded reason.
+- [x] Killing the process mid-job leaves the job re-runnable on restart (not stuck) — `TestDeepProcessor_QueueStore_ResumesInProgressOnRestart`.
+- [x] Failed jobs reach a retryable dead-letter state with a recorded reason — `TestDeepProcessor_QueueStore_DeadLettersExhaustedJob`, `TestDeepQueueStore_FailRetriesWithBackoffThenDeadLetters`.
 
 ## Workstream 3 — Security Hardening
 
@@ -150,7 +150,7 @@ Done criteria:
 ## Planned Milestones
 
 - [x] Milestone 12A: SQLite durable — busy_timeout, backup, versioned migrations (WS1).
-- [ ] Milestone 12B: Deep queue durable + self-healing (WS2).
+- [x] Milestone 12B: Deep queue durable + self-healing (WS2).
 - [ ] Milestone 12C: Security surfaces closed + CI scanning (WS3).
 - [ ] Milestone 12D: Metrics, structured logs, health checks live (WS4).
 - [ ] Milestone 12E: AI cost cache + budget + provenance (WS5).
@@ -159,7 +159,7 @@ Done criteria:
 ## Change 12 Definition of Done
 
 - [x] SQLite has busy_timeout, automated backups, and versioned migrations with pre-migrate backup.
-- [ ] The deep-processing queue survives a crash and self-heals; no silent limbo.
+- [x] The deep-processing queue survives a crash and self-heals; no silent limbo.
 - [ ] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
 - [ ] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
 - [ ] AI results are content-hash cached, budget-capped, and provenance-stamped.
