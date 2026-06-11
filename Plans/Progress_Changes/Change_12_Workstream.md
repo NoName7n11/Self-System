@@ -1,7 +1,7 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: In Progress (WS5 of 6 complete)
+Status: Complete (all 6 workstreams done; WS3's "CI fails on a known vulnerable dependency" criterion is implemented via `.github/workflows/security.yml` but not yet exercised by a live CI run)
 
 > **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
 > Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
@@ -136,17 +136,18 @@ Objective:
 Graceful lifecycle + idempotent writes.
 
 Key tasks:
-- [ ] Graceful shutdown on SIGTERM: drain deep-processor queue, flush outbox, close WS connections.
-- [ ] HTTP-layer idempotency keys for resource creation / sync retries (extend ADR 0011 event idempotency to the API edge).
+- [x] Graceful shutdown on SIGTERM: drain deep-processor queue, flush outbox, close WS connections.
+- [x] HTTP-layer idempotency keys for resource creation / sync retries (extend ADR 0011 event idempotency to the API edge).
 
 Deliverables:
-- [ ] Updated `cmd/server/main.go` (and `cmd/desktop/main.go`) shutdown sequence.
-- [ ] Idempotency-key middleware + store.
-- [ ] Tests: shutdown drains without loss; duplicate create with same key is a no-op.
+- [x] Updated `cmd/server/main.go` shutdown sequence: `server.Shutdown` (stop new HTTP, drain in-flight requests, 10s) → `runtimeCancel()` (stops deep-queue feeder, GBUS monitors, outbox worker from claiming/starting new work) → `deepProcessor.Shutdown(drainCtx)` (30s, waits for any in-flight deep-processing job to finish) → `syncHub.CloseAll()` (unblocks websocket handlers). `cmd/desktop/main.go` runs no HTTP server/deep processor/sync hub, so no shutdown sequence change was needed there.
+- [x] `internal/service/deep_processor.go`: new `wg sync.WaitGroup` + `workCtx`/`workCancel` (separate from the `Start` ctx so in-flight `processTask` calls aren't aborted the instant `runtimeCancel()` fires) and exported `Shutdown(ctx context.Context)` that waits on `wg` (with a fallback timeout) then cancels `workCtx`. `internal/sync/hub.go`: new `Hub.CloseAll()` closes and clears all subscriber channels.
+- [x] `internal/http/idempotency.go` (new) — `IdempotencyStore` (in-memory, TTL-based, default 24h) + `IdempotencyMiddleware`: for POST/PUT/PATCH requests carrying an `Idempotency-Key` header, caches the first response (status/headers/body) keyed by method+path+key and replays it (with `Idempotent-Replay: true`) on retries instead of re-running the handler. Wired into `cmd/server/main.go`'s middleware chain.
+- [x] Tests: `internal/service/deep_processor_test.go` `TestDeepProcessor_Shutdown_DrainsInFlightWork` / `TestDeepProcessor_Shutdown_NeverStartedIsNoOp`; `internal/sync/hub_test.go` `TestHubCloseAllClosesSubscriberChannels`; `internal/http/idempotency_test.go` `TestIdempotencyMiddleware_ReplaysCachedResponse` / `TestIdempotencyMiddleware_DifferentKeysNotCached`.
 
 Done criteria:
-- [ ] SIGTERM drains in-flight work instead of dropping it.
-- [ ] Repeated create with the same idempotency key does not duplicate.
+- [x] SIGTERM drains in-flight work instead of dropping it — `server.Shutdown` → `runtimeCancel` → `deepProcessor.Shutdown` → `syncHub.CloseAll` sequence in `cmd/server/main.go`; `TestDeepProcessor_Shutdown_DrainsInFlightWork`.
+- [x] Repeated create with the same idempotency key does not duplicate — `TestIdempotencyMiddleware_ReplaysCachedResponse` (handler called once across two identical requests, second response replayed from cache). `go test ./...`, `gofmt -l .`, `go vet ./...` all pass clean.
 
 ## Planned Milestones
 
@@ -155,7 +156,7 @@ Done criteria:
 - [x] Milestone 12C: Security surfaces closed + CI scanning (WS3).
 - [x] Milestone 12D: Metrics, structured logs, health checks live (WS4).
 - [x] Milestone 12E: AI cost cache + budget + provenance (WS5).
-- [ ] Milestone 12F: Graceful shutdown + idempotency (WS6).
+- [x] Milestone 12F: Graceful shutdown + idempotency (WS6).
 
 ## Change 12 Definition of Done
 
@@ -164,5 +165,5 @@ Done criteria:
 - [x] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
 - [x] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
 - [x] AI results are content-hash cached, budget-capped, and provenance-stamped.
-- [ ] Graceful shutdown drains work; resource creation is idempotent.
-- [ ] `go test ./...` passes with no regressions.
+- [x] Graceful shutdown drains work; resource creation is idempotent.
+- [x] `go test ./...` passes with no regressions.
