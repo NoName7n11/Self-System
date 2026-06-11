@@ -1,7 +1,7 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: In Progress (WS4 of 6 complete)
+Status: In Progress (WS5 of 6 complete)
 
 > **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
 > Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
@@ -116,19 +116,19 @@ Objective:
 Stop paying twice and make enrichment re-runnable.
 
 Key tasks:
-- [ ] Content-hash cache for AI results — a re-shared URL / identical content must not re-bill.
-- [ ] Record model name + prompt version in `extracted_data` per enrichment, enabling selective re-enrichment when prompts improve.
-- [ ] Finish the per-day token budget (BudgetStatePath exists) + per-provider circuit breaker on repeated failures.
+- [x] Content-hash cache for AI results — a re-shared URL / identical content must not re-bill.
+- [x] Record model name + prompt version in `extracted_data` per enrichment, enabling selective re-enrichment when prompts improve.
+- [x] Finish the per-day token budget (BudgetStatePath exists) + per-provider circuit breaker on repeated failures.
 
 Deliverables:
-- [ ] `internal/ai/result_cache.go` (content-hash keyed) + tests.
-- [ ] `extracted_data` schema fields for model/prompt version.
-- [ ] Completed token-budget enforcement + provider circuit breaker.
+- [x] `internal/ai/result_cache.go` — generic `ResultCache[T]` (sha256 `ContentHash`, TTL-based, default 24h), tested via `TestManager_EnrichResource_CachesIdenticalContent` (`enrichment_test.go`) / `TestManager_GenerateEmbedding_CachesIdenticalContent` (`embedding_test.go`). Wired into `Manager.EnrichResource` (key = hash(title,url,content)) and `Manager.GenerateEmbedding` (key = hash(text)); cache hits recorded as `EnrichCacheHitsTotal`/`EmbedCacheHitsTotal` in `ai.Manager.Metrics()`.
+- [x] `extracted_data` schema fields for model/prompt version — `internal/domain/entities.go` `ResourceExtractedData.EnrichmentProvider/EnrichmentModel/EnrichmentPromptVersion`. `internal/ai/enrichment.go` adds `EnrichmentResult.Model`/`PromptVersion` + `EnrichmentPromptVersion = "v1"` const; `OpenAIEnrichmentProvider.Enrich` stamps both. `internal/service/deep_processor.go` `runEnrichment` persists all three provenance fields.
+- [x] Completed token-budget enforcement (pre-existing `reserveTokenBudget`/`loadBudgetState`/`persistBudgetState` confirmed working, no changes needed) + new `internal/ai/circuit_breaker.go` (`circuitBreaker`: per-provider consecutive-failure counter, opens circuit for 60s after 3 consecutive failures via `circuitBreakerThreshold`/`circuitBreakerCooldown`). Wired into `classify`, `EnrichResource`, and `GenerateEmbedding` provider loops via `Allow`/`RecordResult`. `Manager.OpenCircuitProviders()` exposed via `ai.Manager.Metrics().OpenCircuitProviders` for `/api/v1/health`/observability.
 
 Done criteria:
-- [ ] Re-processing identical content hits the cache, not the provider.
-- [ ] Each enrichment records which model + prompt version produced it.
-- [ ] Daily token budget halts spend; a failing provider trips its breaker and falls back.
+- [x] Re-processing identical content hits the cache, not the provider — `TestManager_EnrichResource_CachesIdenticalContent`, `TestManager_GenerateEmbedding_CachesIdenticalContent` (provider call count stays at 1 across two identical calls).
+- [x] Each enrichment records which model + prompt version produced it — `TestManager_EnrichResource_RecordsModelAndPromptVersion`.
+- [x] Daily token budget halts spend (pre-existing, unchanged); a failing provider trips its breaker and falls back — `TestManager_CircuitBreaker_OpensAfterRepeatedFailures` (provider's circuit opens after `circuitBreakerThreshold` consecutive failures, fallback still succeeds). `go test ./...`, `gofmt -l .`, `go vet ./...` all pass clean.
 
 ## Workstream 6 — Reliability Glue
 
@@ -154,7 +154,7 @@ Done criteria:
 - [x] Milestone 12B: Deep queue durable + self-healing (WS2).
 - [x] Milestone 12C: Security surfaces closed + CI scanning (WS3).
 - [x] Milestone 12D: Metrics, structured logs, health checks live (WS4).
-- [ ] Milestone 12E: AI cost cache + budget + provenance (WS5).
+- [x] Milestone 12E: AI cost cache + budget + provenance (WS5).
 - [ ] Milestone 12F: Graceful shutdown + idempotency (WS6).
 
 ## Change 12 Definition of Done
@@ -163,6 +163,6 @@ Done criteria:
 - [x] The deep-processing queue survives a crash and self-heals; no silent limbo.
 - [x] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
 - [x] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.
-- [ ] AI results are content-hash cached, budget-capped, and provenance-stamped.
+- [x] AI results are content-hash cached, budget-capped, and provenance-stamped.
 - [ ] Graceful shutdown drains work; resource creation is idempotent.
 - [ ] `go test ./...` passes with no regressions.
