@@ -508,3 +508,22 @@ _These sessions were completed but their log entries were lost when the conversa
 - Step 05: New `Plans/Performance_Budget.md` — documents the cache implementation, the 50k/256-dim benchmark results, a crossover trigger (>50k vectors per model version OR p99 > ~100ms), and the scale-out path (pure-Go HNSW e.g. `coder/hnsw` for SQLite, `pgvector` + ANN index for Postgres, both behind the existing `domain.EmbeddingRepository` interface per ADR 0002). Leaves resource/device/graph-node budgets as TBD for WS4.
 - Step 06: Verification — `go build ./...` clean, `go test ./...` all packages green, `gofmt -l .` clean, `go vet ./...` clean.
 - Step 07: In `Change_13_Workstream.md`, marked WS2 key tasks/deliverables/done-criteria and Milestone 13B `[x]`, and the Change 13 DoD vector-search line `[x]`; Status updated to note WS2 complete alongside WS1's pending-Docker note. Per the established numbering-collision precedent, this session entry stands in for a `Changes.md` "What we did" section.
+
+## Session 52 - Change 13 WS3: HTTP Handler Split (per-domain handler files)
+
+- Step 01: Audited `internal/http/handler.go` (1415 lines): inventoried all 50 methods/functions and grouped by domain — resource CRUD/search/category, archive/restore/bulk, category CRUD, todo CRUD, reminder CRUD, graph, chat, GBUS/deep-processing, plus shared infrastructure (struct/options/constructors, route registration, response helpers, sync-event publishing).
+- Step 02: Rewrote `handler.go` down to 191 lines — keeps the `Handler` struct, `GBUSMonitor`/`GBUSInferenceInfo` interfaces, `HandlerOption` functional options (`With*`), `NewHandler`/`NewHandlerWithOptions`, and the two health endpoints (`health`, `healthDetailed`). Trimmed imports to only what those pieces use.
+- Step 03: New `internal/http/routes.go` (57 lines) — `RegisterRoutes`, moved verbatim (identical route table, same middleware ordering: auth -> body-limit -> mutation rate limiter per route).
+- Step 04: New `internal/http/response_helpers.go` (94 lines) — `pagination`, `parseBoundedInt`, `respondOperationError`, `respondInternalError`, `isValidationErrorMessage`, `respondError`, `respondErrorCode`, all moved verbatim.
+- Step 05: New `internal/http/sync_publish.go` (20 lines) — `publishSyncEvent`, `publishSyncEventWithSource`, moved verbatim.
+- Step 06: New per-domain handler files, all method bodies and request structs moved verbatim (no logic changes):
+  - `resource_handler.go` (314 lines) — `createResource`, `enqueueDeepProcessing`, `listResources`, `getResourceByID`, `updateResource`, `deleteResource`, `searchResources`, `semanticSearchResources`, `updateResourceCategory` + request structs.
+  - `resource_archive_handler.go` (119 lines) — `archiveResource`, `restoreResource`, `bulkArchiveResources`, `bulkRestoreResources` + request structs (split out of resource_handler.go to keep both files near the ~300-line target).
+  - `category_handler.go` (155 lines) — full category CRUD + request structs.
+  - `todo_handler.go` (207 lines) — full todo CRUD + request structs.
+  - `reminder_handler.go` (199 lines) — full reminder CRUD + request structs.
+  - `graph_handler.go` (22 lines) — `getGraph`.
+  - `chat_handler.go` (70 lines) — `executeChatCommand`, `publishSyncFromChatResult`, `chatCommandRequest`.
+  - `processing_handler.go` (73 lines) — `gbusHealth`, `deepProcessingHealth`, `deepProcessingMetrics`, `reprocessDeepResource`.
+- Step 07: Verification — `go build ./...` clean, `gofmt -l .` clean (after formatting `handler.go`'s trailing blank line), `go vet ./...` clean, `go test ./internal/http/...` ok (3.18s, no test-file edits), `go test ./...` all packages green.
+- Step 08: In `Change_13_Workstream.md`, marked WS3 key tasks/deliverables/done-criteria and Milestone 13C `[x]`, and the Change 13 DoD HTTP-handler-split and `go test ./...` lines `[x]` (noting the one 314-line file as a minor over-target with rationale); Status updated to note WS3 complete. Per the established numbering-collision precedent, this session entry stands in for a `Changes.md` "What we did" section.

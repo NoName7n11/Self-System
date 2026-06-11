@@ -1,7 +1,7 @@
 # Change 13 Workstream - Scale, Performance & Maintainability
 
 Date: 2026-06-10
-Status: In Progress (WS1 mostly complete — pgx migration done, Postgres integration run pending Docker access; WS2 complete)
+Status: In Progress (WS1 mostly complete — pgx migration done, Postgres integration run pending Docker access; WS2 complete; WS3 complete)
 Scope: Address scale ceilings and maintainability debt before they bite: Postgres driver migration, vector-search performance, the HTTP god-file split, graph rendering limits, and an explicit performance budget. Lower urgency than Changes 11/12 — no live Postgres deployment yet — but should land before the Postgres/sync path or large datasets solidify.
 
 ## Objective
@@ -60,17 +60,17 @@ Objective:
 Break the 1338-line `internal/http/handler.go` god file into per-domain handlers.
 
 Key tasks:
-- [ ] Split into `resource_handler.go`, `category_handler.go`, `todo_handler.go`, `reminder_handler.go`, `graph_handler.go`, `chat_handler.go`, `processing_handler.go`, keeping route registration centralized.
-- [ ] No route or response-shape changes — pure mechanical extraction.
-- [ ] Existing handler tests pass unchanged.
+- [x] Split into `resource_handler.go`, `resource_archive_handler.go`, `category_handler.go`, `todo_handler.go`, `reminder_handler.go`, `graph_handler.go`, `chat_handler.go`, `processing_handler.go`, keeping route registration centralized in new `routes.go`. Shared response/pagination helpers moved to `response_helpers.go`, sync-event publishing to `sync_publish.go`.
+- [x] No route or response-shape changes — pure mechanical extraction (handler bodies copied verbatim; only package-level grouping changed).
+- [x] Existing handler tests pass unchanged — `go test ./internal/http/...` and `go test ./...` both green with no test-file edits.
 
 Deliverables:
-- [ ] Per-domain handler files under `internal/http/`.
-- [ ] Slimmed `handler.go` retaining wiring/registration only.
+- [x] Per-domain handler files under `internal/http/`: `resource_handler.go` (314 lines, CRUD/search/category), `resource_archive_handler.go` (119, archive/restore/bulk), `category_handler.go` (155), `todo_handler.go` (207), `reminder_handler.go` (199), `graph_handler.go` (22), `chat_handler.go` (70), `processing_handler.go` (73).
+- [x] Slimmed `handler.go` (191 lines) retaining only struct/options/constructors/health endpoints; `routes.go` (57) holds `RegisterRoutes`; `response_helpers.go` (94) and `sync_publish.go` (20) hold shared helpers.
 
 Done criteria:
-- [ ] No single HTTP handler file exceeds ~300 lines.
-- [ ] All existing `internal/http` tests pass with no edits to assertions.
+- [x] No single HTTP handler file exceeds ~300 lines (largest is `resource_handler.go` at 314, just over the soft target but the next split point would be an awkward sub-domain cut; all others are well under 300).
+- [x] All existing `internal/http` tests pass with no edits to assertions — `go test ./internal/http/...` ok (3.18s); `go test ./...` all green.
 
 ## Workstream 4 — Graph Rendering Limits & Perf Budget
 
@@ -95,13 +95,13 @@ Done criteria:
 
 - [~] Milestone 13A: Postgres path on pgx, code green; integration run pending Docker access (WS1).
 - [x] Milestone 13B: Vector search cached + benchmarked + scale-out documented (WS2).
-- [ ] Milestone 13C: HTTP handlers split per domain (WS3).
+- [x] Milestone 13C: HTTP handlers split per domain (WS3).
 - [ ] Milestone 13D: Graph LOD + perf budget doc (WS4).
 
 ## Change 13 Definition of Done
 
 - [ ] Postgres path runs on pgx; lib/pq removed.
 - [x] Vector search is memory-cached with a recorded 50k benchmark and a documented HNSW/pgvector path.
-- [ ] No HTTP handler file exceeds ~300 lines; routes/responses unchanged.
+- [x] No HTTP handler file exceeds ~300 lines (one file at 314, see WS3 done-criteria note); routes/responses unchanged.
 - [ ] The graph renders large datasets without freezing; a perf-budget doc defines the ceilings.
-- [ ] `go test ./...` passes with no regressions.
+- [x] `go test ./...` passes with no regressions (WS1-3 verified; WS4 still pending).
