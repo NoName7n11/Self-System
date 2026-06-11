@@ -3,7 +3,7 @@
 > **Document Purpose:** Establishes development practices, testing strategy, and automation for the Self Systems project.
 > **Status:** Confirmed decisions from Q71-Q80
 
-**Last Updated:** April 8, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -218,6 +218,41 @@ All notable changes to this project will be documented in this file.
 ## [1.1.0] - 2026-03-20
 ...
 ```
+
+---
+
+### 1.4 Session Workflow — Modes, Documentation, Tick Discipline
+
+These rules govern every working session (Claude Code / agent-assisted), separate from Git mechanics above.
+
+#### Modes (auto-active via hooks)
+
+Hooks activate these at session start; no manual step needed.
+
+| Mode | What it does | Control |
+|---|---|---|
+| **Caveman mode (full)** | Terse replies — drop articles, filler, pleasantries, hedging. Fragments OK. **Code, commits, PRs, security warnings written normally.** | `/caveman lite\|full\|ultra`; off: "stop caveman" / "normal mode" |
+| **Documenter mode** | A `PostToolUse` hook logs every Edit/Write/Bash file mutation to `.claude/change-doc-session.jsonl` (resets each session). Build the session-doc draft incrementally as work lands — do not wait until the end. | Auto |
+
+#### End-of-session documentation — MANDATORY for any code-modifying session
+
+Every session that modifies the codebase **must** update all three docs before closing. Run **`/change-documenter`** — it does this automatically from the scratch log + context:
+
+1. **`Plans/Progress_Changes/Changes_log.md`** — append one `## Session N` block (sequential integer, increment from the last; **never** insert between existing sessions). Numbered steps (`Step 01`, `Step 02`, …), each `Created`/`Updated <file>` with a **specific** reason — never "updated because session".
+2. **`Plans/Progress_Changes/Changes.md`** — fill/update `## What we did` for the active `# Change N`. Be specific: workstreams delivered, key files, architectural choices. Do not rewrite `## What to do` / `## Why this approach` unless asked.
+3. **`Plans/Progress_Changes/Change_N_Workstream.md`** — tick completed tasks/deliverables/done-criteria/milestones `[x]`; set `Status: Complete` when all milestones are `[x]`.
+
+`/change-documenter` then **commits and pushes only the doc files** (`docs: Session N - <title>`) — never `git add -A`. Code changes are committed separately, only when the user asks. (Phase work switches to Mode B → `Plans/Progress/Phase_X_*` files instead.)
+
+#### Tick Discipline
+
+The checkboxes are a source of truth, so be honest about state:
+
+- Mark `[x]` **only** for work actually done this session. Never tick future or in-progress scope.
+- **Runtime/GUI behavior** (windowed app: tray, notifications, drag-drop, IPC round-trip, window-state) cannot be verified in CI — mark `[x]` **only after the user manually confirms** on a desktop launch. `wails build` proves compile/link, not behavior.
+- Use `[~]` for genuinely partial items (e.g. drag-drop: capture fixed, end-to-end conversion deferred). More honest than forcing `[x]`/`[ ]`.
+- Never leave a completed item as `[ ]`, and never leave a bare `-` (every line is `[x]`, `[ ]`, or `[~]`).
+- Deferred scope: keep `[ ]`/`[~]` with a one-line reason and "does not block Change N closeout" where true — do not silently drop it.
 
 ---
 
