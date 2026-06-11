@@ -8,6 +8,11 @@
 cmd/desktop/build/
 cmd/desktop/data/
 *.db
+*.exe
+/server.exe
+/desktop.exe
+/bin/
+/dist/
 !/internal/
 !/frontend/
 frontend/node_modules/

@@ -53,6 +53,7 @@ the old ADR as Superseded.
 - 0016: Dual-Write Transition Policy (Accepted)
 - 0017: Projector Classification and Registry (Accepted)
 - 0018: Event Sourcing Demoted to Audit Log and Sync Outbox (Accepted) — supersedes rebuild-from-events implication in 0013; supersedes 0014
+- 0019: Actual Stack vs. Planned Stack (Accepted) — records database/sql, in-process queue, and brute-force cosine vector search as the implemented stack vs. GORM/Asynq/Redis/sqlite-vec in the original plan
 
 ## Superseding rule
 

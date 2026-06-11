@@ -159,6 +159,8 @@ WS1 delivered: `internal/gbus/signals.go` with 10 signal type constants and `Sig
 ## Why this approach
 GBUS learns from signals that only have meaning once the real pipeline exists — classification confidence to correct, content to interact with, search results to click. Doing this last ensures the training data is real and the inference has something meaningful to integrate into.
 
+**Reconciliation note (Change 11, 2026-06-11):** Change 10 status corrected from `Complete` to `Scaffold (model not trained)`. WS1 (signal emission) and WS2 (feature store/aggregation) are genuinely implemented and verified in code. WS3 (training pipeline) has never been run against real data — `models/gbus/model_registry.json` contains only a placeholder entry (version 0.0.0, `validation_accuracy: 0.0`, `baseline_accuracy: 0.0`), and `models/gbus/baseline.json` does not exist. WS4 (inference integration) and WS5 (monitoring) are code-complete but inactive in production: `gbus.inference_enabled` defaults to `false` and there is no model to load, so the safe weighted-scoring fallback is what actually runs. See `Change_10_Workstream.md` "Remaining Work to Reach Complete".
+
 # Change 12: Change-Documenter Skill and Session Tracking Infrastructure
 Date: 2026-06-10
 

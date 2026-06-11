@@ -1,7 +1,15 @@
 # Change 12 Workstream - Production Hardening
 
 Date: 2026-06-10
-Status: Planned
+Status: In Progress (WS1 of 6 complete)
+
+> **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
+> Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
+> distinct from this workstream. Pre-existing numbering collision (same pattern as the
+> Change 11 collision noted in `Change_11_Workstream.md`), not introduced here — flagged
+> for a future session to resolve. WS1 progress is recorded in `Changes_log.md` Session 44
+> instead of a colliding "What we did" entry.
+
 Scope: Close the production-grade gaps in durability, deep-queue reliability, security, observability, and AI cost control. This is the safety layer that must land before Phase 2 sync is shipped to any real device.
 
 ## Objective
@@ -22,20 +30,22 @@ Objective:
 Make the SQLite store survivable: no silent corruption, no SQLITE_BUSY deaths, recoverable backups.
 
 Key tasks:
-- [ ] Add `PRAGMA busy_timeout` (e.g. 5000ms) to the SQLite open path (`internal/repository/sqlite/db.go`) — WAL is already set, busy_timeout is not.
-- [ ] Periodic `VACUUM INTO` snapshot to a timestamped backup file with a retention policy (keep N most recent).
-- [ ] Versioned schema migration runner for SQLite (version table + ordered migrations), with backup-before-migrate on startup.
+- [x] Add `PRAGMA busy_timeout` (e.g. 5000ms) to the SQLite open path (`internal/repository/sqlite/db.go`) — WAL is already set, busy_timeout is not. Implemented via `_pragma` DSN params (`journal_mode(WAL)`, `foreign_keys(1)`, `busy_timeout(5000)`) so every pooled connection gets the pragmas, not just the one that ran the original `db.Exec`.
+- [x] Periodic `VACUUM INTO` snapshot to a timestamped backup file with a retention policy (keep N most recent).
+- [x] Versioned schema migration runner for SQLite (version table + ordered migrations), with backup-before-migrate on startup.
 
 Deliverables:
-- [ ] Updated `internal/repository/sqlite/db.go` (busy_timeout).
-- [ ] `internal/repository/sqlite/backup.go` — VACUUM INTO snapshot + retention.
-- [ ] SQLite migration runner + version table.
-- [ ] Tests: busy_timeout under concurrent writers, backup round-trip, migrate-from-empty and migrate-idempotent.
+- [x] Updated `internal/repository/sqlite/db.go` (busy_timeout via DSN pragmas).
+- [x] `internal/repository/sqlite/backup.go` — VACUUM INTO snapshot + retention + `StartBackupScheduler`.
+- [x] SQLite migration runner + version table (`schema_migrations`, `internal/repository/sqlite/migration.go`). Existing schema + add-column migrations split into versions 1 and 2.
+- [x] Tests: `db_test.go` (busy_timeout under 16 concurrent writers), `migration_test.go` (backup round-trip, prune retention, migrate-from-empty, migrate-idempotent, backup-before-pending-migration).
 
 Done criteria:
-- [ ] Concurrent writers do not error with SQLITE_BUSY.
-- [ ] A backup snapshot can be restored to a working database.
-- [ ] Schema migrations run once, in order, with a pre-migration backup.
+- [x] Concurrent writers do not error with SQLITE_BUSY.
+- [x] A backup snapshot can be restored to a working database.
+- [x] Schema migrations run once, in order, with a pre-migration backup (only when upgrading an existing DB with pending migrations — fresh DBs skip the backup since there's nothing to back up).
+
+Additional: `internal/config` gained `database.backup_interval_minutes` (default 60) and `database.backup_retention` (default 7); `cmd/server/main.go` and `cmd/desktop/main.go` start/stop `StartBackupScheduler` alongside the DB connection.
 
 ## Workstream 2 — Deep-Queue Reliability
 
@@ -139,7 +149,7 @@ Done criteria:
 
 ## Planned Milestones
 
-- [ ] Milestone 12A: SQLite durable — busy_timeout, backup, versioned migrations (WS1).
+- [x] Milestone 12A: SQLite durable — busy_timeout, backup, versioned migrations (WS1).
 - [ ] Milestone 12B: Deep queue durable + self-healing (WS2).
 - [ ] Milestone 12C: Security surfaces closed + CI scanning (WS3).
 - [ ] Milestone 12D: Metrics, structured logs, health checks live (WS4).
@@ -148,7 +158,7 @@ Done criteria:
 
 ## Change 12 Definition of Done
 
-- [ ] SQLite has busy_timeout, automated backups, and versioned migrations with pre-migrate backup.
+- [x] SQLite has busy_timeout, automated backups, and versioned migrations with pre-migrate backup.
 - [ ] The deep-processing queue survives a crash and self-heals; no silent limbo.
 - [ ] SSRF, malformed-PDF, and plaintext-key risks are closed; CI scans dependencies.
 - [ ] Queue depth, AI cost/latency, extraction failures, and sync lag are observable; health endpoint checks components.

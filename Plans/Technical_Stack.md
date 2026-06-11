@@ -5,6 +5,11 @@
 
 **Last Updated:** March 9, 2026
 
+> **⚠️ Superseded sections:** Several sections below describe the originally-planned stack
+> (GORM, Asynq + Redis, sqlite-vec) which was never adopted. The actual implemented stack
+> is recorded in [ADR 0019](ADR/0019-actual-stack-vs-planned-stack.md). Sections below are
+> annotated inline with "ACTUAL:" notes where they diverge from what's in `go.mod`/`package.json`.
+
 ---
 
 ## Stack Overview
@@ -21,14 +26,15 @@
 │                                 │ IPC Bridge (Wails)                │
 │  ┌──────────────────────────────▼──────────────────────────────┐    │
 │  │                   GO BACKEND (Gin)                          │    │
-│  │         Standard Go Layout + GORM + Asynq                   │    │
-│  └───┬───────────────┬──────────────────┬───────────────────┬──┘    │
-│      │               │                  │                   │       │
-│      ▼               ▼                  ▼                   ▼       │
-│  ┌───────┐     ┌────────────┐     ┌──────────────┐                  │
-│  │SQLite │     │ sqlite-vec │     │    Redis     │                  │
-│  │(local)│     │ (vectors)  │     │   (Asynq)    │                  │
-│  └───────┘     └────────────┘     └──────────────┘                  │
+│  │     Standard Go Layout + database/sql + in-process queue    │    │
+│  └───┬─────────────────────────────────────────────────────┬──┘    │
+│      │                                                     │       │
+│      ▼                                                     ▼       │
+│  ┌───────────────────────┐                       ┌──────────────┐  │
+│  │ SQLite                │                       │ deep_processor│  │
+│  │ (local + brute-force  │                       │ (in-process   │  │
+│  │  cosine vector search)│                       │  goroutine)   │  │
+│  └───────────────────────┘                       └──────────────┘  │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
                                   │
@@ -65,6 +71,13 @@ github.com/gin-gonic/gin
 ---
 
 ### 1.2 Project Structure — Standard Go Layout
+
+> **ACTUAL:** the implemented layout differs from the structure below — see
+> [CLAUDE.md](../CLAUDE.md) "Architecture" for the current `internal/` package map
+> (`domain`, `service`, `repository/{sqlite,postgres}`, `http`, `eventstore`, `sync`,
+> `ai`, `extractor`, `gbus`, `desktop`). No `internal/worker`, `internal/api`, or `pkg/`
+> directories exist; there is no `cmd/worker` (background processing runs in-process via
+> `deep_processor`).
 
 ```
 self-systems/
@@ -105,6 +118,8 @@ self-systems/
 └── go.sum
 ```
 
+*(structure above is the original Phase-1 plan; superseded — see ADR 0019)*
+
 **Why this structure:**
 - Clean separation of concerns
 - Interface-based design (loosely coupled — swap DB implementations without touching business logic)
@@ -113,21 +128,20 @@ self-systems/
 
 ---
 
-### 1.3 ORM — GORM
+### 1.3 Database Access — `database/sql` + Repository Adapters (ACTUAL — supersedes GORM)
 
-```
-gorm.io/gorm
-gorm.io/driver/sqlite
-```
+> **Planned:** GORM (`gorm.io/gorm`, `gorm.io/driver/sqlite`).
+> **Actual:** plain `database/sql` with hand-written repository adapters, using
+> `modernc.org/sqlite` (pure Go driver, no CGo). No ORM, no auto-migration framework —
+> migrations are versioned SQL files applied at startup. See ADR 0019.
 
 **Usage:**
-- SQLite for all relational data (resources, categories, reminders, todos)
-- Auto-migration support
-- Soft deletes (30-day recovery for deleted resources)
-- Hooks for timestamps (`created_at`, `updated_at`)
+- SQLite for all relational data (resources, categories, reminders, todos, events)
+- Hand-rolled SQL migrations (`internal/repository/sqlite/migrations/`, `internal/repository/postgres/migrations/`)
+- Repository structs implement `internal/domain` interfaces directly over `*sql.DB`
 
 ```go
-// Example — Repository interface (loosely coupled)
+// Repository interface (loosely coupled) — internal/domain
 type ResourceRepository interface {
     Create(ctx context.Context, r *domain.Resource) error
     FindByID(ctx context.Context, id string) (*domain.Resource, error)
@@ -138,44 +152,39 @@ type ResourceRepository interface {
 
 // SQLite implementation — swappable without changing business logic
 type sqliteResourceRepo struct {
-    db *gorm.DB
+    db *sql.DB
 }
 ```
 
 ---
 
-### 1.4 Background Job Processing — Asynq
+### 1.4 Background Job Processing — In-Process Goroutine Queue (ACTUAL — supersedes Asynq/Redis)
 
-```
-github.com/hibiken/asynq
-```
+> **Planned:** Asynq (`github.com/hibiken/asynq`) backed by Redis.
+> **Actual:** `internal/service/deep_processor.go` — an in-process goroutine worker with
+> an in-memory channel/queue. No Redis, no separate worker process. See ADR 0019.
 
-**Depends on:** Redis (runs as local Docker container)
-
-**Job types:**
-| Task | Queue | Priority |
-|------|-------|----------|
-| Skim processing (Tier 1) | `critical` | Immediate |
-| Deep processing (Tier 2) | `default` | FIFO |
-| Embedding generation | `default` | FIFO |
-| Archive scan | `low` | Scheduled (weekly) |
-| Link health check | `low` | Scheduled |
+**Job types (actual):**
+| Task | Mechanism | Trigger |
+|------|-----------|---------|
+| Skim processing | async goroutine on resource create | immediate |
+| Deep processing (extraction, embedding, enrichment, event detection) | `deep_processor` queue worker | enqueued on resource create |
+| GBUS feature aggregation | `internal/gbus/aggregator.go`, bounded daily job | cron-style in-process timer |
 
 ```
 [User saves resource]
         │
         ▼
-[Asynq: enqueue skim task] ──► Redis queue
+[Skim goroutine] ──► writes extracted_data
         │
         ▼
-[Worker picks up task]
+[deep_processor in-memory queue]
         │
-   ┌────┴────┐
-   ▼         ▼
-[Skim]   [Enqueue deep task]
+        ▼
+[Deep pass: extraction, embedding, enrichment, event detection]
 ```
 
-**Worker runs as a separate goroutine** inside the same Go binary (Wails app), no separate process needed in Phase 1.
+**Worker runs as a goroutine** inside the same Go binary (server or Wails desktop app) — no separate process, no external broker.
 
 ---
 
@@ -195,14 +204,26 @@ github.com/hibiken/asynq
 
 ### 1.6 Cross-Platform Support
 
+The product spans **two distinct apps sharing one Go backend**: the full **desktop app** (Wails) and a lighter **mobile companion app** (separate codebase). Reach = 5 operating systems.
+
+**Desktop app (full — Wails):**
+
 | Platform | Status | Notes |
 |----------|--------|-------|
-| **Windows** | ✅ Phase 1 | Primary target |
-| **Linux** | ✅ Phase 1 | Go + Wails fully supported, requires `webkit2gtk` |
-| **macOS** | ⚠️ Possible | Not a target, but Wails supports it |
-| **Android** | 🔄 Phase 3+ | Deferred, requires separate app |
+| **Windows** | ✅ Target | Primary target; requires WebView2 runtime |
+| **Linux** | ✅ Target | Requires `webkit2gtk` |
+| **macOS** | ✅ Target | Wails supports `darwin/amd64` + `darwin/arm64`; add build targets + launch test |
 
-Go cross-compiles natively — same codebase builds for Windows and Linux.
+Go cross-compiles natively (pure-Go modernc SQLite, no CGO) — same codebase builds for Windows, Linux, and macOS.
+
+**Mobile companion app (lighter — separate codebase):**
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Android** | 🔄 Future | Companion instance, not a replica |
+| **iOS** | 🔄 Future | Companion instance, not a replica |
+
+The mobile app is **not** a port of the desktop app. It is a companion *instance* (like Claude desktop vs. Claude mobile): a thin client to the VPS sync server showing a feature subset — chat + a simplified graph (list/tree view, not the WebGL 2D/3D network) + search. It runs no local extraction/AI pipeline; all processing stays server-side. **Decision (locked): one shared codebase serves both Android + iOS** — not two native apps. Framework (React Native / Flutter / Capacitor) TBD when reached; the companion UI is simple enough that a single shared codebase covers both phones. Hard dependency: the VPS sync server (Postgres) must be deployed and hardened first.
 
 ---
 
@@ -338,52 +359,29 @@ modernc.org/sqlite                ← Pure Go driver (recommended, no CGo)
 
 ---
 
-### 3.2 Vector Search — sqlite-vec
+### 3.2 Vector Search — Pure-Go Brute-Force Cosine (ACTUAL — supersedes sqlite-vec)
 
-**Used for:** Semantic search via embedding vectors
+> **Planned:** `github.com/asg017/sqlite-vec-go-bindings` (sqlite-vec, C extension).
+> **Actual:** sqlite-vec was evaluated and rejected — the C extension is incompatible
+> with `modernc.org/sqlite` (pure Go, no CGo). Implemented instead as brute-force cosine
+> similarity in pure Go: `internal/repository/sqlite/vector_repository.go`. Embeddings
+> are stored as serialized vectors in SQLite columns; similarity search scans and ranks
+> in Go. See ADR 0019.
 
-```
-github.com/asg017/sqlite-vec-go-bindings
-```
-
-**Why sqlite-vec over dedicated vector DB:**
-- Embedded directly in SQLite — no extra service/Docker container
-- Zero additional infrastructure for Phase 1
-- Sufficient performance for personal-scale data
-- Vectors stored alongside metadata in same database
-
-**Usage:**
-```go
-// Store embedding alongside resource
-db.Exec(`INSERT INTO vec_resources(resource_id, embedding) VALUES (?, ?)`,
-    resourceID, serializeVector(embedding))
-
-// Semantic search
-rows := db.Query(`
-    SELECT resource_id, distance
-    FROM vec_resources
-    WHERE embedding MATCH ?
-    ORDER BY distance LIMIT 10
-`, queryEmbedding)
-```
+**Why brute-force over sqlite-vec:**
+- No CGo dependency — keeps cross-compilation simple (Windows/Linux/macOS from one toolchain)
+- Sufficient performance for personal-scale data (single-user, low resource counts)
+- Repository interface unchanged — same swap-out path to Qdrant if needed at scale (Section 10)
 
 **Future migration path:** If performance becomes an issue at scale, vectors can be migrated to Qdrant without changing the rest of the stack (repository interface stays the same).
 
 ---
 
-### 3.3 Job Queue Backend — Redis
+### 3.3 Job Queue Backend — None (ACTUAL — supersedes Redis/Asynq)
 
-**Used for:** Asynq job queue backend only
-
-```yaml
-# docker-compose.yml
-services:
-  redis:
-    image: redis:alpine
-    ports: ["6379:6379"]
-```
-
-**Not used for:** Caching, session storage, or anything else in Phase 1
+> **Planned:** Redis as the Asynq job queue backend.
+> **Actual:** No Redis. Background work runs via the in-process `deep_processor`
+> goroutine queue (Section 1.4). See ADR 0019.
 
 ---
 
@@ -415,18 +413,23 @@ github.com/gorilla/websocket
 
 ### 5.1 AI Providers
 
-| Task | Provider | Model |
+> Models are **config-driven** (`config/config.default.yml`, override via `SS_AI_*` env vars),
+> not hardcoded. Current defaults as of `config.default.yml`:
+
+| Task | Provider | Default Model (config-driven) |
 |------|----------|-------|
-| Content classification | OpenAI | `gpt-4o-mini` (fast, cheap) |
-| Deep content analysis | OpenAI / Anthropic | `gpt-4o` / `claude-3-5-sonnet` |
+| Content classification (low cost) | OpenAI | `gpt-4o-mini` |
+| Deep content analysis (high cost) | OpenAI | `gpt-4o` |
+| Deep content analysis | Anthropic | `claude-3-5-sonnet-latest` |
+| Deep content analysis | Gemini | `gemini-1.5-flash` |
 | Embedding generation | OpenAI | `text-embedding-3-small` |
-| Chat assistant | OpenAI / Anthropic | `gpt-4o` / `claude-3-5-sonnet` |
 | Image OCR/classification | OpenAI | `gpt-4o` (vision) |
 
-**Go clients:**
+A heuristic fallback provider exists for offline/no-API-key operation (`internal/ai`).
+
+**Go clients (actual — verify against `go.mod` before adding new providers):**
 ```
-github.com/sashabaranov/go-openai
-github.com/anthropics/anthropic-sdk-go
+# OpenAI/Anthropic/Gemini clients are wired through internal/ai provider implementations
 ```
 
 **Cost control:**
@@ -615,11 +618,14 @@ wails build
 | Feature | Addition Needed | Phase |
 |---------|----------------|-------|
 | Google OAuth login | `golang.org/x/oauth2` | 2+ |
-| Android app | Kotlin + Jetpack Compose + Room | 3+ |
+| macOS desktop target | Wails `darwin/amd64` + `darwin/arm64` build + launch test | desktop |
+| Mobile companion app (Android + iOS) | One cross-platform codebase (React Native / Flutter / Capacitor) → VPS sync client | post-sync |
 | Custom behavioral ML model | Python service (scikit-learn / PyTorch) | 3+ |
 | Server deployment | PostgreSQL + NGINX + VPS | 2+ |
 | Scalable vector search | Qdrant (replaces sqlite-vec) | 4+ |
 
+Note: the mobile companion is a separate, lighter app (chat + simplified graph), not a Kotlin port of the desktop app; it depends on the VPS sync server being live.
+
 ---
 
-*Last Updated: March 9, 2026*
+*Last Updated: 2026-06-10*

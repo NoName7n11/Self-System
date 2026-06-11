@@ -47,11 +47,11 @@ A **personal knowledge management system** that intelligently captures, classifi
 | **Sync Strategy** | Real-Time via WebSockets | REST for CRUD; WebSockets for live sync and processing status |
 | **Classification Mode** | Smart Auto-Confirm | Auto-save for high-confidence; prompt only for new/ambiguous categories |
 | **Project Type** | Full Implementation | Not an MVP; all features built progressively |
-| **Desktop Framework** | Wails (Go + React) | Single binary, Go backend reuse, Windows + Linux support |
+| **Desktop Framework** | Wails (Go + React) | Single binary, Go backend reuse; Windows + Linux + macOS support |
 | **Backend** | Go + Gin + GORM + Asynq | Standard Go Layout; loosely coupled via repository interfaces |
 | **Databases** | SQLite + sqlite-vec + Redis | Relational + Vector + Queue backend |
 | **Authentication** | None (Phase 1) → Google OAuth (Phase 2+) | Local single-user needs no auth; OAuth added with server |
-| **Cross-Platform** | Windows + Linux | Go + Wails compile natively for both; Android deferred to Phase 3+ |
+| **Cross-Platform** | Desktop: Windows + Linux + macOS · Mobile: Android + iOS | Desktop = full Wails app (5-OS reach). Mobile = separate lighter **companion** app (chat + simplified graph), thin client to the VPS sync server — not a desktop port. Locked: one shared mobile codebase for Android + iOS (framework TBD). Mobile deferred until sync server is live + hardened. |
 | **Testing** | Pyramid (Unit 70% + Integration 20% + E2E 10%) | Go testing + Vitest + Playwright |
 | **CI/CD** | GitHub Actions + Docker | Build for Windows+Linux; Docker Compose for local infrastructure |
 | **Git Workflow** | GitHub Flow | Feature branches → main; automated tests required before merge |
@@ -501,17 +501,18 @@ Related:    [Healthcare] ←── long (dotted) ──→ [AI in Healthcare Art
                     └───────────────────┘
 ```
 
-#### Phase 2+ — With Sync Server (Future, when Android is added)
+#### Phase 2+ — With Sync Server (Future, when mobile companion is added)
 ```
 ┌──────────────────┐    WebSocket    ┌──────────────────────┐
 │  Wails Desktop   │ ◄────────────► │   VPS (~$4/month)    │
-│  (Win / Linux)   │                │                      │
+│ (Win/Linux/macOS)│                │                      │
 │  ├── SQLite      │                │  Go Sync Service     │
 │  └── local cache │                │  ├── PostgreSQL      │
-└──────────────────┘                │  ├── Redis           │
-┌──────────────────┐    WebSocket   │  └── sqlite-vec      │
-│  Android App     │ ◄────────────► │      or Qdrant       │
-│  (Phase 3+)      │                └──────────────────────┘
+└──────────────────┘                │  └── vector search   │
+┌──────────────────┐    WebSocket   │      (brute-force /  │
+│ Mobile Companion │ ◄────────────► │       Qdrant later)  │
+│ (Android + iOS,  │                └──────────────────────┘
+│  thin client)    │   Companion = chat + simplified graph; no local pipeline.
 └──────────────────┘
 ```
 

@@ -1,7 +1,16 @@
 # Change 10 Workstream - GBUS Behavioral Model
 
 Date: 2026-06-08
-Status: Complete
+Status: Scaffold (model not trained)
+
+> **Reconciliation note (Change 11, 2026-06-11):** This workstream was previously marked
+> `Complete`. Verified against `models/gbus/model_registry.json`: the only registered
+> model is version `0.0.0`, status `candidate`, `validation_accuracy: 0.0`,
+> `baseline_accuracy: 0.0`, with `artifact_path: models/gbus/baseline.json` — that
+> artifact file does not exist. No training run has produced a real model. WS1 (signal
+> emission) and WS2 (feature store/aggregation) appear genuinely implemented in code.
+> WS3 ("trained, >5% lift"), and the WS4/WS5 claims that depend on a real model being
+> loaded, are corrected below to reflect scaffold-only status.
 Scope: Implement the GBUS (Generalized Behavioral Understanding System) end-to-end: signal capture, feature store aggregation, training pipeline, baseline model, inference integration, and monitoring.
 
 ## Objective
@@ -93,47 +102,51 @@ Build a reproducible training pipeline and train a baseline GBUS model that outp
 Key tasks:
 - [x] `scripts/gbus_train/main.go` — dataset extraction: reads feature tables, assembles labeled training data (positive = user confirmed / corrected; negative = user deleted / ignored).
 - [x] Define evaluation metric: category suggestion accuracy (top-1 and top-3) vs. weighted scoring baseline.
-- [x] Train baseline model: gradient boosting (XGBoost via Go binding or Python subprocess).
-- [x] Evaluate: accuracy, precision, recall on held-out validation set.
-- [x] Store model artifact: serialized model file + metadata (version, training date, validation metrics).
-- [x] Document: minimum accuracy threshold to promote a model to production (default: must beat weighted scoring baseline by ≥ 5%).
+- [ ] Train baseline model: gradient boosting (XGBoost via Go binding or Python subprocess). **Not run** — `models/gbus/model_registry.json` has only a placeholder entry (version 0.0.0, status `candidate`, accuracy 0.0); no training run has been executed against real signal data.
+- [ ] Evaluate: accuracy, precision, recall on held-out validation set. **Not done** — no validation results recorded.
+- [ ] Store model artifact: serialized model file + metadata (version, training date, validation metrics). **Metadata schema exists; the artifact file (`models/gbus/baseline.json`) does not exist on disk.**
+- [x] Document: minimum accuracy threshold to promote a model to production (default: must beat weighted scoring baseline by ≥ 5%). (Recorded in `model_registry.json` `promotion_criteria`.)
 
 Deliverables:
-- [x] `scripts/gbus_train/main.go` — training pipeline.
+- [x] `scripts/gbus_train/main.go` — training pipeline (code exists, not yet run end-to-end against real data).
 - [x] `models/gbus/` — model artifact storage directory.
-- [x] `models/gbus/model_registry.json` — version metadata.
-- [x] Training and evaluation report template.
+- [x] `models/gbus/model_registry.json` — version metadata (placeholder entry only).
+- [ ] Training and evaluation report template. Not found.
 
 Done criteria:
-- [x] Training pipeline is reproducible from the feature tables.
-- [x] Baseline model achieves > 5% lift over weighted scoring on validation set.
-- [x] Model artifact and metadata are versioned and stored.
+- [x] Training pipeline is reproducible from the feature tables (code path exists; not yet exercised against real production data).
+- [ ] Baseline model achieves > 5% lift over weighted scoring on validation set. **Not achieved — no model has been trained.** `validation_accuracy: 0.0`, `baseline_accuracy: 0.0`.
+- [ ] Model artifact and metadata are versioned and stored. **Metadata is versioned; artifact file is missing.**
 
 ## Workstream 4 — Inference Integration
 
 Objective:
 Serve GBUS scores at runtime and integrate them into classification suggestions, search ranking, and reminder priority.
 
+> **Reconciliation note:** code paths below exist and compile, but are **inactive in
+> practice** — `gbus.inference_enabled` is off by default and no real model artifact
+> exists, so the fallback-to-weighted-scoring path is what currently runs in production.
+
 Key tasks:
-- [x] `internal/gbus/inference.go` — loads model artifact, computes category scores for a resource given its features.
-- [x] Integrate into classification: when AI classification returns < 0.85 confidence, consult GBUS scores to bias category suggestion.
-- [x] Integrate into search ranking: `SemanticSearch` applies GBUS interest boost (weight 0.5) to results from categories with high user interest scores.
-- [x] Integrate into reminder priority: reminders for categories with high GBUS interest score surface first.
-- [x] Safe fallback: if model file missing or load fails → fall back to weighted scoring silently.
-- [x] Feature flag: `gbus.inference_enabled` — off by default until baseline model passes promotion threshold.
+- [x] `internal/gbus/inference.go` — loads model artifact, computes category scores for a resource given its features. (Load attempt currently fails — `models/gbus/baseline.json` does not exist — so the safe fallback below is what actually executes.)
+- [x] Integrate into classification: when AI classification returns < 0.85 confidence, consult GBUS scores to bias category suggestion. (Code path exists; inactive — flag off, no model.)
+- [x] Integrate into search ranking: `SemanticSearch` applies GBUS interest boost (weight 0.5) to results from categories with high user interest scores. (Code path exists; inactive — flag off, no model.)
+- [x] Integrate into reminder priority: reminders for categories with high GBUS interest score surface first. (Code path exists; inactive — flag off, no model.)
+- [x] Safe fallback: if model file missing or load fails → fall back to weighted scoring silently. (This is the active path today, verified by missing artifact + flag default off.)
+- [x] Feature flag: `gbus.inference_enabled` — off by default until baseline model passes promotion threshold. (Confirmed off by default; threshold cannot be met without a trained model — see WS3.)
 
 Deliverables:
-- [x] `internal/gbus/inference.go` — inference engine with model loading and scoring.
-- [x] Updated `internal/service/classifier.go` with GBUS bias integration.
-- [x] Updated `internal/service/resource_service.go` (search ranking) with GBUS boost.
-- [x] Updated reminder priority sorting with GBUS interest score.
+- [x] `internal/gbus/inference.go` — inference engine with model loading and scoring (code complete, untrained model).
+- [x] Updated `internal/service/classifier.go` with GBUS bias integration (code complete, inactive).
+- [x] Updated `internal/service/resource_service.go` (search ranking) with GBUS boost (code complete, inactive).
+- [x] Updated reminder priority sorting with GBUS interest score (code complete, inactive).
 - [x] Tests for fallback behavior when model is unavailable.
 
 Done criteria:
-- [x] Classification suggestions are influenced by GBUS scores when model is loaded.
-- [x] Search results are re-ranked by GBUS interest scores.
-- [x] Safe fallback to weighted scoring works when GBUS is unavailable.
-- [x] Feature flag controls activation.
+- [ ] Classification suggestions are influenced by GBUS scores when model is loaded. **Not currently true in practice** — no model is loaded; fallback to weighted scoring is what runs.
+- [ ] Search results are re-ranked by GBUS interest scores. **Not currently true in practice** — same reason.
+- [x] Safe fallback to weighted scoring works when GBUS is unavailable. (This is the live behavior today.)
+- [x] Feature flag controls activation. (Verified off by default in `config/config.default.yml`.)
 
 ## Workstream 5 — Monitoring and Governance
 
@@ -141,8 +154,8 @@ Objective:
 Make GBUS reliable, observable, and rollback-safe.
 
 Key tasks:
-- [x] Model registry: `models/gbus/model_registry.json` tracks version, training date, validation accuracy, promotion status (candidate / production / retired).
-- [x] Drift detection: daily job compares current model's top-1 accuracy on recent signals against the baseline — alert if drift > 10%.
+- [x] Model registry: `models/gbus/model_registry.json` tracks version, training date, validation accuracy, promotion status (candidate / production / retired). (Tracks the placeholder version 0.0.0 only.)
+- [x] Drift detection: daily job compares current model's top-1 accuracy on recent signals against the baseline — alert if drift > 10%. (Code exists; meaningless until a real model is trained.)
 - [x] Model rollback procedure: documented runbook for reverting to previous model version.
 - [x] GBUS metrics endpoint: `GET /api/v1/gbus/health` (auth-gated) — returns active model version, inference latency p50/p99, signal ingestion rate, feature freshness.
 - [x] Retraining cadence: document monthly retraining schedule (manual trigger via `go run ./scripts/gbus_train`).
@@ -156,7 +169,7 @@ Deliverables:
 
 Done criteria:
 - [x] Model version and promotion status are tracked in the registry.
-- [x] Drift detection alerts when model accuracy degrades beyond threshold.
+- [x] Drift detection alerts when model accuracy degrades beyond threshold. (Mechanism exists; not yet meaningfully exercised — no production model.)
 - [x] Rollback to prior model version is documented and executable.
 - [x] GBUS health endpoint returns current model state.
 
@@ -164,16 +177,24 @@ Done criteria:
 
 - [x] Milestone 10A: Signal taxonomy defined and all emission points instrumented (WS1 complete).
 - [x] Milestone 10B: Feature store aggregation jobs running and tables populated (WS2 complete).
-- [x] Milestone 10C: Baseline model trained and beating weighted scoring (WS3 complete).
-- [x] Milestone 10D: Inference integrated into classification, search, and reminders (WS4 complete).
-- [x] Milestone 10E: Model registry, drift monitoring, and rollback runbook in place (WS5 complete).
+- [ ] Milestone 10C: Baseline model trained and beating weighted scoring (WS3 NOT complete — no model trained).
+- [~] Milestone 10D: Inference integration code complete (WS4) but inactive — flag off, no model loaded; fallback path is what runs.
+- [x] Milestone 10E: Model registry, drift monitoring, and rollback runbook in place (WS5 complete — runbook/registry/monitor code exist; not yet exercised against a real model).
 
 ## Change 10 Definition of Done
 
 - [x] All core GBUS signal types are emitted from services and stored as events.
 - [x] Daily aggregation jobs populate feature tables from raw signals.
-- [x] Baseline model is trained, evaluated, and achieves > 5% lift over weighted scoring.
-- [x] GBUS scores influence classification suggestions, search ranking, and reminder priority.
+- [ ] Baseline model is trained, evaluated, and achieves > 5% lift over weighted scoring. **Not done.**
+- [ ] GBUS scores influence classification suggestions, search ranking, and reminder priority. **Not currently true** — code paths exist but inactive (flag off, no model); weighted-scoring fallback is what runs.
 - [x] Safe fallback to weighted scoring works when GBUS is unavailable.
-- [x] Model versioning, drift monitoring, and rollback runbook are operational.
+- [x] Model versioning, drift monitoring, and rollback runbook are operational (code/docs exist).
 - [x] `go test ./...` passes with no regressions.
+
+## Remaining Work to Reach "Complete"
+
+- [ ] Run `go run ./scripts/gbus_train` against real signal/feature data once enough
+      signals have accumulated (`promotion_criteria.min_training_samples: 50`).
+- [ ] Produce `models/gbus/baseline.json`, evaluate against weighted-scoring baseline,
+      and confirm ≥5% lift before promoting from `candidate` to `production`.
+- [ ] Flip `gbus.inference_enabled` to `true` only after the above promotion.
