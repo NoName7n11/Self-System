@@ -1,7 +1,7 @@
 # Change 13 Workstream - Scale, Performance & Maintainability
 
 Date: 2026-06-10
-Status: In Progress (WS1 of 4 mostly complete — pgx migration done, Postgres integration run pending Docker access)
+Status: In Progress (WS1 mostly complete — pgx migration done, Postgres integration run pending Docker access; WS2 complete)
 Scope: Address scale ceilings and maintainability debt before they bite: Postgres driver migration, vector-search performance, the HTTP god-file split, graph rendering limits, and an explicit performance budget. Lower urgency than Changes 11/12 — no live Postgres deployment yet — but should land before the Postgres/sync path or large datasets solidify.
 
 ## Objective
@@ -40,19 +40,19 @@ Objective:
 Keep semantic search fast as the corpus grows; plan the path past brute force.
 
 Key tasks:
-- [ ] Load vectors into memory once (warm cache, invalidate on mutation) instead of deserializing from DB per query.
-- [ ] Confirm/keep model-version filtering so queries never compare across embedding models.
-- [ ] Document the HNSW path (pure-Go, e.g. coder/hnsw) for SQLite and pgvector for the Postgres path; define the crossover trigger (e.g. > 50k vectors or measured p99 > target).
+- [x] Load vectors into memory once (warm cache, invalidate on mutation) instead of deserializing from DB per query. `internal/repository/sqlite/vector_repository.go`: `EmbeddingRepository` gained a `cache map[string]map[string][]float32` (model_version -> resource_id -> vector) guarded by `sync.RWMutex`. `loadCache` populates it on first `SearchSimilar` for a model version; `Upsert`/`Delete` call `cachePut`/`cacheDelete` to keep it in sync (including moving a resource out of its old model-version map when re-embedded under a new one).
+- [x] Confirm/keep model-version filtering so queries never compare across embedding models. Unchanged behaviorally — `SearchSimilar` still only reads/compares the requested `model_version`'s cache map; covered by pre-existing `TestEmbeddingRepository_SearchSimilar_ModelVersionIsolation` plus the new cache test's model-reassignment case.
+- [x] Document the HNSW path (pure-Go, e.g. coder/hnsw) for SQLite and pgvector for the Postgres path; define the crossover trigger (e.g. > 50k vectors or measured p99 > target). New `Plans/Performance_Budget.md`.
 
 Deliverables:
-- [ ] In-memory vector cache in `internal/repository/sqlite/vector_repository.go` (or a service-level cache) + invalidation hook.
-- [ ] Benchmark: brute-force cosine over a synthetic 50k-vector set with recorded p50/p99.
-- [ ] HNSW/pgvector migration note appended to the perf budget doc (WS4).
+- [x] In-memory vector cache in `internal/repository/sqlite/vector_repository.go` (or a service-level cache) + invalidation hook — `cache`/`cachePut`/`cacheDelete`/`loadCache`, wired into `Upsert`/`Delete`/`SearchSimilar`.
+- [x] Benchmark: brute-force cosine over a synthetic 50k-vector set with recorded p50/p99 — `internal/repository/sqlite/vector_repository_bench_test.go` `BenchmarkEmbeddingRepository_SearchSimilar_50kVectors` (50k x 256-dim vectors, bulk-seeded via raw SQL in one transaction). Recorded result (this dev machine): p50 ~37ms, p99 ~48ms — see `Plans/Performance_Budget.md`.
+- [x] HNSW/pgvector migration note appended to the perf budget doc (WS4) — `Plans/Performance_Budget.md` created this session with the vector-search section (crossover trigger + scale-out path); remaining (graph/resource/device) budgets left as TBD for WS4.
 
 Done criteria:
-- [ ] Search no longer re-reads all vectors from disk per query.
-- [ ] A 50k-vector benchmark exists with recorded latency.
-- [ ] The scale-out path (HNSW / pgvector) and its trigger are documented.
+- [x] Search no longer re-reads all vectors from disk per query — `SearchSimilar` reads from `r.cache` after `loadCache`; `TestEmbeddingRepository_SearchSimilar_CacheReflectsUpsertAndDelete` verifies cache stays correct across `Upsert`/`Delete`/model-reassignment without a DB re-read.
+- [x] A 50k-vector benchmark exists with recorded latency — `BenchmarkEmbeddingRepository_SearchSimilar_50kVectors`, results in `Plans/Performance_Budget.md`.
+- [x] The scale-out path (HNSW / pgvector) and its trigger are documented — `Plans/Performance_Budget.md` ("Crossover trigger" / "Scale-out path").
 
 ## Workstream 3 — HTTP Handler Split
 
@@ -94,14 +94,14 @@ Done criteria:
 ## Planned Milestones
 
 - [~] Milestone 13A: Postgres path on pgx, code green; integration run pending Docker access (WS1).
-- [ ] Milestone 13B: Vector search cached + benchmarked + scale-out documented (WS2).
+- [x] Milestone 13B: Vector search cached + benchmarked + scale-out documented (WS2).
 - [ ] Milestone 13C: HTTP handlers split per domain (WS3).
 - [ ] Milestone 13D: Graph LOD + perf budget doc (WS4).
 
 ## Change 13 Definition of Done
 
 - [ ] Postgres path runs on pgx; lib/pq removed.
-- [ ] Vector search is memory-cached with a recorded 50k benchmark and a documented HNSW/pgvector path.
+- [x] Vector search is memory-cached with a recorded 50k benchmark and a documented HNSW/pgvector path.
 - [ ] No HTTP handler file exceeds ~300 lines; routes/responses unchanged.
 - [ ] The graph renders large datasets without freezing; a perf-budget doc defines the ceilings.
 - [ ] `go test ./...` passes with no regressions.
