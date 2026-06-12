@@ -94,10 +94,15 @@ Known limitation:
 - [x] `go build ./...` and `go test ./...` pass with no regressions.
 - [x] Phase 3 spec, Changes.md, and Change_10_Workstream.md updated.
 
+## Explicit Caveats (review-confirmed scope limits)
+
+- **Feature tables are NOT yet multi-user isolation-safe.** `user_id` plumbing exists end-to-end (signal payload → emitter → aggregator → repository columns), but the SQLite primary keys remain `(category_id, signal_type)` and `(resource_id, signal_type)`, and upserts use `ON CONFLICT(category_id, signal_type)` / `ON CONFLICT(resource_id, signal_type)` then overwrite `user_id = excluded.user_id`. Consequence: if two different users ever write the same `category+signal` (or `resource+signal`), the second write **merges into the first user's row** rather than creating an isolated row — last-writer-wins on `user_id`. This is safe today only because `user_id` is constant `'local'`. True isolation requires the composite-key rebuild below.
+- **`confidence`/`evidence_count` are training-time inputs only, not runtime inference inputs.** `computeCategoryWeights` (WS6) bakes the confidence discount into the trained `CategoryWeights`; `internal/gbus/inference.go` reads those weights at request time and never reads `confidence` itself. By design — there is no per-request confidence path.
+
 ## Deferred (not in scope)
 
 - Multi-axis signal decomposition (interest/intent/utility/fatigue).
 - Hourly aggregation cadence (spec section 5 currently daily-only).
 - Session-pattern modeling beyond the simple per-process `session_id`.
 - Embeddings-based behavioral features.
-- A real `(user_id, ...)` composite-key migration — current `user_id` column + index is sufficient while `user_id` is constant `'local'`.
+- A real `(user_id, ...)` composite-key migration (PK rebuild) — required before multi-user rollout for actual row isolation; current `user_id` column + index is sufficient only while `user_id` is constant `'local'` (see caveat above).
