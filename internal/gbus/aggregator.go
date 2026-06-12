@@ -59,13 +59,18 @@ func (a *Aggregator) Run(ctx context.Context) (int, error) {
 			continue
 		}
 
+		userID := payload.UserID
+		if userID == "" {
+			userID = DefaultUserID
+		}
+
 		if payload.CategoryID != "" {
-			if uErr := a.featureStore.UpsertCategoryFeature(ctx, payload.CategoryID, payload.SignalType, payload.Weight); uErr != nil {
+			if uErr := a.featureStore.UpsertCategoryFeature(ctx, userID, payload.CategoryID, payload.SignalType, payload.Weight); uErr != nil {
 				slog.Warn("gbus aggregator: upsert category feature", "error", uErr)
 			}
 		}
 		if payload.ResourceID != "" {
-			if uErr := a.featureStore.UpsertResourceFeature(ctx, payload.ResourceID, payload.SignalType, payload.Weight); uErr != nil {
+			if uErr := a.featureStore.UpsertResourceFeature(ctx, userID, payload.ResourceID, payload.SignalType, payload.Weight); uErr != nil {
 				slog.Warn("gbus aggregator: upsert resource feature", "error", uErr)
 			}
 		}

@@ -17,27 +17,38 @@ func NewGBUSRepository(db *sql.DB) *GBUSRepository {
 	return &GBUSRepository{db: db}
 }
 
-// UpsertCategoryFeature increments or inserts a per-category signal weight row.
-func (r *GBUSRepository) UpsertCategoryFeature(ctx context.Context, categoryID, signalType string, weight float64) error {
+// UpsertCategoryFeature increments or inserts a per-(user, category) signal
+// weight row. evidence_count tracks explicit-intent signals (weight >=
+// domain.ExplicitIntentWeightThreshold); confidence ramps linearly with
+// evidence_count up to domain.ConfidenceEvidenceThreshold.
+func (r *GBUSRepository) UpsertCategoryFeature(ctx context.Context, userID, categoryID, signalType string, weight float64) error {
 	now := time.Now().UTC().Format(time.RFC3339)
+	evidenceDelta := 0
+	if weight >= domain.ExplicitIntentWeightThreshold {
+		evidenceDelta = 1
+	}
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO gbus_category_features (category_id, signal_type, total_weight, signal_count, last_signal_at)
-		VALUES (?, ?, ?, 1, ?)
+		INSERT INTO gbus_category_features (user_id, category_id, signal_type, total_weight, signal_count, evidence_count, confidence, last_signal_at)
+		VALUES (?, ?, ?, ?, 1, ?, MIN(1.0, ?/?), ?)
 		ON CONFLICT(category_id, signal_type) DO UPDATE SET
-			total_weight  = total_weight + excluded.total_weight,
-			signal_count  = signal_count + 1,
+			user_id        = excluded.user_id,
+			total_weight   = total_weight + excluded.total_weight,
+			signal_count   = signal_count + 1,
+			evidence_count = evidence_count + ?,
+			confidence     = MIN(1.0, (evidence_count + ?) * 1.0 / ?),
 			last_signal_at = excluded.last_signal_at
-	`, categoryID, signalType, weight, now)
+	`, userID, categoryID, signalType, weight, evidenceDelta, float64(evidenceDelta), float64(domain.ConfidenceEvidenceThreshold), now,
+		evidenceDelta, evidenceDelta, domain.ConfidenceEvidenceThreshold)
 	return err
 }
 
-// GetCategoryFeatures returns all feature rows for a category.
-func (r *GBUSRepository) GetCategoryFeatures(ctx context.Context, categoryID string) ([]domain.GBUSCategoryFeature, error) {
+// GetCategoryFeatures returns all feature rows for a (user, category).
+func (r *GBUSRepository) GetCategoryFeatures(ctx context.Context, userID, categoryID string) ([]domain.GBUSCategoryFeature, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT category_id, signal_type, total_weight, signal_count, last_signal_at
+		SELECT user_id, category_id, signal_type, total_weight, signal_count, evidence_count, confidence, last_signal_at
 		FROM gbus_category_features
-		WHERE category_id = ?
-	`, categoryID)
+		WHERE user_id = ? AND category_id = ?
+	`, userID, categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +59,7 @@ func (r *GBUSRepository) GetCategoryFeatures(ctx context.Context, categoryID str
 // ListAllCategoryFeatures returns every category feature row — used by the training pipeline.
 func (r *GBUSRepository) ListAllCategoryFeatures(ctx context.Context) ([]domain.GBUSCategoryFeature, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT category_id, signal_type, total_weight, signal_count, last_signal_at
+		SELECT user_id, category_id, signal_type, total_weight, signal_count, evidence_count, confidence, last_signal_at
 		FROM gbus_category_features
 		ORDER BY category_id, signal_type
 	`)
@@ -64,7 +75,7 @@ func scanCategoryFeatures(rows *sql.Rows) ([]domain.GBUSCategoryFeature, error) 
 	for rows.Next() {
 		var f domain.GBUSCategoryFeature
 		var lastAt string
-		if err := rows.Scan(&f.CategoryID, &f.SignalType, &f.TotalWeight, &f.SignalCount, &lastAt); err != nil {
+		if err := rows.Scan(&f.UserID, &f.CategoryID, &f.SignalType, &f.TotalWeight, &f.SignalCount, &f.EvidenceCount, &f.Confidence, &lastAt); err != nil {
 			return nil, err
 		}
 		if t, err := time.Parse(time.RFC3339, lastAt); err == nil {
@@ -75,27 +86,28 @@ func scanCategoryFeatures(rows *sql.Rows) ([]domain.GBUSCategoryFeature, error) 
 	return out, rows.Err()
 }
 
-// UpsertResourceFeature increments or inserts a per-resource signal weight row.
-func (r *GBUSRepository) UpsertResourceFeature(ctx context.Context, resourceID, signalType string, weight float64) error {
+// UpsertResourceFeature increments or inserts a per-(user, resource) signal weight row.
+func (r *GBUSRepository) UpsertResourceFeature(ctx context.Context, userID, resourceID, signalType string, weight float64) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO gbus_resource_features (resource_id, signal_type, total_weight, signal_count, last_signal_at)
-		VALUES (?, ?, ?, 1, ?)
+		INSERT INTO gbus_resource_features (user_id, resource_id, signal_type, total_weight, signal_count, last_signal_at)
+		VALUES (?, ?, ?, ?, 1, ?)
 		ON CONFLICT(resource_id, signal_type) DO UPDATE SET
+			user_id        = excluded.user_id,
 			total_weight   = total_weight + excluded.total_weight,
 			signal_count   = signal_count + 1,
 			last_signal_at = excluded.last_signal_at
-	`, resourceID, signalType, weight, now)
+	`, userID, resourceID, signalType, weight, now)
 	return err
 }
 
-// GetResourceFeatures returns all feature rows for a resource.
-func (r *GBUSRepository) GetResourceFeatures(ctx context.Context, resourceID string) ([]domain.GBUSResourceFeature, error) {
+// GetResourceFeatures returns all feature rows for a (user, resource).
+func (r *GBUSRepository) GetResourceFeatures(ctx context.Context, userID, resourceID string) ([]domain.GBUSResourceFeature, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT resource_id, signal_type, total_weight, signal_count, last_signal_at
+		SELECT user_id, resource_id, signal_type, total_weight, signal_count, last_signal_at
 		FROM gbus_resource_features
-		WHERE resource_id = ?
-	`, resourceID)
+		WHERE user_id = ? AND resource_id = ?
+	`, userID, resourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +116,7 @@ func (r *GBUSRepository) GetResourceFeatures(ctx context.Context, resourceID str
 	for rows.Next() {
 		var f domain.GBUSResourceFeature
 		var lastAt string
-		if err := rows.Scan(&f.ResourceID, &f.SignalType, &f.TotalWeight, &f.SignalCount, &lastAt); err != nil {
+		if err := rows.Scan(&f.UserID, &f.ResourceID, &f.SignalType, &f.TotalWeight, &f.SignalCount, &lastAt); err != nil {
 			return nil, err
 		}
 		if t, err := time.Parse(time.RFC3339, lastAt); err == nil {

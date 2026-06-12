@@ -24,21 +24,29 @@ func newInMemoryFeatureStore() *inMemoryFeatureStore {
 	}
 }
 
-func (s *inMemoryFeatureStore) UpsertCategoryFeature(_ context.Context, catID, sigType string, weight float64) error {
+func (s *inMemoryFeatureStore) UpsertCategoryFeature(_ context.Context, userID, catID, sigType string, weight float64) error {
 	key := catID + "|" + sigType
 	f := s.catFeatures[key]
+	f.UserID = userID
 	f.CategoryID = catID
 	f.SignalType = sigType
 	f.TotalWeight += weight
 	f.SignalCount++
+	if weight >= ExplicitIntentWeightThreshold {
+		f.EvidenceCount++
+	}
+	f.Confidence = float64(f.EvidenceCount) / float64(ConfidenceEvidenceThreshold)
+	if f.Confidence > 1.0 {
+		f.Confidence = 1.0
+	}
 	f.LastSignalAt = time.Now().UTC()
 	s.catFeatures[key] = f
 	return nil
 }
-func (s *inMemoryFeatureStore) GetCategoryFeatures(_ context.Context, catID string) ([]CategoryFeature, error) {
+func (s *inMemoryFeatureStore) GetCategoryFeatures(_ context.Context, userID, catID string) ([]CategoryFeature, error) {
 	var out []CategoryFeature
 	for _, f := range s.catFeatures {
-		if f.CategoryID == catID {
+		if f.CategoryID == catID && f.UserID == userID {
 			out = append(out, f)
 		}
 	}
@@ -51,9 +59,10 @@ func (s *inMemoryFeatureStore) ListAllCategoryFeatures(_ context.Context) ([]Cat
 	}
 	return out, nil
 }
-func (s *inMemoryFeatureStore) UpsertResourceFeature(_ context.Context, resID, sigType string, weight float64) error {
+func (s *inMemoryFeatureStore) UpsertResourceFeature(_ context.Context, userID, resID, sigType string, weight float64) error {
 	key := resID + "|" + sigType
 	f := s.resFeatures[key]
+	f.UserID = userID
 	f.ResourceID = resID
 	f.SignalType = sigType
 	f.TotalWeight += weight
@@ -62,10 +71,10 @@ func (s *inMemoryFeatureStore) UpsertResourceFeature(_ context.Context, resID, s
 	s.resFeatures[key] = f
 	return nil
 }
-func (s *inMemoryFeatureStore) GetResourceFeatures(_ context.Context, resID string) ([]ResourceFeature, error) {
+func (s *inMemoryFeatureStore) GetResourceFeatures(_ context.Context, userID, resID string) ([]ResourceFeature, error) {
 	var out []ResourceFeature
 	for _, f := range s.resFeatures {
-		if f.ResourceID == resID {
+		if f.ResourceID == resID && f.UserID == userID {
 			out = append(out, f)
 		}
 	}
@@ -114,7 +123,7 @@ func TestAggregator_ProcessesCategorySignals(t *testing.T) {
 		t.Errorf("processed = %d, want 3", n)
 	}
 
-	cat1Features, _ := features.GetCategoryFeatures(context.Background(), "cat-1")
+	cat1Features, _ := features.GetCategoryFeatures(context.Background(), DefaultUserID, "cat-1")
 	if len(cat1Features) != 1 {
 		t.Fatalf("cat-1 feature rows = %d, want 1", len(cat1Features))
 	}
@@ -138,7 +147,7 @@ func TestAggregator_ProcessesResourceSignals(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	resFeatures, _ := features.GetResourceFeatures(context.Background(), "res-1")
+	resFeatures, _ := features.GetResourceFeatures(context.Background(), DefaultUserID, "res-1")
 	if len(resFeatures) != 2 {
 		t.Errorf("res-1 feature rows = %d, want 2", len(resFeatures))
 	}

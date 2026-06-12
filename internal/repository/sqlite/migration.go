@@ -158,15 +158,148 @@ var addColumnMigrations = []string{
 	`ALTER TABLE resources ADD COLUMN archived_at TEXT`,
 }
 
-func migrate(db *sql.DB) error {
-	if _, err := db.Exec(schema); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-	for _, stmt := range addColumnMigrations {
-		if _, err := db.Exec(stmt); err != nil {
-			if !strings.Contains(err.Error(), "duplicate column") {
-				return fmt.Errorf("add column migration: %w", err)
+const schemaMigrationsTable = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+	version    INTEGER PRIMARY KEY,
+	name       TEXT NOT NULL,
+	applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`
+
+// migration is one ordered, versioned schema change. Versions must be
+// sequential and never reordered or reused once released.
+type migration struct {
+	version int
+	name    string
+	apply   func(*sql.DB) error
+}
+
+var migrations = []migration{
+	{
+		version: 1,
+		name:    "base_schema",
+		apply: func(db *sql.DB) error {
+			if _, err := db.Exec(schema); err != nil {
+				return fmt.Errorf("run base schema: %w", err)
 			}
+			return nil
+		},
+	},
+	{
+		version: 2,
+		name:    "resource_columns",
+		apply: func(db *sql.DB) error {
+			for _, stmt := range addColumnMigrations {
+				if _, err := db.Exec(stmt); err != nil {
+					if !strings.Contains(err.Error(), "duplicate column") {
+						return fmt.Errorf("add column migration: %w", err)
+					}
+				}
+			}
+			return nil
+		},
+	},
+	{
+		version: 3,
+		name:    "deep_queue",
+		apply: func(db *sql.DB) error {
+			if _, err := db.Exec(deepQueueSchema); err != nil {
+				return fmt.Errorf("run deep_queue schema: %w", err)
+			}
+			return nil
+		},
+	},
+	{
+		version: 4,
+		name:    "gbus_user_scoped_features",
+		apply: func(db *sql.DB) error {
+			for _, stmt := range gbusUserScopeMigrations {
+				if _, err := db.Exec(stmt); err != nil {
+					if !strings.Contains(err.Error(), "duplicate column") {
+						return fmt.Errorf("gbus user-scope migration: %w", err)
+					}
+				}
+			}
+			return nil
+		},
+	},
+}
+
+// gbusUserScopeMigrations adds user_id to GBUS feature tables (future-proofing
+// for multi-user/sync, Change 16) and confidence/evidence_count to category
+// features so inference/training can treat low-evidence rows conservatively.
+// user_id defaults to gbus.DefaultUserID ("local") for all existing rows.
+var gbusUserScopeMigrations = []string{
+	`ALTER TABLE gbus_category_features ADD COLUMN user_id TEXT NOT NULL DEFAULT 'local'`,
+	`ALTER TABLE gbus_category_features ADD COLUMN evidence_count INTEGER NOT NULL DEFAULT 0`,
+	`ALTER TABLE gbus_category_features ADD COLUMN confidence REAL NOT NULL DEFAULT 0`,
+	`ALTER TABLE gbus_resource_features ADD COLUMN user_id TEXT NOT NULL DEFAULT 'local'`,
+	`CREATE INDEX IF NOT EXISTS idx_gbus_cat_features_user ON gbus_category_features(user_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_gbus_res_features_user ON gbus_resource_features(user_id)`,
+}
+
+// deepQueueSchema is the durable, DB-backed deep-processing queue (Change 12 WS2).
+// It replaces the in-memory channel as the source of truth: enqueue writes a
+// row here, workers claim/complete/fail rows, and a crash leaves rows in
+// 'pending' or 'in_progress' that are requeued on the next startup.
+const deepQueueSchema = `
+CREATE TABLE IF NOT EXISTS deep_queue (
+	id              INTEGER PRIMARY KEY AUTOINCREMENT,
+	resource_id     TEXT NOT NULL,
+	status          TEXT NOT NULL CHECK(status IN ('pending','in_progress','done','failed_retryable')),
+	attempts        INTEGER NOT NULL DEFAULT 0,
+	max_attempts    INTEGER NOT NULL DEFAULT 5,
+	last_error      TEXT NOT NULL DEFAULT '',
+	next_attempt_at TEXT NOT NULL,
+	created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+	updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_deep_queue_claim ON deep_queue(status, next_attempt_at);
+
+-- At most one active (pending or in-progress) row per resource.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_deep_queue_active_resource
+	ON deep_queue(resource_id)
+	WHERE status IN ('pending','in_progress');
+`
+
+// migrate brings db up to the latest schema version, recording each applied
+// migration in schema_migrations. If the database is already at version > 0
+// and has pending migrations, a VACUUM INTO backup is taken first so the
+// pre-migration state can be restored if the upgrade goes wrong.
+func migrate(db *sql.DB, dbPath string) error {
+	if _, err := db.Exec(schemaMigrationsTable); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
+	var current sql.NullInt64
+	if err := db.QueryRow("SELECT MAX(version) FROM schema_migrations").Scan(&current); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	currentVersion := int(current.Int64)
+
+	var pending []migration
+	for _, m := range migrations {
+		if m.version > currentVersion {
+			pending = append(pending, m)
+		}
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+
+	if currentVersion > 0 && dbPath != "" {
+		if _, err := Backup(db, dbPath); err != nil {
+			return fmt.Errorf("pre-migration backup: %w", err)
+		}
+	}
+
+	for _, m := range pending {
+		if err := m.apply(db); err != nil {
+			return fmt.Errorf("migration %d (%s): %w", m.version, m.name, err)
+		}
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (?, ?)", m.version, m.name); err != nil {
+			return fmt.Errorf("record migration %d (%s): %w", m.version, m.name, err)
 		}
 	}
 	return nil

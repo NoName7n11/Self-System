@@ -24,12 +24,16 @@ const (
 type SignalEmitter struct {
 	eventStore eventstore.Store
 	enabled    bool
+	// sessionID identifies this process run. Per Phase_3_GBUS_Signals_Feature_Store.md
+	// a session is "app start or a 30-minute inactivity gap" — approximated here as
+	// one session per emitter (process) lifetime.
+	sessionID string
 }
 
 // NewSignalEmitter creates a SignalEmitter. When enabled=false or store=nil,
 // Emit is a no-op; callers need not check the flag themselves.
 func NewSignalEmitter(store eventstore.Store, enabled bool) *SignalEmitter {
-	return &SignalEmitter{eventStore: store, enabled: enabled}
+	return &SignalEmitter{eventStore: store, enabled: enabled, sessionID: uuid.NewString()}
 }
 
 // Emit writes a GBUS signal event asynchronously. Returns immediately.
@@ -44,6 +48,12 @@ func (e *SignalEmitter) Emit(ctx context.Context, payload GBUSSignalPayload) {
 		if w, ok := SignalWeights[payload.SignalType]; ok {
 			payload.Weight = w
 		}
+	}
+	if payload.UserID == "" {
+		payload.UserID = DefaultUserID
+	}
+	if payload.SessionID == "" {
+		payload.SessionID = e.sessionID
 	}
 	go e.emit(payload)
 }

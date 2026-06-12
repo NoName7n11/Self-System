@@ -42,6 +42,13 @@ type ResourceExtractedData struct {
 	Deadline  string   `json:"deadline,omitempty"`
 	Location  string   `json:"location,omitempty"`
 
+	// Enrichment provenance (Change 12 WS5): which provider/model/prompt
+	// version produced KeyPoints/Entities/Summary, enabling selective
+	// re-enrichment when prompts or models improve.
+	EnrichmentProvider      string `json:"enrichment_provider,omitempty"`
+	EnrichmentModel         string `json:"enrichment_model,omitempty"`
+	EnrichmentPromptVersion string `json:"enrichment_prompt_version,omitempty"`
+
 	// Image tier (Change 6 WS3)
 	ImageType       string `json:"image_type,omitempty"`
 	ImageFormat     string `json:"image_format,omitempty"`
@@ -146,17 +153,34 @@ type ChatCommand struct {
 	Message string
 }
 
-// GBUSCategoryFeature holds aggregated interaction weights for a category.
+// ExplicitIntentWeightThreshold is the minimum signal weight considered
+// "explicit intent" (vs. passive/system-derived) for evidence_count purposes.
+// Defined in domain (not gbus) so the sqlite repository can reference it
+// without creating an import cycle (sqlite -> gbus -> eventstore -> sqlite).
+const ExplicitIntentWeightThreshold = 0.5
+
+// ConfidenceEvidenceThreshold is the evidence_count at which a category
+// feature row reaches confidence = 1.0 (linear ramp below this).
+const ConfidenceEvidenceThreshold = 10
+
+// GBUSCategoryFeature holds aggregated interaction weights for a category,
+// scoped to a user. Confidence and EvidenceCount let consumers (inference,
+// training) treat low-evidence rows conservatively rather than as strong signal.
 type GBUSCategoryFeature struct {
-	CategoryID   string
-	SignalType   string
-	TotalWeight  float64
-	SignalCount  int
-	LastSignalAt time.Time
+	UserID        string
+	CategoryID    string
+	SignalType    string
+	TotalWeight   float64
+	SignalCount   int
+	EvidenceCount int     // count of explicit-intent signals (weight >= ExplicitIntentWeightThreshold)
+	Confidence    float64 // [0,1], ramps with EvidenceCount up to ConfidenceEvidenceThreshold
+	LastSignalAt  time.Time
 }
 
-// GBUSResourceFeature holds aggregated interaction weights for a single resource.
+// GBUSResourceFeature holds aggregated interaction weights for a single
+// resource, scoped to a user.
 type GBUSResourceFeature struct {
+	UserID       string
 	ResourceID   string
 	SignalType   string
 	TotalWeight  float64

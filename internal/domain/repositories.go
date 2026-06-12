@@ -93,11 +93,11 @@ type EmbeddingMatch struct {
 // GBUSFeatureStore is the persistence interface for GBUS feature tables.
 // Implemented by the SQLite repo; Postgres pending.
 type GBUSFeatureStore interface {
-	UpsertCategoryFeature(ctx context.Context, categoryID, signalType string, weight float64) error
-	GetCategoryFeatures(ctx context.Context, categoryID string) ([]GBUSCategoryFeature, error)
+	UpsertCategoryFeature(ctx context.Context, userID, categoryID, signalType string, weight float64) error
+	GetCategoryFeatures(ctx context.Context, userID, categoryID string) ([]GBUSCategoryFeature, error)
 	ListAllCategoryFeatures(ctx context.Context) ([]GBUSCategoryFeature, error)
-	UpsertResourceFeature(ctx context.Context, resourceID, signalType string, weight float64) error
-	GetResourceFeatures(ctx context.Context, resourceID string) ([]GBUSResourceFeature, error)
+	UpsertResourceFeature(ctx context.Context, userID, resourceID, signalType string, weight float64) error
+	GetResourceFeatures(ctx context.Context, userID, resourceID string) ([]GBUSResourceFeature, error)
 	DeleteResourceFeatures(ctx context.Context, resourceID string) error
 	PruneOlderThan(ctx context.Context, cutoff time.Time) (int, error)
 }
