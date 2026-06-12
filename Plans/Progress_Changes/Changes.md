@@ -161,7 +161,75 @@ GBUS learns from signals that only have meaning once the real pipeline exists �
 
 **Reconciliation note (Change 11, 2026-06-11):** Change 10 status corrected from `Complete` to `Scaffold (model not trained)`. WS1 (signal emission) and WS2 (feature store/aggregation) are genuinely implemented and verified in code. WS3 (training pipeline) has never been run against real data — `models/gbus/model_registry.json` contains only a placeholder entry (version 0.0.0, `validation_accuracy: 0.0`, `baseline_accuracy: 0.0`), and `models/gbus/baseline.json` does not exist. WS4 (inference integration) and WS5 (monitoring) are code-complete but inactive in production: `gbus.inference_enabled` defaults to `false` and there is no model to load, so the safe weighted-scoring fallback is what actually runs. See `Change_10_Workstream.md` "Remaining Work to Reach Complete".
 
-# Change 12: Change-Documenter Skill and Session Tracking Infrastructure
+# Change 11: Doc/Reality Reconciliation
+Date: 2026-06-10
+Status: Complete
+
+## What to do
+Bring the planning documents back in line with the implemented system: reconcile `Technical_Stack.md` with the actual `go.mod`/dependency set, record the real stack as an ADR, correct overstated Change 9/10 statuses, and apply repo hygiene (gitignore build artifacts). Docs-only — no runtime behavior change.
+
+## What we did
+WS1 reconciled `Technical_Stack.md` to remove technologies never adopted (GORM, Asynq, Redis, sqlite-vec) and describe the stack actually in `go.mod`. WS2 added `Plans/ADR/0019-actual-stack-vs-planned-stack.md`, indexed alongside the other ADRs, recording the actual stack and the rationale for each deviation from the original plan. WS3 corrected Change 9 (Wails) status from an overstated `Complete` to `In Progress` with the genuinely-delivered vs. outstanding work itemized (see the Change 9 "status corrected" note above), and corrected Change 10 (GBUS) from `Complete` to `Scaffold (model not trained)` (reconciliation note above). WS4 applied `.gitignore` updates so build artifacts are no longer tracked. Full `go test ./...` unaffected (docs/config only). See `Plans/Progress_Changes/Changes_log.md` Session 43 for the step-by-step record.
+
+## Why this approach
+The planning docs had drifted from the code to the point that every future decision (human or AI agent) reading them would inherit a wrong architecture. Reconciling them first, before further feature work, stops that drift from compounding.
+
+> **Numbering note (resolved):** this section previously collided with an existing
+> "# Change 11: Correctness Fixes & Finding 3 Verification" entry (dated 2026-06-07).
+> That entry has been renumbered to **Change 14** (see below) to free this slot for
+> the Doc/Reality Reconciliation change, which is the change actually referenced by
+> `Change_11_Workstream.md`, ADR 0019, and the Change 10 reconciliation note above.
+
+# Change 12: Production Hardening
+Date: 2026-06-10
+Status: Complete (all 6 workstreams done; WS3's "CI fails on a known vulnerable dependency" criterion is implemented via `.github/workflows/security.yml` but not yet exercised by a live CI run)
+
+## What to do
+Harden the system for production use across six workstreams: SQLite durability (busy-timeout, backups, versioned migrations), deep-processing queue reliability (durable, self-healing), security hardening (SSRF guard, PDF panic recovery, OS keychain, CI dependency scanning), observability (AI metrics, extraction-failure counters, request IDs, `/api/v1/health`), AI cost control (result cache, enrichment provenance, circuit breaker), and reliability glue (graceful shutdown + idempotency keys).
+
+## What we did
+WS1 (Session 44) delivered SQLite durability: `busy_timeout` pragma, `internal/repository/sqlite/backup.go` (`Backup` via `VACUUM INTO`, `PruneBackups`, `StartBackupScheduler`), and versioned migrations with pre-migration backups. WS2 (Session 45) delivered deep-queue reliability: `internal/service/deep_queue_store.go` persists the deep-processing queue so it survives restarts and self-heals stuck tasks. WS3 (Session 46) delivered security hardening: `internal/extractor/ssrf.go` (SSRF guard for URL/PDF fetchers), PDF-extraction panic recovery, `internal/config/keyring.go` (OS keychain for secrets), and `.github/workflows/security.yml` (CI dependency vulnerability scanning). WS4 (Session 47) delivered observability: AI manager metrics, extraction-failure counters, `internal/http/request_id.go` (request-ID middleware), and `GET /api/v1/health` / `/api/v1/health/detailed`. WS5 (Session 48) delivered AI cost control: `internal/ai/result_cache.go` (response caching), enrichment provenance tracking, and `internal/ai/circuit_breaker.go` (per-provider circuit breaker). WS6 (Session 49) delivered reliability glue: graceful shutdown wiring in `cmd/server/main.go` and `internal/http/idempotency.go`/`idempotency_test.go` (idempotency-key middleware for mutating endpoints). Each workstream's detailed file list and verification is in `Plans/Progress_Changes/Changes_log.md` Sessions 44-49; `Change_12_Workstream.md` has all `[x]` milestones.
+
+## Why this approach
+These six areas were the highest-leverage gaps between "works on my machine" and "safe to run unattended": data durability, queue resilience, attack-surface reduction, visibility into failures, AI spend control, and clean shutdown/retry semantics. Bundling them as one change kept the hardening pass coherent and let each workstream build on the previous (e.g. observability surfaces the circuit breaker and queue health added in earlier workstreams).
+
+> **Numbering note (resolved):** this section previously collided with an existing
+> "# Change 12: Change-Documenter Skill and Session Tracking Infrastructure" entry
+> (dated 2026-06-10). That entry has been renumbered to **Change 15** (see below) to
+> free this slot for Production Hardening, which is the change actually referenced by
+> `Change_12_Workstream.md` and `Changes_log.md` Sessions 44-49.
+
+# Change 13: Scale, Performance & Maintainability
+Date: 2026-06-10
+Status: In Progress (WS1-4; WS1's Postgres integration run still pending Docker access)
+
+## What to do
+Address scale ceilings and maintainability debt before they bite: migrate the Postgres driver from `lib/pq` to `pgx`, keep vector search fast as the corpus grows, split the 1338-line HTTP handler god file, and add force-graph rendering limits plus a perf-budget doc.
+
+## What we did
+WS1 (Session 50) migrated the Postgres driver to `pgx/stdlib` (`internal/repository/postgres/db.go`, `internal/eventstore/postgres_store.go`'s `isPostgresConcurrencyConflict` rewritten for `pgconn.PgError`); `lib/pq` removed from `go.mod`. Code compiles and the non-Postgres suite is green; the DSN-gated Postgres integration run itself is still pending local Docker access. WS2 (Session 51) added an in-memory vector cache to `internal/repository/sqlite/vector_repository.go` (`cache`/`cachePut`/`cacheDelete`/`loadCache`, kept in sync via `Upsert`/`Delete`), a 50k-vector benchmark (`vector_repository_bench_test.go`, p50 ~37ms/p99 ~48ms), and `Plans/Performance_Budget.md` documenting the HNSW/pgvector crossover trigger and scale-out path. WS3 (Session 52) split the 1415-line `internal/http/handler.go` into per-domain files (`resource_handler.go`, `resource_archive_handler.go`, `category_handler.go`, `todo_handler.go`, `reminder_handler.go`, `graph_handler.go`, `chat_handler.go`, `processing_handler.go`) plus shared `routes.go`/`response_helpers.go`/`sync_publish.go`, leaving `handler.go` at 191 lines — pure mechanical extraction, `go test ./...` green with no test-file edits. WS4 (Session 53) added force-graph LOD to `frontend/src/components/graph/GraphCanvas.tsx` (`GRAPH_LOD_NODE_THRESHOLD=600`, `getGraphRenderConfig`: forces 2D, drops labels/link particles, lowers cooldown ticks above the threshold) and windowed rendering to `frontend/src/components/resource/ResourceList.tsx` (`RESOURCE_LIST_VIRTUALIZE_THRESHOLD=200`, `getVirtualRange`), both covered by synthetic 10k-node/row tests, and extended `Plans/Performance_Budget.md` with the resulting ceilings (max graph nodes at full detail = 600, max resources before virtualization = 200, max resources overall ~50k, max sync devices = 3).
+
+## Why this approach
+None of these are urgent at current usage, but each is a "do it before it's load-bearing" item: the Postgres driver is in maintenance mode, vector search degrades linearly with corpus size, the handler file was approaching unmaintainable, and an unbounded force-graph will freeze the tab on large datasets. Landing all four now, gated behind equivalence tests, removes the ceilings before the sync/Postgres path or large datasets make them painful to fix.
+
+# Change 14: Correctness Fixes & Finding 3 Verification
+Date: 2026-06-07
+
+## What to do
+Verify the residual edge case for Finding 3 with an explicit regression test, and neutralize the Store.Snapshot latent comprehension trap with explicit documentation per ADR 0018.
+
+## What we did
+Added `TestMergeReplay_SkippedRowInterleaving` in `internal/sync/outbox_worker_test.go` to explicitly test the exact finding 3 edge case (untranslatable event, direct hub event, translatable event) and updated `Store.Snapshot` in `internal/eventstore/store.go` to explicitly forbid its use for projection rebuilds.
+
+## Why this approch
+Closes the final correctness loops by ensuring the exact edge cases described are formally tested, and prevents future developers from misusing the `Store.Snapshot` method contrary to ADR 0018.
+
+> **Numbering note (resolved, 2026-06-12):** this entry was originally numbered
+> "Change 11" (it predates and is unrelated to the Change 11 "Doc/Reality
+> Reconciliation" entry above). Renumbered to 14 to resolve the collision —
+> see `Plans/Progress_Changes/Changes_log.md` Session 54.
+
+# Change 15: Change-Documenter Skill and Session Tracking Infrastructure
 Date: 2026-06-10
 
 ## What to do
@@ -173,14 +241,7 @@ Created `.claude/skills/change-documenter/SKILL.md` with two modes: Mode A (Prog
 ## Why this approach
 The 3-doc update rule was easy to forget at session end and error-prone to execute manually (wrong session number, missed files, bare `-` instead of `[x]`). A persistent skill with background file tracking makes the rule self-enforcing — the hook log is the authoritative record of what changed, the per-turn context injection keeps the model document-aware throughout the session, and the skill writes all files in one shot.
 
-# Change 11: Correctness Fixes & Finding 3 Verification
-Date: 2026-06-07
-
-## What to do
-Verify the residual edge case for Finding 3 with an explicit regression test, and neutralize the Store.Snapshot latent comprehension trap with explicit documentation per ADR 0018.
-
-## What we did
-Added `TestMergeReplay_SkippedRowInterleaving` in `internal/sync/outbox_worker_test.go` to explicitly test the exact finding 3 edge case (untranslatable event, direct hub event, translatable event) and updated `Store.Snapshot` in `internal/eventstore/store.go` to explicitly forbid its use for projection rebuilds.
-
-## Why this approch
-Closes the final correctness loops by ensuring the exact edge cases described are formally tested, and prevents future developers from misusing the `Store.Snapshot` method contrary to ADR 0018.
+> **Numbering note (resolved, 2026-06-12):** this entry was originally numbered
+> "Change 12" (it predates and is unrelated to the Change 12 "Production Hardening"
+> entry above). Renumbered to 15 to resolve the collision — see
+> `Plans/Progress_Changes/Changes_log.md` Session 54.

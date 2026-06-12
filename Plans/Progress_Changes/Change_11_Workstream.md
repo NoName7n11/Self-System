@@ -3,11 +3,11 @@
 Date: 2026-06-10
 Status: Complete
 
-> **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 11:
-> Correctness Fixes & Finding 3 Verification" entry (dated 2026-06-07), distinct from
-> this workstream. This is a pre-existing numbering collision, not introduced by this
-> change — flagged for a future session to resolve, not fixed here (out of scope: docs
-> only, don't renumber unrelated history).
+> **Numbering note (resolved 2026-06-12, Session 54):** `Plans/Progress_Changes/Changes.md`
+> previously had an unrelated "# Change 11: Correctness Fixes & Finding 3 Verification"
+> entry (dated 2026-06-07) colliding with this workstream's number. That entry has been
+> renumbered to **Change 14** in `Changes.md`, and this workstream now has its own
+> "# Change 11: Doc/Reality Reconciliation" section there.
 Scope: Bring the planning documents back in line with the implemented system, correct overstated workstream statuses, record the actual stack as an ADR, and clean repo hygiene. No production code behavior changes.
 
 ## Objective

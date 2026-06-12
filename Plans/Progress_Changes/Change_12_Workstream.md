@@ -3,12 +3,12 @@
 Date: 2026-06-10
 Status: Complete (all 6 workstreams done; WS3's "CI fails on a known vulnerable dependency" criterion is implemented via `.github/workflows/security.yml` but not yet exercised by a live CI run)
 
-> **Numbering note:** `Plans/Progress_Changes/Changes.md` already has a "# Change 12:
-> Change-Documenter Skill and Session Tracking Infrastructure" entry (dated 2026-06-10),
-> distinct from this workstream. Pre-existing numbering collision (same pattern as the
-> Change 11 collision noted in `Change_11_Workstream.md`), not introduced here — flagged
-> for a future session to resolve. WS1 progress is recorded in `Changes_log.md` Session 44,
-> WS2 in Session 45, and WS3 in Session 46, instead of a colliding "What we did" entry.
+> **Numbering note (resolved 2026-06-12, Session 54):** `Plans/Progress_Changes/Changes.md`
+> previously had an unrelated "# Change 12: Change-Documenter Skill and Session Tracking
+> Infrastructure" entry (dated 2026-06-10) colliding with this workstream's number. That
+> entry has been renumbered to **Change 15** in `Changes.md`, and this workstream now has
+> its own "# Change 12: Production Hardening" section there summarizing WS1-6
+> (`Changes_log.md` Sessions 44-49).
 
 Scope: Close the production-grade gaps in durability, deep-queue reliability, security, observability, and AI cost control. This is the safety layer that must land before Phase 2 sync is shipped to any real device.
 
