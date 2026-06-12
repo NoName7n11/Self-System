@@ -198,3 +198,10 @@ Done criteria:
 - [ ] Produce `models/gbus/baseline.json`, evaluate against weighted-scoring baseline,
       and confirm ≥5% lift before promoting from `candidate` to `production`.
 - [ ] Flip `gbus.inference_enabled` to `true` only after the above promotion.
+
+> **Schema alignment (Change 16, 2026-06-13):** signals and feature rows are now
+> user-scoped (`user_id`/`session_id` on signals, `user_id` on
+> `gbus_category_features`/`gbus_resource_features`) and category features carry
+> `evidence_count`/`confidence`, closing a gap between this workstream's
+> implementation and `Plans/Progress/Phase_3_GBUS_Signals_Feature_Store.md` section 3.
+> See `Change_16_Workstream.md`. Does not change the remaining-work items above.
