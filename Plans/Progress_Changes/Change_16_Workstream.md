@@ -57,6 +57,26 @@ Key tasks:
 - [x] Add Change 16 section to `Plans/Progress_Changes/Changes.md`.
 - [x] Cross-reference Change 16 from `Plans/Progress_Changes/Change_10_Workstream.md`.
 
+## Workstream 6 — Make Confidence Behavioral (Training Consumption)
+
+Added in response to review: `confidence`/`evidence_count` were captured but had no
+consumer (runtime inference reads the trained artifact's `CategoryWeights`, not the
+feature tables; the training script ignored the new columns). This wires the
+evidence signal into the one place it belongs — the training pipeline that produces
+those weights.
+
+Key tasks:
+- [x] `scripts/gbus_train/main.go` `listAll`: SELECT/scan `evidence_count` and `confidence`.
+- [x] `computeCategoryWeights`: aggregate `evidence_count` per category and discount the
+      category's raw score by `MIN(1, evidence / ConfidenceEvidenceThreshold)` before
+      normalization. Discount applied at category level (not per row) because passive
+      signal types structurally carry per-row confidence 0.
+- [x] `go build ./...` / `go vet ./scripts/gbus_train/` clean.
+
+Known limitation:
+- [ ] Effect is latent — not exercised end-to-end, since no real training run has
+      occurred yet (Change 10 WS3 remains pending real signal data + Docker/DB).
+
 ## Planned Milestones
 
 - [x] Milestone 16A: Signal payload + emitter user/session scoping (WS1).
@@ -64,6 +84,7 @@ Key tasks:
 - [x] Milestone 16C: SQLite migration + repository scoped queries + confidence/evidence (WS3).
 - [x] Milestone 16D: Aggregator wiring + test fixes, full test suite green (WS4).
 - [x] Milestone 16E: Planning docs updated (WS5).
+- [x] Milestone 16F: Confidence wired into training-time category weighting (WS6).
 
 ## Change 16 Definition of Done
 
