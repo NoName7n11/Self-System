@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import type { ResourceItem } from "../../types";
-import { buildGraph, categoryColor, getNodeColor, getNodeLabel, toFinite, type GraphNode } from "./GraphCanvas";
+import {
+  GRAPH_LOD_NODE_THRESHOLD,
+  buildGraph,
+  categoryColor,
+  getGraphRenderConfig,
+  getNodeColor,
+  getNodeLabel,
+  toFinite,
+  type GraphNode,
+} from "./GraphCanvas";
 
 const baseResource: ResourceItem = {
   id: "res-0",
@@ -124,5 +133,42 @@ describe("GraphCanvas helpers", () => {
     expect(overrideLink?.target).toBe("category:research");
     expect(overrideLink?.color).toBe("rgba(255, 204, 102, 0.56)");
     expect(overrideLink?.strength).toBe(1.6);
+  });
+});
+
+describe("getGraphRenderConfig (Change 13 WS4 LOD)", () => {
+  it("uses full-detail rendering below the LOD threshold", () => {
+    const config = getGraphRenderConfig(GRAPH_LOD_NODE_THRESHOLD);
+    expect(config.forceMode).toBeNull();
+    expect(config.showLabels).toBe(true);
+    expect(config.linkDirectionalParticles).toBe(1);
+    expect(config.cooldownTicks).toBe(120);
+  });
+
+  it("drops to 2D and trims per-frame work above the LOD threshold", () => {
+    const config = getGraphRenderConfig(GRAPH_LOD_NODE_THRESHOLD + 1);
+    expect(config.forceMode).toBe("2d");
+    expect(config.showLabels).toBe(false);
+    expect(config.linkDirectionalParticles).toBe(0);
+    expect(config.cooldownTicks).toBe(60);
+  });
+
+  it("keeps degraded rendering stable for a synthetic 10k-node graph", () => {
+    const resources: ResourceItem[] = Array.from({ length: 10000 }, (_, index) =>
+      buildResource({
+        id: `res-${index}`,
+        title: `Resource ${index}`,
+        categoryName: `Category ${index % 25}`,
+      }),
+    );
+
+    const graph = buildGraph(resources);
+    expect(graph.nodes.length).toBeGreaterThan(10000);
+
+    const config = getGraphRenderConfig(graph.nodes.length);
+    expect(config.forceMode).toBe("2d");
+    expect(config.showLabels).toBe(false);
+    expect(config.linkDirectionalParticles).toBe(0);
+    expect(config.cooldownTicks).toBe(60);
   });
 });

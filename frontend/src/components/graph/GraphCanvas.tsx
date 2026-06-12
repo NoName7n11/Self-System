@@ -36,6 +36,36 @@ interface GraphData {
 const ForceGraph2D = lazy(() => import("react-force-graph-2d"));
 const ForceGraph3D = lazy(() => import("react-force-graph-3d"));
 
+// Above this node count, the graph drops to 2D and trims per-frame work
+// (labels, link particles, cooldown ticks) so large graphs stay interactive
+// instead of freezing the tab (Change 13 WS4).
+export const GRAPH_LOD_NODE_THRESHOLD = 600;
+
+export interface GraphRenderConfig {
+  forceMode: "2d" | null;
+  showLabels: boolean;
+  linkDirectionalParticles: number;
+  cooldownTicks: number;
+}
+
+export function getGraphRenderConfig(nodeCount: number): GraphRenderConfig {
+  if (nodeCount > GRAPH_LOD_NODE_THRESHOLD) {
+    return {
+      forceMode: "2d",
+      showLabels: false,
+      linkDirectionalParticles: 0,
+      cooldownTicks: 60,
+    };
+  }
+
+  return {
+    forceMode: null,
+    showLabels: true,
+    linkDirectionalParticles: 1,
+    cooldownTicks: 120,
+  };
+}
+
 export function hashSeed(value: string): number {
   let seed = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -143,6 +173,9 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
     return buildGraph(resources);
   }, [resources]);
 
+  const lodConfig = useMemo(() => getGraphRenderConfig(graphData.nodes.length), [graphData]);
+  const effectiveViewMode = lodConfig.forceMode ?? viewMode;
+
   useEffect(() => {
     if (!import.meta.env.DEV) {
       return;
@@ -182,7 +215,7 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
     }
 
     const timer = window.setTimeout(() => {
-      if (viewMode === "2d") {
+      if (effectiveViewMode === "2d") {
         graph2DRef.current?.zoomToFit?.(420, 66);
       } else {
         graph3DRef.current?.zoomToFit?.(420, 66);
@@ -192,7 +225,7 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [graphData, viewMode]);
+  }, [graphData, effectiveViewMode]);
 
   useEffect(() => {
     if (!selectedResourceId) {
@@ -208,7 +241,7 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
     const y = toFinite(selectedNode.y);
     const z = toFinite(selectedNode.z);
 
-    if (viewMode === "2d") {
+    if (effectiveViewMode === "2d") {
       graph2DRef.current?.centerAt?.(x, y, 480);
       graph2DRef.current?.zoom?.(2.6, 480);
       return;
@@ -219,7 +252,7 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
     const ratio = 1 + distance / norm;
 
     graph3DRef.current?.cameraPosition?.({ x: x * ratio, y: y * ratio, z: z * ratio }, { x, y, z }, 900);
-  }, [selectedResourceId, graphData, viewMode]);
+  }, [selectedResourceId, graphData, effectiveViewMode]);
 
   const handleNodeClick = (nodeObject: unknown) => {
     const node = nodeObject as GraphNode;
@@ -238,6 +271,10 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
   const nodeColor = (nodeObject: unknown) => getNodeColor(nodeObject as GraphNode, selectedResourceId);
 
   const drawNodeLabel = (nodeObject: unknown, context: CanvasRenderingContext2D, scale: number) => {
+    if (!lodConfig.showLabels) {
+      return;
+    }
+
     const node = nodeObject as GraphNode;
     const x = toFinite(node.x);
     const y = toFinite(node.y);
@@ -267,21 +304,22 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
         <span>{resources.length} resource nodes</span>
         <span>{totalCategories} category hubs</span>
         <span>{graphData.links.length} links</span>
+        {lodConfig.forceMode ? <span>LOD active (2D, labels off)</span> : null}
       </div>
 
       <div className="graph-field graph-stage">
         {graphData.nodes.length === 0 ? <p className="graph-empty">No nodes yet. Add your first resource on the right.</p> : null}
 
-        {graphData.nodes.length > 0 && viewMode === "2d" ? (
+        {graphData.nodes.length > 0 && effectiveViewMode === "2d" ? (
           <Suspense fallback={graphLoading}>
             <ForceGraph2D
               ref={graph2DRef}
               graphData={graphData}
               backgroundColor="rgba(0,0,0,0)"
-              cooldownTicks={120}
+              cooldownTicks={lodConfig.cooldownTicks}
               d3VelocityDecay={0.2}
               linkColor={(linkObject) => (linkObject as GraphLink).color}
-              linkDirectionalParticles={1}
+              linkDirectionalParticles={lodConfig.linkDirectionalParticles}
               linkDirectionalParticleWidth={(linkObject) => (linkObject as GraphLink).strength}
               linkWidth={(linkObject) => (linkObject as GraphLink).strength}
               nodeAutoColorBy="kind"
@@ -295,7 +333,7 @@ export default function GraphCanvas({ resources }: GraphCanvasProps) {
           </Suspense>
         ) : null}
 
-        {graphData.nodes.length > 0 && viewMode === "3d" ? (
+        {graphData.nodes.length > 0 && effectiveViewMode === "3d" ? (
           <Suspense fallback={graphLoading}>
             <ForceGraph3D
               ref={graph3DRef}

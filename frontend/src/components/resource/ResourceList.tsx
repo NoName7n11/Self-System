@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useResourceStore } from "../../stores/useResourceStore";
 import type { ResourceItem } from "../../types";
@@ -32,13 +32,82 @@ export function getResourceListStatusMessage(isLoading: boolean, resourceCount: 
 	return null;
 }
 
+// Below this count, render every row normally (cheap, and keeps existing
+// tests that assert on full DOM output unaffected). Above it, switch to
+// windowed rendering so large libraries don't bog down scrolling (Change 13 WS4).
+export const RESOURCE_LIST_VIRTUALIZE_THRESHOLD = 200;
+
+// Estimated row height in px, used to size the virtual scroll window.
+export const RESOURCE_ROW_HEIGHT_PX = 92;
+
+// Extra rows rendered above/below the visible viewport to avoid blank flashes
+// while scrolling.
+export const RESOURCE_LIST_OVERSCAN = 6;
+
+export interface VirtualRange {
+	startIndex: number;
+	endIndex: number; // exclusive
+	paddingTop: number;
+	paddingBottom: number;
+}
+
+export function getVirtualRange(
+	resourceCount: number,
+	scrollTop: number,
+	viewportHeight: number,
+	rowHeight: number = RESOURCE_ROW_HEIGHT_PX,
+	overscan: number = RESOURCE_LIST_OVERSCAN,
+): VirtualRange {
+	if (resourceCount === 0 || rowHeight <= 0 || viewportHeight <= 0) {
+		return { startIndex: 0, endIndex: resourceCount, paddingTop: 0, paddingBottom: 0 };
+	}
+
+	const visibleCount = Math.ceil(viewportHeight / rowHeight);
+	const firstVisible = Math.floor(scrollTop / rowHeight);
+
+	const startIndex = Math.max(0, firstVisible - overscan);
+	const endIndex = Math.min(resourceCount, firstVisible + visibleCount + overscan);
+
+	return {
+		startIndex,
+		endIndex,
+		paddingTop: startIndex * rowHeight,
+		paddingBottom: (resourceCount - endIndex) * rowHeight,
+	};
+}
+
 export default function ResourceList({ resources }: ResourceListProps) {
 	const isLoading = useResourceStore((state) => state.isLoading);
 	const selectedResourceId = useResourceStore((state) => state.selectedResourceId);
 	const selectResource = useResourceStore((state) => state.selectResource);
 
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const [scrollTop, setScrollTop] = useState(0);
+	const [viewportHeight, setViewportHeight] = useState(0);
+
 	const overrideCount = useMemo(() => resources.filter((item) => item.userOverride).length, [resources]);
 	const statusMessage = getResourceListStatusMessage(isLoading, resources.length);
+
+	const virtualize = resources.length > RESOURCE_LIST_VIRTUALIZE_THRESHOLD;
+	const range = useMemo(() => {
+		if (!virtualize) {
+			return { startIndex: 0, endIndex: resources.length, paddingTop: 0, paddingBottom: 0 };
+		}
+		return getVirtualRange(resources.length, scrollTop, viewportHeight);
+	}, [virtualize, resources.length, scrollTop, viewportHeight]);
+
+	const visibleResources = resources.slice(range.startIndex, range.endIndex);
+
+	const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+		if (!virtualize) {
+			return;
+		}
+		const target = event.currentTarget;
+		setScrollTop(target.scrollTop);
+		if (target.clientHeight !== viewportHeight) {
+			setViewportHeight(target.clientHeight);
+		}
+	};
 
 	return (
 		<section className="resource-list panel">
@@ -51,8 +120,9 @@ export default function ResourceList({ resources }: ResourceListProps) {
 
 			{statusMessage ? <p className="muted-copy">{statusMessage}</p> : null}
 
-			<div className="resource-list-scroll">
-				{resources.map((resource) => (
+			<div className="resource-list-scroll" ref={scrollRef} onScroll={handleScroll}>
+				{range.paddingTop > 0 ? <div style={{ height: range.paddingTop }} aria-hidden="true" /> : null}
+				{visibleResources.map((resource) => (
 					<button
 						key={resource.id}
 						className={`resource-row ${selectedResourceId === resource.id ? "is-selected" : ""}`}
@@ -69,6 +139,7 @@ export default function ResourceList({ resources }: ResourceListProps) {
 						</div>
 					</button>
 				))}
+				{range.paddingBottom > 0 ? <div style={{ height: range.paddingBottom }} aria-hidden="true" /> : null}
 			</div>
 		</section>
 	);
