@@ -99,9 +99,25 @@ Done criteria:
 Objective:
 Build a reproducible training pipeline and train a baseline GBUS model that outperforms the weighted scoring baseline on offline metrics.
 
+> **Eval methodology corrected (2026-06-13, Session 57):** the original `gbus_train`
+> evaluation was not trustworthy — `evaluateAccuracy` was circular (it checked
+> whether learned weights agreed with the same `manual_classification` signals they
+> were derived from), and the "baseline" it compared against was the *previous model
+> artifact's* accuracy, not the weighted-scoring scheme. So the "≥5% lift over
+> weighted scoring" criterion was not actually measurable. `scripts/gbus_train/main.go`
+> was reworked to read **raw signal events** from the event log and run a **prequential
+> (expanding-window) top-1/top-3 ranking evaluation**: each labeled instance
+> (`manual_classification` / `category_correction`) is ranked against rankers trained
+> only on strictly-earlier events. Two explicit rankers — `baselineWeights` (the
+> Outline plain weighted-sum) vs `gbusWeights` (log-dampened + delete-penalised +
+> confidence-discounted) — are compared on the same held-out instances, and `-promote`
+> now gates on `gbusTop1 >= baselineTop1 + 0.05` with a minimum test count. Covered by
+> `scripts/gbus_train/main_test.go`. The metric is now real; it still has not been *run*
+> (no signal data yet — see Remaining Work).
+
 Key tasks:
-- [x] `scripts/gbus_train/main.go` — dataset extraction: reads feature tables, assembles labeled training data (positive = user confirmed / corrected; negative = user deleted / ignored).
-- [x] Define evaluation metric: category suggestion accuracy (top-1 and top-3) vs. weighted scoring baseline.
+- [x] `scripts/gbus_train/main.go` — dataset extraction: reads **raw signal events** from the event log (`aggregate_type='gbus_signal'`) and treats `manual_classification` / `category_correction` events as labeled instances (the user's chosen category).
+- [x] Define evaluation metric: category suggestion accuracy (top-1 and top-3) vs. weighted scoring baseline. **Now genuinely held-out** (prequential), not circular — see methodology note above.
 - [ ] Train baseline model: gradient boosting (XGBoost via Go binding or Python subprocess). **Not run** — `models/gbus/model_registry.json` has only a placeholder entry (version 0.0.0, status `candidate`, accuracy 0.0); no training run has been executed against real signal data.
 - [ ] Evaluate: accuracy, precision, recall on held-out validation set. **Not done** — no validation results recorded.
 - [ ] Store model artifact: serialized model file + metadata (version, training date, validation metrics). **Metadata schema exists; the artifact file (`models/gbus/baseline.json`) does not exist on disk.**
