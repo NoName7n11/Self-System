@@ -110,3 +110,30 @@ Always the Knowledge Graph canvas (1000x1024 in this mockup, fills remaining spa
 - Decide whether a persistent "home" affordance (separate from `← Back`) is needed in Left_Rail.
 - Right_Rail default visibility rules (collapsed vs expanded on load) need confirming against real resource-selection flow.
 - Main_Content view-switch tabs (List / Timeline) are placeholders — no corresponding designs yet.
+
+## 8. Components & Interactivity (Session 59)
+
+All states converted into Figma **Components** / **Component Sets** (page **UI**), so the prototype is built from reusable, variant-driven pieces. Maps 1:1 to a future `state` prop in React.
+
+| Component Set | Node | Variant property | Variants |
+|---|---|---|---|
+| **Left_Rail** | `705:16` | `State` | `Default` (705:11), `Search` (705:12), `Chat` (705:13), `Tasks` (705:14), `Library` (705:15), `Collapsed` (707:24) |
+| **Right_Rail** | `706:18` | `State` | `Collapsed` (706:16), `Expanded`/Inspector (706:17) |
+| **Main_Content** | `707:25` | — (single component, no variants — always the graph canvas) | |
+
+A componentized "Desktop - Minimal" frame (`708:11`) assembles instances: Left_Rail=Default (`708:12`) + Main_Content (`708:80`) + Right_Rail=Collapsed (`708:177`), horizontal auto-layout, 1440x1024.
+
+### Prototype wiring (manual — Figma Plugin API can't script reactions)
+
+Open `708:11` in Figma's **Prototype** tab and drag-connect the following (On Tap → Change to variant, animation: Smart Animate, ~200ms):
+
+- **Left_Rail, Default → Search**: tap `Search_Bar` (in Header) → `Left_Rail.State = Search`.
+- **Left_Rail, Default → Chat / Tasks / Library**: tap respective `Primary_Nav` row → `Left_Rail.State = Chat/Tasks/Library`.
+- **Left_Rail, Default → Library** (alt entry): tap `View_All_Link` (in Categories) → `Left_Rail.State = Library`.
+- **Left_Rail, any non-Default → Default**: tap `Back_Row` (`← Back`) → `Left_Rail.State = Default`.
+- **Left_Rail, Default → Collapsed**: tap `Collapse_Toggle` (Header) → `Left_Rail.State = Collapsed`.
+- **Left_Rail, Collapsed → Default**: tap logo / any nav icon → `Left_Rail.State = Default`.
+- **Right_Rail, Collapsed → Expanded**: tap `Toggle_Panel` icon, or tap a node in `Main_Content`'s `Canvas_Area` → `Right_Rail.State = Expanded`.
+- **Right_Rail, Expanded → Collapsed**: tap `Collapse_Toggle` (Inspector header) → `Right_Rail.State = Collapsed`.
+
+`Main_Content` instance stays fixed — no reactions needed on it (per §5, never swaps).
