@@ -123,6 +123,8 @@ All states converted into Figma **Components** / **Component Sets** (page **UI**
 
 A componentized "Desktop - Minimal" frame (`708:11`) assembles instances: Left_Rail=Default (`708:12`) + Main_Content (`708:80`) + Right_Rail=Collapsed (`708:177`), horizontal auto-layout, 1440x1024.
 
+### Prototype wiring — STATUS: done (wired manually in Figma, Session 59)
+
 ### Prototype wiring (manual — Figma Plugin API can't script reactions)
 
 Open `708:11` in Figma's **Prototype** tab and drag-connect the following (On Tap → Change to variant, animation: Smart Animate, ~200ms):
