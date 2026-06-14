@@ -64,3 +64,12 @@ All visual wireframes and high-fidelity designs will be iterated on in the **Fig
 - **Control Dock**: Bottom-center.
 - **Top Bar**: Search + sync status + add resource + settings.
 - **Resize Handles**: Minimal grab line.
+
+## Minimalistic Layout Pass (Session 58+)
+A separate "very minimalistic" 3-zone layout (Left_Rail / Main_Content / Right_Rail) was designed in Figma under the **UI** page, frame "Desktop - Minimal" (`658:11`). Full breakdown of every state, Figma node IDs, and navigation/transition rules is documented in **[Minimal_UI_Spec.md](Minimal_UI_Spec.md)**.
+
+Key takeaways:
+- Main_Content is always the Knowledge Graph canvas — never swapped per nav item.
+- Left_Rail swaps its body per nav item (Chat / Tasks / Library) with a `← Back` row to return to its default/home state.
+- "Search" and "Knowledge Graph" nav items were removed as redundant (see Minimal_UI_Spec §6 for rationale).
+- Right_Rail = collapsible Inspector panel for selected graph nodes.
