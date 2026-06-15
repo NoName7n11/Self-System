@@ -39,13 +39,15 @@ Triggered by tapping the header **Search_Bar** in "Left_Rail - Expanded". This i
 
 `← Back` returns to "Left_Rail - Expanded".
 
-### 2c. "Left_Rail - Chat" (`685:11`)
-Triggered by **Chat** nav item.
+### 2c. "Left_Rail - Chat" — `State=Chat` (`753:178`, Session 59 redesign)
+Triggered by **Chat** nav item. Multi-conversation model.
 
-- **Header**: Logo/toggle row + `← Back` row (label "Chat").
-- **Body**: Chat thread — alternating message bubbles (user = accent-tinted right-ish, AI = neutral panel bg), spacer pushes content up, **Chat_Input** pinned at bottom ("Message…").
+- **Header**: Logo/toggle row + **Back_Row**: truncated conversation title (e.g. "← Raft paper — consensus Q&A", ENDING truncation) + **New_Chat_Button** (accent-tinted `+`, top-right) — starts a fresh thread.
+- **Body**: Chat thread — alternating message bubbles (user = accent-tinted, AI = neutral panel bg), spacer pushes content up, **Chat_Input** pinned at bottom: single-row compact bar (53px) — `+` attach icon inline-left with "Message…" placeholder, circular accent **Send** button right.
 
 This is the full chat experience — also referenced as the home for "chatting" the user wanted in Left_Rail (no separate page needed).
+
+> Open item: multi-conversation implies a thread list/history somewhere (New_Chat_Button needs a destination for old threads) — not yet designed. See §7.
 
 ### 2d. "Left_Rail - Tasks" (`687:11`)
 Triggered by **Tasks** nav item.
@@ -117,13 +119,13 @@ All states converted into Figma **Components** / **Component Sets** (page **UI**
 
 | Component Set | Node | Variant property | Variants |
 |---|---|---|---|
-| **Left_Rail** | `705:16` | `State` | `Default` (705:11), `Search` (705:12), `Chat` (705:13), `Tasks` (705:14), `Library` (705:15), `Collapsed` (707:24) |
+| **Left_Rail** | `705:16` | `State` | `Default` (705:11), `Search` (705:12), `Chat` (753:178, redesigned Session 59), `Tasks` (705:14), `Library` (705:15), `Collapsed` (707:24) |
 | **Right_Rail** | `706:18` | `State` | `Collapsed` (706:16), `Expanded`/Inspector (706:17) |
 | **Main_Content** | `707:25` | — (single component, no variants — always the graph canvas) | |
 
 A componentized "Desktop - Minimal" frame (`708:11`) assembles instances: Left_Rail=Default (`708:12`) + Main_Content (`708:80`) + Right_Rail=Collapsed (`708:177`), horizontal auto-layout, 1440x1024.
 
-### Prototype wiring — STATUS: done (wired manually in Figma, Session 59)
+### Prototype wiring — STATUS: Left_Rail Chat connections need re-wiring (variant node replaced, Session 59 part 2); all other connections done
 
 ### Prototype wiring (manual — Figma Plugin API can't script reactions)
 
