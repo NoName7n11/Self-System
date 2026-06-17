@@ -13,7 +13,7 @@ This doc is the implementation reference for the "very minimalistic" 3-zone desk
 | Main_Content | `658:13` | fill | Always the Knowledge Graph canvas. Persistent background regardless of Left_Rail/Right_Rail state. |
 | Right_Rail (collapsed) | `658:14` | 64px | Collapse toggle + profile avatar. Expands to "Right_Rail - Expanded" (Inspector). |
 
-**Key UX decision**: Main_Content is *not* a per-nav-item view. It is always the graph canvas. Only Left_Rail and Right_Rail swap their internal content based on navigation/selection.
+**Key UX decision** (updated Session 60): Main_Content stays the Knowledge Graph — it does *not* swap to a full Chat/Tasks/Library page per nav. Instead it gains a bottom **Split_Section** dock (see §3) that opens Chat / Library / Tasks / Categories as browser-style tabs. Left_Rail and Right_Rail still swap their internal content based on navigation/selection.
 
 ## 2. Left_Rail states
 
@@ -24,10 +24,10 @@ This is what's shown by default (not the 64px collapsed strip — that's the sec
 
 Sections (top to bottom):
 - **Header** (`664:*`): Logo + "Self Systems" + collapse toggle button (→ collapses to 64px `Left_Rail` icon strip). Below it: global **Search_Bar** ("Search...").
-- **Primary_Nav** (`663:13`): 3 items — **Chat**, **Tasks**, **Library**. (See §4 for why "Search" and "Knowledge Graph" were removed.)
-- **Categories** (`663:14`): Up to ~5 category rows (color dot + name + resource count), e.g. Research (24), Projects (12), Reading List (38). Ends with **"View all categories →"** link (accent color) — routes to "Left_Rail - Library" with category filter focused.
+- **Primary_Nav** (`663:13`): 3 items — **Chat**, **Tasks**, **Library**. (See §4 for why "Search" and "Knowledge Graph" were removed.) Each nav row now carries a hover-revealed **"open-in-split" affordance** (panel-bottom glyph, prepended at the row's extreme left, rendered at 0.4 opacity as a hover hint) — clicking it opens that section as a tab in Main_Content's Split_Section (§3). Applies to Chat/Tasks/Library only, **not** Search. *(Session 60)*
+- **Categories** — **REMOVED** (Session 60). The former `663:14` section (category rows + "View all categories →") is gone; all categories now live as the default **Categories tab** inside Main_Content's Split_Section dock (§3).
 - **Recent** (`663:15`): List of 5 most recently *opened/accessed* resources (icon + truncated title). This is a shortcut list, not full history.
-- **Footer** (`663:16`): Settings row + Profile row (avatar, name "No_Name", email).
+- **Footer** (`663:16`): Profile row (avatar, name, email) with the Settings gear moved inline to its right (gear no longer a separate row). *(In `State=Collapsed` the gear is pinned to the rail bottom, vertically aligned with this Footer's center — Session 60.)*
 
 ### 2b. "Left_Rail - Search" (`686:11`)
 Triggered by tapping the header **Search_Bar** in "Left_Rail - Expanded". This is the *same search field*, now active/expanded.
@@ -69,16 +69,25 @@ Triggered by **Library** nav item (and by "View all categories →" from Categor
 
 > Future: when "View all categories →" is used, this state should also support a category filter (in addition to type chips).
 
-## 3. Main_Content — "Main_Content - Expanded" (`676:11`)
+## 3. Main_Content — Component Set `Main_Content` (`905:291`) — *Session 60 redesign*
 
-Always the Knowledge Graph canvas (1000x1024 in this mockup, fills remaining space at runtime).
+Main_Content is the Knowledge Graph canvas + a bottom **Split_Section** dock. It is now a Component Set with a `State` property (Default = dock collapsed; Categories/Chat/Tasks/Library = dock expanded with that tab active). The original standalone graph component (`707:25`) is retained but superseded by this set.
 
-- **Top_Bar** (`679:*`): Title "Knowledge Graph" + subtitle ("128 resources · 342 connections"), right side: "Filter nodes…" field + view switch (Graph / List / Timeline — "Graph" active).
-- **Canvas_Area** (`680:*`): Force-directed graph mock —
-  - 5 clusters: Research (blue), People (violet), Tasks (yellow), Sources (green), Archive (red). Each cluster = 1 hub node + several satellite nodes, connected by edges; faint gray edges link cluster hubs together.
-  - **Legend** (top-left): color dot + cluster name for each of the 5 clusters.
+**Persistent Graph (all variants):**
+- **Top_Bar**: Title "Knowledge Graph" + subtitle ("128 resources · 342 connections"), right side: "Filter nodes…" field + view switch (Graph / List / Timeline — "Graph" active).
+- **Canvas_Area**: Force-directed graph mock — 5 clusters: Research (blue), People (violet), Tasks (yellow), Sources (green), Archive (red); each = hub + satellites, edges link hubs.
   - **Zoom_Controls** (bottom-right): `−` / `Fit` / `100%` / `+` pill.
-- **Command_Bar** (`681:*`): "Ask, search, or add a resource…" input, full width.
+  - **Legend — REMOVED** (Session 60); cluster colors are now read from the Categories tab in the dock.
+- **Command_Bar — REMOVED** (Session 60). The full-width "Ask, search, or add a resource…" input was deleted entirely (region repurposed for Split_Section). A global capture/ask input will be re-sited in a later session.
+
+**Split_Section (bottom dock):**
+- **Collapsed** (`State=Default`): a thin (~48px) tab-strip — left: **Categories toggle** (grid icon + label, always present); middle: open tabs (browser-style, each closeable with an `×`); right: **up-arrow** expand button.
+- **Expanded** (`State=Categories/Chat/Tasks/Library`): expands to **¼ of Main_Content height** (~256px, user-resizable by intent). Shared **Tab_Bar** (Categories · Consensus chat · Tasks · Library + collapse down-arrow), active tab highlighted per variant. Tab bodies:
+  - **Categories** (default/home tab): "ALL CATEGORIES" + horizontal cards (Research 24, Projects 12, Reading List 38, Sources 19, People 9) + "+ New".
+  - **Chat**: compact thread (user bubble + AI reply w/ citation chip) + bottom composer ("Reply…" + send). Chat owns its own input since the global Command_Bar is gone.
+  - **Tasks**: mini-kanban — To Do / In Progress / Done columns with compact cards (category dot + due-date).
+  - **Library**: "RECENT · 128 ITEMS" + sort, vertical resource rows (type badge + title + meta).
+- **Open mechanism**: the hover affordance on a Left_Rail nav row (§2a) opens that section as a tab; the up/down arrow toggles collapse/expand; the Categories toggle always returns to the Categories tab.
 
 ## 4. Right_Rail — "Right_Rail - Expanded" (Inspector) (`669:11`)
 
@@ -105,10 +114,17 @@ Always the Knowledge Graph canvas (1000x1024 in this mockup, fills remaining spa
 3. **Restyled "+ Add task" input** in "Left_Rail - Tasks" — was visually identical to the search-bar pill (same gray pill + placeholder-text styling), causing confusion as a "third search bar". Now an accent-tinted "+ New task" chip+label, visually distinct from search.
 4. **Categories scalability** — vertical list breaks at 50+ categories. Capped to ~5 (most-used/recent) + "View all categories →" link routing to "Left_Rail - Library" (category becomes a filter there, alongside type chips).
 5. **"RECENT" section** = recently *opened/accessed* resources (quick-access shortcuts), capped at 5 — not a full activity log.
+6. **Main_Content gains a Split_Section dock** (Session 60) — instead of swapping Main_Content to full Chat/Tasks/Library pages, the graph stays and those sections open as browser-style tabs in a bottom dock (collapsed strip ↔ ¼-height expanded). Reverses the Session 57/58 "Main_Content never swaps / single component" decision.
+7. **Global Command_Bar removed** (Session 60) — the "Ask, search, or add…" input was cut; quick-capture/ask will be re-sited later (open item). Chat input now lives inside the Chat tab.
+8. **Categories relocated** (Session 60) — moved from a Left_Rail section to the Split_Section default tab; the on-graph Legend was also removed (colors read from Categories tab). "View all categories" / a dedicated Categories destination is still being figured out by the user.
 
 ## 7. Open items for future sessions
 
-- Implement category filter chips in "Left_Rail - Library" (currently only type: All/PDF/Link/Note).
+- **Re-site the global capture/ask input** (removed Command_Bar) — decide where "add a resource / ask" lives now.
+- **Hover-state variant** for the nav "open-in-split" affordance — currently a static 0.4-opacity ghost; needs a real 0→1 hover reveal (variant/prototype).
+- **Resize handle** for the Split_Section (user-adjustable height beyond the ¼ default) — conceptual only, not designed.
+- **Split_Section tab content depth** — current Chat/Tasks/Library tab bodies are compact mockups; flesh out empty/loading/overflow states.
+- **Prototype wiring** for Main_Content: nav affordance → expand + that tab; up/down arrow → toggle; tab close; Categories toggle.
 - Decide whether a persistent "home" affordance (separate from `← Back`) is needed in Left_Rail.
 - Right_Rail default visibility rules (collapsed vs expanded on load) need confirming against real resource-selection flow.
 - Main_Content view-switch tabs (List / Timeline) are placeholders — no corresponding designs yet.
@@ -121,7 +137,7 @@ All states converted into Figma **Components** / **Component Sets** (page **UI**
 |---|---|---|---|
 | **Left_Rail** | `705:16` | `State` | `Default` (705:11), `Search` (705:12), `Chat` (753:178, redesigned Session 59), `Tasks` (705:14), `Library` (705:15), `Collapsed` (707:24) |
 | **Right_Rail** | `706:18` | `State` | `Collapsed` (706:16), `Expanded`/Inspector (706:17) |
-| **Main_Content** | `707:25` | — (single component, no variants — always the graph canvas) | |
+| **Main_Content** | `905:291` | `State` *(Session 60)* | `Default` (Split collapsed, 905:190), `Categories`, `Chat`, `Tasks`, `Library` (Split expanded ¼ height, active tab per variant). Old single component `707:25` retained but superseded. |
 
 A componentized "Desktop - Minimal" frame (`708:11`) assembles instances: Left_Rail=Default (`708:12`) + Main_Content (`708:80`) + Right_Rail=Collapsed (`708:177`), horizontal auto-layout, 1440x1024.
 
