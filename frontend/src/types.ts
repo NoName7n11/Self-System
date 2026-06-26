@@ -10,9 +10,11 @@ export type ReminderStatus = "scheduled" | "sent" | "dismissed";
 
 export type ResourceType = "pdf" | "link" | "note" | "doc" | "image";
 
-export type DockTab = "categories" | "chat" | "tasks" | "library";
+export type DockTab = "categories" | "chat" | "tasks" | "library" | "archive";
 
-export type GraphView = "graph" | "list" | "timeline";
+export type GraphView = "graph" | "map" | "progress";
+
+export type LeftView = "home" | "chat" | "tasks" | "library";
 
 export interface ResourceItem {
   id: string;

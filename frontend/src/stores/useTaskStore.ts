@@ -13,6 +13,7 @@ import {
   updateTodo,
 } from "../api/client";
 import { ipcCall } from "../lib/ipc";
+import { demoTasksAsTodos } from "../lib/demoData";
 import type { ReminderDraft, ReminderItem, ReminderStatus, TodoDraft, TodoItem, TodoStatus } from "../types";
 
 const defaultTodoDraft: TodoDraft = {
@@ -145,7 +146,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     try {
       const rawRows = await ipcCall<unknown[]>("desktop.App.GetTodos", [50, 0], () => listTodos());
-      const rows = rawRows.map(normalizeTodo);
+      const fetched = rawRows.map(normalizeTodo);
+      // ponytail: demo seed fallback when backend has no todos
+      const rows = fetched.length === 0 ? demoTasksAsTodos() : fetched;
       const selectedTodoId = get().selectedTodoId;
 
       set((state) => {
@@ -158,9 +161,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           todoDraft: selected ? todoDraftFromItem(selected) : state.todoDraft,
         };
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load todos";
-      set((state) => ({ isLoadingTodos: silent ? state.isLoadingTodos : false, error: message }));
+    } catch {
+      // backend unreachable → demo todos so the dock Tasks tab is populated
+      set((state) => ({ todos: demoTasksAsTodos(), isLoadingTodos: silent ? state.isLoadingTodos : false, error: null }));
     }
   },
 

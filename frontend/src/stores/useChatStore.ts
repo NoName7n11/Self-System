@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { sendChatCommand } from "../api/client";
+import { demoChatMessages } from "../lib/demoData";
 import type { ChatMessage } from "../types";
 import { useResourceStore } from "./useResourceStore";
 import { useTaskStore } from "./useTaskStore";
@@ -37,12 +38,8 @@ interface ChatState {
 }
 
 export const useChatStore = create<ChatState>((set) => ({
-  messages: [
-    buildMessage(
-      "assistant",
-      "Command mode is active. Try: create category research | notes, resource: https://example.com | category=Research, or list resources.",
-    ),
-  ],
+  // seed with the demo conversation so the dock Chat tab looks populated
+  messages: demoChatMessages(),
   isSending: false,
   error: null,
 

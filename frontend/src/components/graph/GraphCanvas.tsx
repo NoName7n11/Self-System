@@ -510,16 +510,19 @@ export default function GraphCanvas({ resources }: Props) {
   const linkCount = linksRef.current.length;
   const zoom = Math.round(trRef.current.scale * 100);
 
-  // list/timeline overlays use the prop resources (already filtered)
-  const groupedByMonth = useMemo(() => {
-    const groups: Record<string, ResourceItem[]> = {};
+  // map view: category → its resources
+  const mapGroups = useMemo(() => {
+    const groups = new Map<string, { name: string; color: string; items: ResourceItem[] }>();
     for (const r of resources) {
-      const d = new Date(r.createdAt);
-      const key = isNaN(d.getTime()) ? "Unknown" : `${d.getFullYear()} · ${d.toLocaleString("default", { month: "short" })}`.toUpperCase();
-      (groups[key] ??= []).push(r);
+      const key = r.categoryId || "unsorted";
+      if (!groups.has(key)) groups.set(key, { name: r.categoryName || "Unsorted", color: CAT_COLORS[key] ?? "#5B9CF6", items: [] });
+      groups.get(key)!.items.push(r);
     }
-    return groups;
+    return [...groups.values()];
   }, [resources]);
+
+  // progress view: "recently completed" = a few recent resources
+  const recentlyDone = useMemo(() => resources.slice(0, 6), [resources]);
 
   return (
     <div className="graph-zone">
@@ -540,51 +543,40 @@ export default function GraphCanvas({ resources }: Props) {
         </>
       )}
 
-      {view === "list" && (
-        <div className="graph-overlay">
-          <div className="graph-overlay-title">ALL RESOURCES · {resources.length}</div>
-          {resources.map((r) => (
-            <div
-              key={r.id}
-              className="overlay-row"
-              onClick={() => { selectResource(r.id); setRightOpen(true); }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") { selectResource(r.id); setRightOpen(true); } }}
-            >
-              <span className={`type-badge ${r.type ?? "link"}`}>{(r.type ?? "link").toUpperCase()}</span>
-              <span className="overlay-row-title">{r.title || r.url}</span>
-              <span className="overlay-row-meta">{r.categoryName} · {r.host}</span>
+      {view === "map" && (
+        <div className="graph-overlay map-overlay">
+          {mapGroups.map((g) => (
+            <div key={g.name} className="map-group">
+              <div className="map-hub" style={{ borderColor: g.color }}>
+                <span className="map-hub-dot" style={{ background: g.color }} />
+                <span className="map-hub-name">{g.name}</span>
+                <span className="map-hub-count">{g.items.length}</span>
+              </div>
+              <div className="map-children">
+                {g.items.map((r) => (
+                  <button key={r.id} className="map-node" onClick={() => { selectResource(r.id); setRightOpen(true); }} type="button">
+                    <span className="map-node-dot" style={{ background: TYPE_COLORS[r.type ?? "link"] ?? "#9A9AA0" }} />
+                    <span className="map-node-label">{r.title || r.url}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {view === "timeline" && (
+      {view === "progress" && (
         <div className="graph-overlay">
-          {Object.entries(groupedByMonth).map(([month, items]) => (
-            <div key={month}>
-              <div className="timeline-group-label">{month}</div>
-              {items.map((r) => {
-                const d = new Date(r.createdAt);
-                const day = isNaN(d.getTime()) ? "?" : String(d.getDate()).padStart(2, "0");
-                const color = TYPE_COLORS[r.type ?? "link"] ?? "#9A9AA0";
-                return (
-                  <div
-                    key={r.id}
-                    className="timeline-row"
-                    onClick={() => { selectResource(r.id); setRightOpen(true); }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === "Enter") { selectResource(r.id); setRightOpen(true); } }}
-                  >
-                    <span className="timeline-day">{day}</span>
-                    <span className="timeline-swatch" style={{ background: color }} />
-                    <span className="timeline-title">{r.title || r.url}</span>
-                    <span className="overlay-row-meta">{r.categoryName}</span>
-                  </div>
-                );
-              })}
+          <div className="graph-overlay-title">PROCESSING QUEUE</div>
+          <div className="progress-empty">NO ACTIVE PROCESSING · ADD A RESOURCE FROM THE LIBRARY TAB</div>
+          <div className="graph-overlay-title" style={{ marginTop: 24 }}>RECENTLY COMPLETED</div>
+          {recentlyDone.map((r) => (
+            <div key={r.id} className="overlay-row" onClick={() => { selectResource(r.id); setRightOpen(true); }}
+              role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") { selectResource(r.id); setRightOpen(true); } }}>
+              <span className="progress-check">✓</span>
+              <span className={`type-badge ${r.type ?? "link"}`}>{(r.type ?? "link").toUpperCase()}</span>
+              <span className="overlay-row-title">{r.title || r.url}</span>
+              <span className="overlay-row-meta">{r.categoryName} · IN GRAPH</span>
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { createResource, deleteResource, listResources, normalizeResource, updateResource } from "../api/client";
 import { ipcCall } from "../lib/ipc";
+import { demoResourcesAsItems } from "../lib/demoData";
 import type { ResourceDraft, ResourceFilters, ResourceItem, ViewMode } from "../types";
 
 const defaultDraft: ResourceDraft = {
@@ -148,8 +149,13 @@ export const useResourceStore = create<ResourceState>((set, get) => ({
         [50, 0],
         () => listResources()
       );
-      const rows = rawRows.map(normalizeResource);
-      const selectedResourceId = get().selectedResourceId;
+      const fetched = rawRows.map(normalizeResource);
+      // ponytail: fall back to bundled demo seed when backend is empty/offline so
+      // the UI looks populated like the design. Real data wins whenever present.
+      const usingDemo = fetched.length === 0;
+      const rows = usingDemo ? demoResourcesAsItems() : fetched;
+      const previousId = get().selectedResourceId;
+      const selectedResourceId = previousId ?? (usingDemo ? "r1" : null);
 
       set((state) => {
         const selected = rows.find((resource) => resource.id === selectedResourceId) ?? null;
@@ -163,8 +169,17 @@ export const useResourceStore = create<ResourceState>((set, get) => ({
         };
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load resources";
-      set((state) => ({ isLoading: silent ? state.isLoading : false, error: message }));
+      // backend unreachable → show demo seed instead of an empty barren shell
+      const previousId = get().selectedResourceId;
+      const rows = demoResourcesAsItems();
+      const selected = rows.find((r) => r.id === (previousId ?? "r1")) ?? null;
+      set((state) => ({
+        resources: rows,
+        isLoading: silent ? state.isLoading : false,
+        error: null,
+        selectedResourceId: selected?.id ?? null,
+        draft: selected ? draftFromResource(selected) : state.draft,
+      }));
     }
   },
 

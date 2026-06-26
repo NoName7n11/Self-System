@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { DockTab, GraphView } from "../types";
+import type { DockTab, GraphView, LeftView } from "../types";
 
 interface LayoutState {
   leftCollapsed: boolean;
@@ -8,34 +8,74 @@ interface LayoutState {
   dockOpen: boolean;
   dockTab: DockTab;
   view: GraphView;
+  leftView: LeftView;
   selectedCat: string | null;
+  recentOpen: boolean;
+  catsOpen: boolean;
+  libFilter: string;
+  archiveFilter: string;
+  notifOpen: boolean;
+  notifSeen: boolean;
+  notifMuted: boolean;
 
-  setLeftCollapsed: (v: boolean) => void;
   toggleLeft: () => void;
-  setRightOpen: (v: boolean) => void;
+  setLeftCollapsed: (v: boolean) => void;
   toggleRight: () => void;
+  setRightOpen: (v: boolean) => void;
+  toggleDock: () => void;
   setDockOpen: (v: boolean) => void;
+
+  setLeftView: (v: LeftView) => void;
   openDockTab: (tab: DockTab) => void;
   setDockTab: (tab: DockTab) => void;
   setView: (v: GraphView) => void;
+
   setSelectedCat: (catId: string | null) => void;
+  toggleRecent: () => void;
+  toggleCats: () => void;
+  setLibFilter: (f: string) => void;
+  setArchiveFilter: (f: string) => void;
+
+  toggleNotif: () => void;
+  closeNotif: () => void;
+  toggleMute: () => void;
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
   leftCollapsed: false,
-  rightOpen: false,
-  dockOpen: false,
+  rightOpen: true,
+  dockOpen: true,
   dockTab: "categories",
   view: "graph",
+  leftView: "home",
   selectedCat: null,
+  recentOpen: true,
+  catsOpen: true,
+  libFilter: "all",
+  archiveFilter: "all",
+  notifOpen: false,
+  notifSeen: false,
+  notifMuted: false,
 
-  setLeftCollapsed: (v) => set({ leftCollapsed: v }),
   toggleLeft: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
-  setRightOpen: (v) => set({ rightOpen: v }),
+  setLeftCollapsed: (v) => set({ leftCollapsed: v }),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
+  setRightOpen: (v) => set({ rightOpen: v }),
+  toggleDock: () => set((s) => ({ dockOpen: !s.dockOpen })),
   setDockOpen: (v) => set({ dockOpen: v }),
+
+  setLeftView: (v) => set({ leftCollapsed: false, leftView: v }),
   openDockTab: (tab) => set({ dockOpen: true, dockTab: tab }),
   setDockTab: (tab) => set({ dockTab: tab }),
   setView: (v) => set({ view: v }),
+
   setSelectedCat: (catId) => set({ selectedCat: catId }),
+  toggleRecent: () => set((s) => ({ recentOpen: !s.recentOpen })),
+  toggleCats: () => set((s) => ({ catsOpen: !s.catsOpen })),
+  setLibFilter: (f) => set({ libFilter: f }),
+  setArchiveFilter: (f) => set({ archiveFilter: f }),
+
+  toggleNotif: () => set((s) => ({ notifOpen: !s.notifOpen, notifSeen: true })),
+  closeNotif: () => set({ notifOpen: false }),
+  toggleMute: () => set((s) => ({ notifMuted: !s.notifMuted })),
 }));

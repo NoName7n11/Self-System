@@ -1,161 +1,346 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
-  IcoChevL, IcoChevR, IcoChat, IcoTasks, IcoLibrary, IcoGear,
-  IcoSearch, IcoTrend, IcoLogo,
+  IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoGear, IcoLibrary,
+  IcoLogo, IcoPlus, IcoSearch, IcoTasks, IcoTrend,
 } from "../icons";
+import { DEMO_CATEGORIES, DEMO_CONVERSATIONS, DEMO_RECENT_IDS } from "../../lib/demoData";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
-import type { DockTab, ResourceItem, ResourceType } from "../../types";
+import { useTaskStore } from "../../stores/useTaskStore";
+import type { DockTab, LeftView, ResourceItem, ResourceType } from "../../types";
 
-// ── type color lookup ────────────────────────────────────────────────────────
 const TYPE_COLOR: Record<ResourceType, string> = {
-  pdf:   "#F67373",
-  link:  "#48C78E",
-  note:  "#5B9CF6",
-  doc:   "#9B59F6",
-  image: "#F6739B",
+  pdf: "#F67373", link: "#48C78E", note: "#5B9CF6", doc: "#9B59F6", image: "#F6739B",
 };
+const CAT_COLOR: Record<string, string> = Object.fromEntries(
+  DEMO_CATEGORIES.map((c) => [c.id, c.color]),
+);
 
-// ── pure helpers (kept exported so existing tests can import them) ────────────
+function typeColor(t?: ResourceType): string { return t ? TYPE_COLOR[t] : "#9A9AA0"; }
+
+// kept exported for any remaining importers
 export function deriveFavorites(resources: ResourceItem[], limit = 3): Array<[string, number]> {
-  const counter = new Map<string, number>();
-  for (const item of resources) {
-    const key = item.categoryName.trim() || "Unsorted";
-    counter.set(key, (counter.get(key) ?? 0) + 1);
-  }
-  return [...counter.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit);
+  const m = new Map<string, number>();
+  for (const r of resources) m.set(r.categoryName.trim() || "Unsorted", (m.get(r.categoryName.trim() || "Unsorted") ?? 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
-
 export function deriveRecents(resources: ResourceItem[], limit = 5): ResourceItem[] {
-  return [...resources]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+  return [...resources].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }
 
-// ── nav config ───────────────────────────────────────────────────────────────
-const NAV_ITEMS: Array<{ tab: DockTab; label: string; Icon: () => React.ReactElement }> = [
-  { tab: "chat",    label: "CHAT",    Icon: IcoChat    },
-  { tab: "tasks",   label: "TASKS",   Icon: IcoTasks },
-  { tab: "library", label: "LIBRARY", Icon: IcoLibrary },
+const NAV: Array<{ view: LeftView; tab: DockTab; label: string; Icon: () => React.ReactElement }> = [
+  { view: "chat", tab: "chat", label: "CHAT", Icon: IcoChat },
+  { view: "tasks", tab: "tasks", label: "TASKS", Icon: IcoTasks },
+  { view: "library", tab: "library", label: "LIBRARY", Icon: IcoLibrary },
 ];
 
-export default function Sidebar() {
-  const leftCollapsed  = useLayoutStore((s) => s.leftCollapsed);
-  const toggleLeft     = useLayoutStore((s) => s.toggleLeft);
-  const openDockTab    = useLayoutStore((s) => s.openDockTab);
-  const setRightOpen   = useLayoutStore((s) => s.setRightOpen);
-  const resources      = useResourceStore((s) => s.resources);
-  const selectResource = useResourceStore((s) => s.selectResource);
-  const query          = useResourceStore((s) => s.filters.query);
-  const setQuery       = useResourceStore((s) => s.setQuery);
+const LIB_CHIPS = ["all", "pdf", "link", "note"];
 
-  const recents = useMemo(() => deriveRecents(resources), [resources]);
+export default function Sidebar() {
+  const leftCollapsed = useLayoutStore((s) => s.leftCollapsed);
+  const leftView = useLayoutStore((s) => s.leftView);
+  const recentOpen = useLayoutStore((s) => s.recentOpen);
+  const catsOpen = useLayoutStore((s) => s.catsOpen);
+  const selectedCat = useLayoutStore((s) => s.selectedCat);
+  const libFilter = useLayoutStore((s) => s.libFilter);
+  const toggleLeft = useLayoutStore((s) => s.toggleLeft);
+  const setLeftView = useLayoutStore((s) => s.setLeftView);
+  const openDockTab = useLayoutStore((s) => s.openDockTab);
+  const toggleRecent = useLayoutStore((s) => s.toggleRecent);
+  const toggleCats = useLayoutStore((s) => s.toggleCats);
+  const setLibFilter = useLayoutStore((s) => s.setLibFilter);
+  const toggleNotif = useLayoutStore((s) => s.toggleNotif);
+  const setRightOpen = useLayoutStore((s) => s.setRightOpen);
+
+  const resources = useResourceStore((s) => s.resources);
+  const query = useResourceStore((s) => s.filters.query);
+  const setQuery = useResourceStore((s) => s.setQuery);
+  const selectResource = useResourceStore((s) => s.selectResource);
+
+  const byId = useMemo(() => new Map(resources.map((r) => [r.id, r])), [resources]);
+  const recents = useMemo(() => {
+    const seeded = DEMO_RECENT_IDS.map((id) => byId.get(id)).filter(Boolean) as ResourceItem[];
+    return seeded.length > 0 ? seeded : deriveRecents(resources);
+  }, [byId, resources]);
+
+  const select = (id: string) => { selectResource(id); setRightOpen(true); };
 
   return (
     <aside className={`left-rail${leftCollapsed ? " is-collapsed" : ""}`}>
-      {/* ── Header ── */}
+      {/* header */}
       <div className="rail-header">
-        <div className="logo-chip">
+        <div className="logo-chip" onClick={() => leftCollapsed && setLeftView("home")}>
           <IcoLogo />
         </div>
-
         {!leftCollapsed && (
           <>
             <div className="rail-wordmark">
-              <div className="rail-wordmark-name">Self Systems</div>
+              <div className="rail-wordmark-name">SELF SYSTEMS</div>
               <div className="rail-wordmark-sub">LOCAL · v0.1.0</div>
             </div>
-            <button className="rail-collapse-btn" onClick={toggleLeft} type="button" aria-label="Collapse rail">
+            <button className="rail-collapse-btn" onClick={toggleLeft} type="button" aria-label="Collapse">
               <IcoChevL />
             </button>
           </>
         )}
       </div>
 
-      {/* ── Search (expanded only) ── */}
-      {!leftCollapsed && (
-        <div className="rail-search">
-          <IcoSearch />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="SEARCH RESOURCES, TAGS…"
-            aria-label="Search resources"
-          />
-          <span className="rail-search-hint">/</span>
+      {/* collapsed strip */}
+      {leftCollapsed && (
+        <div className="rail-collapsed-body">
+          {NAV.map(({ view, label, Icon }) => (
+            <button key={view} className="rail-collapsed-btn" onClick={() => setLeftView(view)} type="button" aria-label={label}>
+              <Icon />
+            </button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <button className="rail-collapsed-btn" type="button" aria-label="Settings"><IcoGear /></button>
         </div>
       )}
 
-      {/* ── Primary Nav ── */}
-      <nav className="rail-nav">
-        {NAV_ITEMS.map(({ tab, label, Icon }) => (
-          <button
-            key={tab}
-            className="nav-row"
-            onClick={() => openDockTab(tab)}
-            type="button"
-          >
-            <Icon />
-            {!leftCollapsed && <span className="nav-row-label">{label}</span>}
-            {!leftCollapsed && (
-              <span
-                className="nav-affordance"
-                onClick={(e) => { e.stopPropagation(); openDockTab(tab); }}
-                role="button"
-                aria-label={`Open ${label} in dock`}
-              >
-                <IcoTrend />
+      {/* ===== HOME ===== */}
+      {!leftCollapsed && leftView === "home" && (
+        <div className="rail-body">
+          <div className="rail-search">
+            <IcoSearch />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="SEARCH RESOURCES, TAGS…" aria-label="Search" />
+            <span className="rail-search-hint">/</span>
+          </div>
+
+          <nav className="rail-nav">
+            {NAV.map(({ view, tab, label, Icon }) => (
+              <button key={view} className="nav-row" onClick={() => setLeftView(view)} type="button">
+                <span className="nav-row-icon"><Icon /></span>
+                <span className="nav-row-label">{label}</span>
+                <span className="nav-affordance" role="button" aria-label={`Open ${label} in dock`}
+                  onClick={(e) => { e.stopPropagation(); openDockTab(tab); }}>
+                  <IcoTrend />
+                </span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="rail-rule" />
+
+          {/* recent */}
+          <button className="rail-section-toggle" onClick={toggleRecent} type="button">
+            <span className="rail-chev">{recentOpen ? <IcoChevDn /> : <IcoChevR />}</span>
+            <span className="rail-section-label-inline">RECENT</span>
+            <span className="rail-section-count">{recents.length}</span>
+          </button>
+          {recentOpen && (
+            <div className="rail-list">
+              {recents.map((r) => (
+                <button key={r.id} className="rail-recent-row" onClick={() => select(r.id)} type="button">
+                  <span className="rail-type-swatch" style={{ background: typeColor(r.type) }} />
+                  <span className="rail-recent-title">{r.title || r.host || r.url}</span>
+                  <span className="rail-recent-type">{(r.type ?? "link").toUpperCase()}</span>
+                </button>
+              ))}
+              {recents.length === 0 && <div className="rail-empty">NO RECENT ITEMS</div>}
+            </div>
+          )}
+
+          <div className="rail-rule" />
+
+          {/* category nodes */}
+          <button className="rail-section-toggle" onClick={toggleCats} type="button">
+            <span className="rail-chev">{catsOpen ? <IcoChevDn /> : <IcoChevR />}</span>
+            <span className="rail-section-label-inline">CATEGORY NODES</span>
+            {selectedCat && (
+              <span className="rail-selcat">
+                <span className="rail-selcat-dot" style={{ background: CAT_COLOR[selectedCat] ?? "#5B9CF6" }} />
+                <span className="rail-selcat-name">{DEMO_CATEGORIES.find((c) => c.id === selectedCat)?.name}</span>
               </span>
             )}
           </button>
-        ))}
-      </nav>
+          {catsOpen && (
+            selectedCat ? (
+              <>
+                <div className="rail-catnodes-head">
+                  <span>{resources.filter((r) => r.categoryId === selectedCat).length} NODES</span>
+                  <span className="rail-viewall" onClick={() => openDockTab("categories")}>VIEW ALL →</span>
+                </div>
+                <div className="rail-list">
+                  {resources.filter((r) => r.categoryId === selectedCat).map((r) => (
+                    <button key={r.id} className="rail-catnode-row" onClick={() => select(r.id)} type="button">
+                      <span className="rail-catnode-badge" style={{ background: typeColor(r.type) }}>{(r.type ?? "link").toUpperCase()}</span>
+                      <span className="rail-recent-title">{r.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rail-cathint">
+                Select a category in the graph or dock to see its nodes here.
+                <span className="rail-viewall" onClick={() => openDockTab("categories")}>BROWSE CATEGORIES →</span>
+              </div>
+            )
+          )}
 
-      {/* ── Recent (expanded only) ── */}
-      {!leftCollapsed && recents.length > 0 && (
-        <section className="rail-section">
-          <div className="rail-section-label">Recent</div>
-          {recents.map((item) => {
-            const label = item.title || item.host || item.url || "Resource";
-            const color = TYPE_COLOR[item.type ?? "link"] ?? "#9A9AA0";
-            return (
-              <button
-                key={item.id}
-                className="rail-recent-row"
-                onClick={() => { selectResource(item.id); setRightOpen(true); }}
-                type="button"
-              >
-                <span className="rail-type-swatch" style={{ background: color }} />
-                <span className="rail-recent-title">{label}</span>
-                <span className="rail-recent-type">{(item.type ?? "link").toUpperCase()}</span>
-              </button>
-            );
-          })}
-        </section>
-      )}
+          <div style={{ flex: 1 }} />
 
-      {/* ── Footer ── */}
-      <div className="rail-footer">
-        {leftCollapsed ? (
-          <button className="rail-collapse-btn" onClick={toggleLeft} type="button" aria-label="Expand rail">
-            <IcoChevR />
+          {/* update banner */}
+          <button className="rail-update" onClick={toggleNotif} type="button">
+            <span className="rail-update-dot" />
+            <span className="rail-update-label">UPDATE AVAILABLE · v0.1.1</span>
+            <span className="rail-update-chev"><IcoChevR /></span>
           </button>
-        ) : (
-          <>
+
+          {/* footer */}
+          <div className="rail-footer">
             <div className="rail-avatar">N</div>
             <div className="rail-user">
               <div className="rail-user-name">noname</div>
               <div className="rail-user-sub">local · single user</div>
             </div>
-            <button className="rail-gear-btn" type="button" aria-label="Settings">
-              <IcoGear />
-            </button>
-          </>
-        )}
-      </div>
+            <button className="rail-gear-btn" type="button" aria-label="Settings"><IcoGear /></button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== CHAT / TASKS / LIBRARY ===== */}
+      {!leftCollapsed && leftView === "chat" && <RailChat />}
+      {!leftCollapsed && leftView === "tasks" && <RailTasks />}
+      {!leftCollapsed && leftView === "library" && <RailLibrary filter={libFilter} setFilter={setLibFilter} onSelect={select} />}
     </aside>
+  );
+}
+
+// ── rail chat (conversation list → thread) ────────────────────────────────────
+function RailChat() {
+  const setLeftView = useLayoutStore((s) => s.setLeftView);
+  const openDockTab = useLayoutStore((s) => s.openDockTab);
+  const [convId, setConvId] = useState<string | null>(null);
+  const conv = DEMO_CONVERSATIONS.find((c) => c.id === convId) ?? null;
+
+  if (!conv) {
+    return (
+      <div className="rail-view">
+        <div className="rail-view-head">
+          <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
+          <span className="rail-view-title">CHATS</span>
+          <button className="rail-new-chip" type="button"><IcoPlus />NEW CHAT</button>
+        </div>
+        <div className="rail-conv-list">
+          {DEMO_CONVERSATIONS.map((c) => (
+            <button key={c.id} className="rail-conv-row" onClick={() => setConvId(c.id)} type="button">
+              <span className="rail-conv-dot" style={{ background: "#5B9CF6" }} />
+              <div className="rail-conv-main">
+                <div className="rail-conv-title">{c.title}</div>
+                <div className="rail-conv-preview">{c.messages[c.messages.length - 1]?.content}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rail-view">
+      <div className="rail-view-head">
+        <button className="rail-back" onClick={() => setConvId(null)} type="button"><IcoChevL /></button>
+        <span className="rail-view-title ellipsis">{conv.title}</span>
+        <button className="rail-icon-btn" onClick={() => openDockTab("chat")} type="button" aria-label="Open in dock"><IcoTrend /></button>
+      </div>
+      <div className="rail-chat-thread">
+        {conv.messages.map((m) => (
+          <div key={m.id} className={`chat-bubble ${m.role === "user" ? "is-user" : "is-ai"}`}>
+            {m.content}
+            {m.cite && <div className="chat-cite"><span className="chat-cite-dot" />{m.cite}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="rail-composer">
+        <button className="chat-plus-btn" type="button"><IcoPlus /></button>
+        <input className="chat-composer-input" placeholder="MESSAGE…" />
+        <button className="chat-send-btn" type="button" aria-label="Send"><IcoTrend /></button>
+      </div>
+    </div>
+  );
+}
+
+// ── rail tasks (grouped columns) ──────────────────────────────────────────────
+function RailTasks() {
+  const setLeftView = useLayoutStore((s) => s.setLeftView);
+  const todos = useTaskStore((s) => s.todos);
+  const cols: Array<{ key: string; label: string; color: string }> = [
+    { key: "in_progress", label: "IN PROGRESS", color: "#F0703C" },
+    { key: "open", label: "TO DO", color: "#5B9CF6" },
+    { key: "done", label: "DONE", color: "#48C78E" },
+  ];
+  return (
+    <div className="rail-view">
+      <div className="rail-view-head">
+        <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
+        <span className="rail-view-title">TASKS</span>
+        <button className="rail-new-chip" type="button"><IcoPlus />NEW</button>
+      </div>
+      <div className="rail-tasks-body">
+        {cols.map((col) => {
+          const items = todos.filter((t) => t.status === col.key);
+          return (
+            <div key={col.key} className="rail-task-group">
+              <div className="rail-task-group-head">
+                <span className="task-cat-dot" style={{ background: col.color }} />
+                <span className="rail-task-group-label">{col.label}</span>
+                <span className="rail-task-group-count">{items.length}</span>
+              </div>
+              {items.map((t) => (
+                <div key={t.id} className="rail-task-card">
+                  <div className="rail-task-card-top">
+                    <span className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}>{t.status === "done" && "✓"}</span>
+                    <span className={`rail-task-title${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
+                  </div>
+                  <div className="rail-task-card-meta">
+                    <span className="task-cat-dot" style={{ background: "#5B9CF6" }} />
+                    <span className="task-due-mini">{t.dueAt ? `DUE ${t.dueAt}` : ""}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── rail library (filter chips + rows) ────────────────────────────────────────
+function RailLibrary({ filter, setFilter, onSelect }: { filter: string; setFilter: (f: string) => void; onSelect: (id: string) => void }) {
+  const setLeftView = useLayoutStore((s) => s.setLeftView);
+  const openDockTab = useLayoutStore((s) => s.openDockTab);
+  const resources = useResourceStore((s) => s.resources);
+  const rows = resources.filter((r) => filter === "all" || r.type === filter);
+  return (
+    <div className="rail-view">
+      <div className="rail-view-head">
+        <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
+        <span className="rail-view-title">LIBRARY</span>
+        <button className="rail-icon-btn" onClick={() => openDockTab("categories")} type="button" aria-label="Open in dock"><IcoTrend /></button>
+      </div>
+      <div className="rail-lib-chips">
+        {LIB_CHIPS.map((c) => (
+          <button key={c} className={`rail-lib-chip${filter === c ? " is-active" : ""}`} onClick={() => setFilter(c)} type="button">
+            {c.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <div className="rail-lib-sort">
+        <span>{rows.length} ITEMS</span>
+        <span>SORT: RECENT ▾</span>
+      </div>
+      <div className="rail-list rail-lib-list">
+        {rows.map((r) => (
+          <button key={r.id} className="rail-lib-row" onClick={() => onSelect(r.id)} type="button">
+            <span className="rail-lib-badge" style={{ background: typeColor(r.type) }}>{(r.type ?? "link").toUpperCase()}</span>
+            <span className="rail-recent-title">{r.title}</span>
+            <span className="rail-lib-date">{r.createdAt}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
