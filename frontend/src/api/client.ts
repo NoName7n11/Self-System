@@ -3,9 +3,19 @@ import type {
   ReminderItem,
   ReminderStatus,
   ResourceItem,
+  ResourceType,
   TodoItem,
   TodoStatus,
 } from "../types";
+
+function inferResourceType(url: string, userOverride: boolean): ResourceType {
+  if (userOverride) return "note";
+  const lower = url.toLowerCase();
+  if (lower.endsWith(".pdf") || lower.includes("/pdf/")) return "pdf";
+  if (lower.match(/\.(png|jpe?g|gif|webp|svg)(\?|$)/)) return "image";
+  if (lower.match(/\.docx?(\?|$)/)) return "doc";
+  return "link";
+}
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8080";
 export const DEFAULT_SYNC_WS_PATH = "/api/v1/sync/ws";
@@ -85,16 +95,19 @@ function toBool(value: unknown): boolean {
 
 export function normalizeResource(raw: unknown): ResourceItem {
   const resource = (raw ?? {}) as Record<string, unknown>;
+  const url = firstString(resource.url, resource.URL);
+  const userOverride = toBool(resource.user_override ?? resource.userOverride ?? resource.UserOverride);
 
   return {
     id: firstString(resource.id, resource.ID),
-    url: firstString(resource.url, resource.URL),
+    url,
     host: firstString(resource.host, resource.Host),
     title: firstString(resource.title, resource.Title),
     summary: firstString(resource.summary, resource.Summary),
     categoryId: firstString(resource.category_id, resource.categoryId, resource.CategoryID),
     categoryName: firstString(resource.category_name, resource.categoryName, resource.CategoryName),
-    userOverride: toBool(resource.user_override ?? resource.userOverride ?? resource.UserOverride),
+    userOverride,
+    type: inferResourceType(url, userOverride),
     createdAt: firstString(resource.created_at, resource.createdAt, resource.CreatedAt),
     updatedAt: firstString(resource.updated_at, resource.updatedAt, resource.UpdatedAt),
   };

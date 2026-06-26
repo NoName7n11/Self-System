@@ -1,95 +1,161 @@
 import { useMemo } from "react";
 
+import {
+  IcoChevL, IcoChevR, IcoChat, IcoTasks, IcoLibrary, IcoGear,
+  IcoSearch, IcoTrend, IcoLogo,
+} from "../icons";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
-import type { NavSection, ResourceItem } from "../../types";
+import type { DockTab, ResourceItem, ResourceType } from "../../types";
 
-const navItems: Array<{ key: NavSection; label: string; short: string }> = [
-  { key: "graph", label: "Graph", short: "GR" },
-  { key: "search", label: "Search", short: "SR" },
-  { key: "chat", label: "Chat", short: "CH" },
-  { key: "tasks", label: "Tasks", short: "TK" },
-  { key: "settings", label: "Settings", short: "ST" },
-];
+// ── type color lookup ────────────────────────────────────────────────────────
+const TYPE_COLOR: Record<ResourceType, string> = {
+  pdf:   "#F67373",
+  link:  "#48C78E",
+  note:  "#5B9CF6",
+  doc:   "#9B59F6",
+  image: "#F6739B",
+};
 
+// ── pure helpers (kept exported so existing tests can import them) ────────────
 export function deriveFavorites(resources: ResourceItem[], limit = 3): Array<[string, number]> {
   const counter = new Map<string, number>();
   for (const item of resources) {
     const key = item.categoryName.trim() || "Unsorted";
     counter.set(key, (counter.get(key) ?? 0) + 1);
   }
-
   return [...counter.entries()]
-    .sort((left, right) => right[1] - left[1])
+    .sort((a, b) => b[1] - a[1])
     .slice(0, limit);
 }
 
-export function deriveRecents(resources: ResourceItem[], limit = 4): ResourceItem[] {
+export function deriveRecents(resources: ResourceItem[], limit = 5): ResourceItem[] {
   return [...resources]
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, limit);
 }
+
+// ── nav config ───────────────────────────────────────────────────────────────
+const NAV_ITEMS: Array<{ tab: DockTab; label: string; Icon: () => React.ReactElement }> = [
+  { tab: "chat",    label: "CHAT",    Icon: IcoChat    },
+  { tab: "tasks",   label: "TASKS",   Icon: IcoTasks },
+  { tab: "library", label: "LIBRARY", Icon: IcoLibrary },
+];
 
 export default function Sidebar() {
-  const activeSection = useLayoutStore((state) => state.activeSection);
-  const setActiveSection = useLayoutStore((state) => state.setActiveSection);
-  const sidebarCollapsed = useLayoutStore((state) => state.sidebarCollapsed);
-  const toggleSidebar = useLayoutStore((state) => state.toggleSidebar);
-  const resources = useResourceStore((state) => state.resources);
-
-  const favorites = useMemo(() => deriveFavorites(resources), [resources]);
+  const leftCollapsed  = useLayoutStore((s) => s.leftCollapsed);
+  const toggleLeft     = useLayoutStore((s) => s.toggleLeft);
+  const openDockTab    = useLayoutStore((s) => s.openDockTab);
+  const setRightOpen   = useLayoutStore((s) => s.setRightOpen);
+  const resources      = useResourceStore((s) => s.resources);
+  const selectResource = useResourceStore((s) => s.selectResource);
+  const query          = useResourceStore((s) => s.filters.query);
+  const setQuery       = useResourceStore((s) => s.setQuery);
 
   const recents = useMemo(() => deriveRecents(resources), [resources]);
 
   return (
-    <aside className={`sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}>
-      <div className="sidebar-brand">
-        <div className="brand-mark">SS</div>
-        {!sidebarCollapsed ? <div className="brand-title">Self Systems</div> : null}
+    <aside className={`left-rail${leftCollapsed ? " is-collapsed" : ""}`}>
+      {/* ── Header ── */}
+      <div className="rail-header">
+        <div className="logo-chip">
+          <IcoLogo />
+        </div>
+
+        {!leftCollapsed && (
+          <>
+            <div className="rail-wordmark">
+              <div className="rail-wordmark-name">Self Systems</div>
+              <div className="rail-wordmark-sub">LOCAL · v0.1.0</div>
+            </div>
+            <button className="rail-collapse-btn" onClick={toggleLeft} type="button" aria-label="Collapse rail">
+              <IcoChevL />
+            </button>
+          </>
+        )}
       </div>
 
-      <nav className="sidebar-nav">
-        {navItems.map((item) => (
+      {/* ── Search (expanded only) ── */}
+      {!leftCollapsed && (
+        <div className="rail-search">
+          <IcoSearch />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="SEARCH RESOURCES, TAGS…"
+            aria-label="Search resources"
+          />
+          <span className="rail-search-hint">/</span>
+        </div>
+      )}
+
+      {/* ── Primary Nav ── */}
+      <nav className="rail-nav">
+        {NAV_ITEMS.map(({ tab, label, Icon }) => (
           <button
-            key={item.key}
-            className={`nav-item ${activeSection === item.key ? "is-active" : ""}`}
-            onClick={() => setActiveSection(item.key)}
+            key={tab}
+            className="nav-row"
+            onClick={() => openDockTab(tab)}
             type="button"
           >
-            <span className="nav-short">{item.short}</span>
-            {!sidebarCollapsed ? <span className="nav-label">{item.label}</span> : null}
+            <Icon />
+            {!leftCollapsed && <span className="nav-row-label">{label}</span>}
+            {!leftCollapsed && (
+              <span
+                className="nav-affordance"
+                onClick={(e) => { e.stopPropagation(); openDockTab(tab); }}
+                role="button"
+                aria-label={`Open ${label} in dock`}
+              >
+                <IcoTrend />
+              </span>
+            )}
           </button>
         ))}
       </nav>
 
-      {!sidebarCollapsed ? (
-        <>
-          <section className="sidebar-block">
-            <div className="sidebar-heading">Favorites</div>
-            {favorites.length === 0 ? <p className="muted-copy">No categories yet.</p> : null}
-            {favorites.map(([name, count]) => (
-              <div className="sidebar-row" key={name}>
-                <span>{name}</span>
-                <span>{count}</span>
-              </div>
-            ))}
-          </section>
+      {/* ── Recent (expanded only) ── */}
+      {!leftCollapsed && recents.length > 0 && (
+        <section className="rail-section">
+          <div className="rail-section-label">Recent</div>
+          {recents.map((item) => {
+            const label = item.title || item.host || item.url || "Resource";
+            const color = TYPE_COLOR[item.type ?? "link"] ?? "#9A9AA0";
+            return (
+              <button
+                key={item.id}
+                className="rail-recent-row"
+                onClick={() => { selectResource(item.id); setRightOpen(true); }}
+                type="button"
+              >
+                <span className="rail-type-swatch" style={{ background: color }} />
+                <span className="rail-recent-title">{label}</span>
+                <span className="rail-recent-type">{(item.type ?? "link").toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
 
-          <section className="sidebar-block">
-            <div className="sidebar-heading">Recent</div>
-            {recents.length === 0 ? <p className="muted-copy">No resources yet.</p> : null}
-            {recents.map((item) => (
-              <div className="sidebar-row" key={item.id}>
-                <span className="ellipsis">{item.title || item.url}</span>
-              </div>
-            ))}
-          </section>
-        </>
-      ) : null}
-
-      <button className="sidebar-toggle" onClick={toggleSidebar} type="button">
-        {sidebarCollapsed ? "Expand" : "Collapse"}
-      </button>
+      {/* ── Footer ── */}
+      <div className="rail-footer">
+        {leftCollapsed ? (
+          <button className="rail-collapse-btn" onClick={toggleLeft} type="button" aria-label="Expand rail">
+            <IcoChevR />
+          </button>
+        ) : (
+          <>
+            <div className="rail-avatar">N</div>
+            <div className="rail-user">
+              <div className="rail-user-name">noname</div>
+              <div className="rail-user-sub">local · single user</div>
+            </div>
+            <button className="rail-gear-btn" type="button" aria-label="Settings">
+              <IcoGear />
+            </button>
+          </>
+        )}
+      </div>
     </aside>
   );
 }

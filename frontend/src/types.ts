@@ -8,6 +8,12 @@ export type TodoStatus = "open" | "in_progress" | "done";
 
 export type ReminderStatus = "scheduled" | "sent" | "dismissed";
 
+export type ResourceType = "pdf" | "link" | "note" | "doc" | "image";
+
+export type DockTab = "categories" | "chat" | "tasks" | "library";
+
+export type GraphView = "graph" | "list" | "timeline";
+
 export interface ResourceItem {
   id: string;
   url: string;
@@ -17,6 +23,7 @@ export interface ResourceItem {
   categoryId: string;
   categoryName: string;
   userOverride: boolean;
+  type?: ResourceType;
   createdAt: string;
   updatedAt: string;
 }
