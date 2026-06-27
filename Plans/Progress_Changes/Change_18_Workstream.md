@@ -87,5 +87,25 @@ Done: all three top-bar views render. Inline preview + context menus deferred to
 - [ ] `npm run build` clean; `go test ./...` unaffected
 - [ ] Real backend data overrides seed when present
 
+## Fidelity pass (Change 18.1) — user-guided, component by component
+
+### Left rail ✅
+Full per-component spec docs in `NEW_UI/Left_Rail/`. Fixes applied in `styles.css` (two passes):
+
+Pass 1 (alignment/colour):
+- Nav labels + RECENT/catnode/library titles were centered (button default) → `text-align:left`.
+- Footer sub-line uppercase → lowercase `local · single user`, `--text-mute`.
+- Nav row/icon colour → `#B9B9C0` / `#7A7A84`.
+
+Pass 2 (spec values from NEW_UI docs):
+- Header: logo chip `28→24px` + hover brightness; header gap `8→10`, padding `0 12→0 14`.
+- Search: boxed (margin `12 12 8`, all-side border `#25252B`, bg `--bg-input`) instead of border-bottom; placeholder `#4E4E57`; input `letter-spacing .3px`.
+- Nav: container `padding:4px 8px; gap:1px`; rows `padding 0 8; gap 10; border 1px transparent`.
+- RECENT rows: `height 30; gap 10; padding 0 8`; title `#B9B9C0`; type label `8px #4E4E57`.
+- Footer avatar: `28→26px`, bg `#1B1B20`, border `#2A2A30`, accent letter.
+- Collapsed strip: gear `margin-bottom:10px`.
+
+Deferred (documented in NEW_UI): resize handle, hold-to-clear recent, hover swap (type↔remove ✕), category-node selected-state polish.
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.
