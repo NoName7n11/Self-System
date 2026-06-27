@@ -5,6 +5,7 @@ import {
   IcoLogo, IcoPlus, IcoSearch, IcoSend, IcoTasks, IcoTrend,
 } from "../icons";
 import { DEMO_CATEGORIES } from "../../lib/demoData";
+import { startPanelResize } from "../../hooks/useResize";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
@@ -67,10 +68,19 @@ export default function Sidebar() {
     return seeded.length > 0 ? seeded : deriveRecents(resources);
   }, [recentIds, byId, resources]);
 
+  const leftWpx = useLayoutStore((s) => s.leftWpx);
+  const resizing = useLayoutStore((s) => s.resizing);
+
   const select = (id: string) => { selectResource(id); setRightOpen(true); };
 
   return (
-    <aside className={`left-rail${leftCollapsed ? " is-collapsed" : ""}`}>
+    <aside
+      className={`left-rail${leftCollapsed ? " is-collapsed" : ""}`}
+      style={{ width: leftCollapsed ? undefined : leftWpx, transition: resizing ? "none" : undefined }}
+    >
+      {!leftCollapsed && (
+        <div className="resize-handle resize-handle-r" onMouseDown={(e) => startPanelResize("left", e)} title="Drag to resize" />
+      )}
       {/* header */}
       <div className="rail-header">
         <div className="logo-chip" onClick={() => leftCollapsed && setLeftView("home")}>

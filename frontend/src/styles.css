@@ -479,6 +479,13 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 .inspector-send-btn { flex: none; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--bg-app); transition: opacity 0.08s; }
 .inspector-send-btn:hover { opacity: 0.85; }
 
+/* ─── Resize handles (drag-to-resize panels) ─────────────────────────────────── */
+.resize-handle { position: absolute; z-index: 6; background: transparent; transition: background 0.12s ease; }
+.resize-handle:hover, .resize-handle:active { background: var(--accent); }
+.resize-handle-r { top: 0; right: 0; width: 5px; height: 100%; cursor: col-resize; }
+.resize-handle-l { top: 0; left: 0; width: 5px; height: 100%; cursor: col-resize; }
+.resize-handle-top { top: 0; left: 0; height: 5px; width: 100%; cursor: row-resize; }
+
 /* ─── Notifications (top bar) ────────────────────────────────────────────────── */
 .notif-wrap { position: relative; }
 .notif-bell { width: 34px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-mute); background: var(--bg-input); border: 1px solid var(--border); position: relative; transition: color 0.08s, border-color 0.08s; }

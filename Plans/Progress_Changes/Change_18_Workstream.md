@@ -107,5 +107,12 @@ Pass 2 (spec values from NEW_UI docs):
 
 Deferred (documented in NEW_UI): resize handle, hold-to-clear recent, hover swap (type↔remove ✕), category-node selected-state polish.
 
+### Panel resize + snap-collapse ✅ (all three panels)
+`frontend/src/hooks/useResize.ts` + px sizes in `useLayoutStore` (`leftWpx/rightWpx/dockHpx/resizing`). Drag handles: left rail right-edge, right rail left-edge, dock top-edge (`.resize-handle*`, hover accent). On release, snaps to collapsed only when dragged **below `collapseAt`** — set well under each default so it isn't twitchy:
+- Left: floor 120, **collapseAt 150** (def 264) — low sensitivity.
+- Right: floor 150, **collapseAt 185** (def 336) — low sensitivity.
+- Dock: floor 90, **collapseAt 160** (def 264) — design feel.
+Panels render inline `width/height` from store; `transition:none` while resizing. Verified: moderate drag resizes without collapse; aggressive drag snaps collapsed.
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.

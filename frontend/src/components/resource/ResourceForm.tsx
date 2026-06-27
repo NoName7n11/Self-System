@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { IcoChevL, IcoChevR, IcoTrend } from "../icons";
+import { startPanelResize } from "../../hooks/useResize";
 import { DEMO_CATEGORIES, DEMO_RESOURCES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
@@ -24,6 +25,8 @@ export function getResourceFormCopy() { return { heading: "Inspector", subheadin
 
 export default function Inspector() {
   const rightOpen = useLayoutStore((s) => s.rightOpen);
+  const rightWpx = useLayoutStore((s) => s.rightWpx);
+  const resizing = useLayoutStore((s) => s.resizing);
   const toggleRight = useLayoutStore((s) => s.toggleRight);
   const openDockTab = useLayoutStore((s) => s.openDockTab);
 
@@ -57,7 +60,13 @@ export default function Inspector() {
   };
 
   return (
-    <aside className={`right-rail${rightOpen ? " is-open" : ""}`}>
+    <aside
+      className={`right-rail${rightOpen ? " is-open" : ""}`}
+      style={{ width: rightOpen ? rightWpx : undefined, transition: resizing ? "none" : undefined }}
+    >
+      {rightOpen && (
+        <div className="resize-handle resize-handle-l" onMouseDown={(e) => startPanelResize("right", e)} title="Drag to resize" />
+      )}
       {!rightOpen && (
         <div className="right-rail-collapsed">
           <button className="right-expand-btn" onClick={toggleRight} type="button" aria-label="Open inspector"><IcoChevL /></button>

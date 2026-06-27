@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { IcoChevDn, IcoChevUp, IcoCross, IcoDots, IcoGrid, IcoPlus, IcoSend } from "../icons";
+import { startPanelResize } from "../../hooks/useResize";
 import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
@@ -24,11 +25,19 @@ const TABS: Array<{ key: DockTab; label: string }> = [
 export default function Dock() {
   const dockOpen = useLayoutStore((s) => s.dockOpen);
   const dockTab = useLayoutStore((s) => s.dockTab);
+  const dockHpx = useLayoutStore((s) => s.dockHpx);
+  const resizing = useLayoutStore((s) => s.resizing);
   const openDockTab = useLayoutStore((s) => s.openDockTab);
   const toggleDock = useLayoutStore((s) => s.toggleDock);
 
   return (
-    <div className={`dock${dockOpen ? " is-open" : ""}`}>
+    <div
+      className={`dock${dockOpen ? " is-open" : ""}`}
+      style={{ height: dockOpen ? dockHpx : undefined, transition: resizing ? "none" : undefined }}
+    >
+      {dockOpen && (
+        <div className="resize-handle resize-handle-top" onMouseDown={(e) => startPanelResize("dock", e)} title="Drag to resize" />
+      )}
       <div className="dock-tab-strip">
         <button className={`dock-cat-toggle${dockTab === "categories" ? " is-active" : ""}`}
           onClick={() => openDockTab("categories")} type="button">

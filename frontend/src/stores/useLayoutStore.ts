@@ -21,6 +21,10 @@ interface LayoutState {
   mapExpanded: Record<string, boolean>;
   mapAllExpanded: boolean;
   mapZoom: number;
+  leftWpx: number;
+  rightWpx: number;
+  dockHpx: number;
+  resizing: boolean;
 
   toggleLeft: () => void;
   setLeftCollapsed: (v: boolean) => void;
@@ -51,6 +55,11 @@ interface LayoutState {
   mapZoomIn: () => void;
   mapZoomOut: () => void;
   mapZoomReset: () => void;
+
+  setLeftWpx: (px: number) => void;
+  setRightWpx: (px: number) => void;
+  setDockHpx: (px: number) => void;
+  setResizing: (v: boolean) => void;
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
@@ -72,6 +81,10 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   mapExpanded: {},
   mapAllExpanded: false,
   mapZoom: 1,
+  leftWpx: 264,
+  rightWpx: 336,
+  dockHpx: 264,
+  resizing: false,
 
   toggleLeft: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
   setLeftCollapsed: (v) => set({ leftCollapsed: v }),
@@ -102,4 +115,9 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   mapZoomIn: () => set((s) => ({ mapZoom: Math.min(2, +(s.mapZoom + 0.1).toFixed(2)) })),
   mapZoomOut: () => set((s) => ({ mapZoom: Math.max(0.4, +(s.mapZoom - 0.1).toFixed(2)) })),
   mapZoomReset: () => set({ mapZoom: 1 }),
+
+  setLeftWpx: (px) => set({ leftWpx: px }),
+  setRightWpx: (px) => set({ rightWpx: px }),
+  setDockHpx: (px) => set({ dockHpx: px }),
+  setResizing: (v) => set({ resizing: v }),
 }));
