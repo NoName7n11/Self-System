@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { IcoChevDn, IcoChevUp, IcoGrid, IcoPlus, IcoSend } from "../icons";
+import { IcoChevDn, IcoChevUp, IcoDots, IcoGrid, IcoPlus, IcoSend } from "../icons";
 import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
@@ -159,25 +159,83 @@ function ChatTab() {
   );
 }
 
-// ── tasks (horizontal columns) ────────────────────────────────────────────────
+// ── tasks (horizontal columns + create form) ──────────────────────────────────
+const STATUS_COLOR: Record<string, string> = { open: "#5B9CF6", in_progress: "#F0703C", done: "#48C78E" };
+
 function TasksTab() {
   const todos = useTaskStore((s) => s.todos);
   const toggleTodo = useTaskStore((s) => s.toggleTodo);
-  const quickAddTask = useTaskStore((s) => s.quickAddTask);
-  const cols: Array<{ key: string; label: string; color: string }> = [
+  const setTodoStatus = useTaskStore((s) => s.setTodoStatus);
+  const archiveTodo = useTaskStore((s) => s.archiveTodo);
+  const removeTodo = useTaskStore((s) => s.removeTodo);
+  const taskCreating = useTaskStore((s) => s.taskCreating);
+  const taskDraft = useTaskStore((s) => s.taskDraft);
+  const startTaskCreate = useTaskStore((s) => s.startTaskCreate);
+  const cancelTaskCreate = useTaskStore((s) => s.cancelTaskCreate);
+  const setTaskDraft = useTaskStore((s) => s.setTaskDraft);
+  const createTaskFromDraft = useTaskStore((s) => s.createTaskFromDraft);
+  const [menuId, setMenuId] = useState<string | null>(null);
+
+  const cols: Array<{ key: "in_progress" | "open" | "done"; label: string; color: string }> = [
     { key: "in_progress", label: "IN PROGRESS", color: "#F0703C" },
     { key: "open", label: "TO DO", color: "#5B9CF6" },
     { key: "done", label: "DONE", color: "#48C78E" },
   ];
+  const seg: Array<{ s: "open" | "in_progress" | "done"; lab: string }> = [
+    { s: "open", lab: "T" }, { s: "in_progress", lab: "P" }, { s: "done", lab: "D" },
+  ];
+
   return (
     <div className="dock-tasks-v2">
       <div className="dock-tasks-head">
         <div style={{ flex: 1 }} />
-        <button className="rail-new-chip" onClick={() => quickAddTask()} type="button"><IcoPlus />NEW TASK</button>
+        <button className="rail-new-chip" onClick={startTaskCreate} type="button"><IcoPlus />NEW TASK</button>
       </div>
+
+      {taskCreating && (
+        <div className="task-create">
+          <input className="task-create-title" value={taskDraft.title} autoFocus
+            onChange={(e) => setTaskDraft("title", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") createTaskFromDraft(); else if (e.key === "Escape") cancelTaskCreate(); }}
+            placeholder="TASK TITLE…" />
+          <div className="task-create-row">
+            <div className="task-create-field">
+              <div className="task-create-label">CATEGORY</div>
+              <div className="task-create-chips">
+                {DEMO_CATEGORIES.map((c) => (
+                  <button key={c.id} className={`task-cat-chip${taskDraft.cat === c.id ? " is-on" : ""}`}
+                    onClick={() => setTaskDraft("cat", c.id)} type="button">
+                    <span className="task-cat-dot" style={{ background: c.color }} />{c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="task-create-field">
+              <div className="task-create-label">STATUS</div>
+              <div className="task-status-seg">
+                {[["open", "TO DO"], ["in_progress", "IN PROGRESS"], ["done", "DONE"]].map(([s, l]) => (
+                  <button key={s} className="task-status-btn"
+                    style={taskDraft.status === s ? { background: STATUS_COLOR[s], color: "#0B0B0D" } : undefined}
+                    onClick={() => setTaskDraft("status", s)} type="button">{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="task-create-field">
+              <div className="task-create-label">DUE</div>
+              <input className="task-create-due" value={taskDraft.due}
+                onChange={(e) => setTaskDraft("due", e.target.value)} placeholder="e.g. 20 JUL" />
+            </div>
+          </div>
+          <div className="task-create-actions">
+            <button className="task-create-submit" onClick={createTaskFromDraft} type="button">CREATE TASK</button>
+            <button className="task-create-cancel" onClick={cancelTaskCreate} type="button">CANCEL</button>
+          </div>
+        </div>
+      )}
+
       <div className="dock-tasks-cols">
         {cols.map((col) => {
-          const items = todos.filter((t) => t.status === col.key);
+          const items = todos.filter((t) => t.status === col.key && !t.archived);
           return (
             <div key={col.key} className="dock-task-group">
               <div className="dock-task-group-head">
@@ -192,10 +250,31 @@ function TasksTab() {
                       <button className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}
                         onClick={() => toggleTodo(t.id)} type="button" aria-label="Toggle done">{t.status === "done" && "✓"}</button>
                       <span className={`rail-task-title${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
+                      <span className="task-dots" role="button" aria-label="Options"
+                        onClick={(e) => { e.stopPropagation(); setMenuId(menuId === t.id ? null : t.id); }}>
+                        <IcoDots />
+                      </span>
+                      {menuId === t.id && (
+                        <>
+                          <div className="ctx-scrim" onClick={(e) => { e.stopPropagation(); setMenuId(null); }} />
+                          <div className="ctx-menu ctx-menu-task" onClick={(e) => e.stopPropagation()}>
+                            <button className="ctx-item" onClick={() => { archiveTodo(t.id); setMenuId(null); }} type="button">Archive</button>
+                            <div className="ctx-divider" />
+                            <button className="ctx-item is-danger" onClick={() => { removeTodo(t.id); setMenuId(null); }} type="button">Delete</button>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="rail-task-card-meta">
                       <span className="task-cat-dot" style={{ background: CAT_COLOR[t.cat ?? ""] ?? "#5B9CF6" }} />
                       <span className="task-due-mini">DUE {t.dueAt || "—"}</span>
+                      <div className="task-seg">
+                        {seg.map(({ s, lab }) => (
+                          <button key={s} className="task-seg-btn"
+                            style={t.status === s ? { background: STATUS_COLOR[s], color: "#0B0B0D" } : undefined}
+                            onClick={(e) => { e.stopPropagation(); setTodoStatus(t.id, s); }} type="button">{lab}</button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -22,6 +22,11 @@ type WailsWindow = Window & {
     EventsEmit: (name: string, ...data: unknown[]) => void;
     EventsOn: (name: string, cb: (...data: unknown[]) => void) => () => void;
     EventsOff: (name: string) => void;
+    OnFileDrop: (
+      cb: (x: number, y: number, paths: string[]) => void,
+      useDropTarget: boolean
+    ) => void;
+    OnFileDropOff: () => void;
   };
 };
 
@@ -73,4 +78,29 @@ export function onWailsEvent(
     return () => {};
   }
   return win.runtime.EventsOn(name, cb);
+}
+
+/**
+ * Register a native file-drop handler. No-op in browser mode. Returns an
+ * unsubscribe function.
+ *
+ * This calls Wails' JS-side `window.runtime.OnFileDrop`, which attaches the DOM
+ * dragover/drop listeners that `preventDefault()` the drop and post the dropped
+ * file objects to Go. Without this call the WebView2 default handler wins and
+ * opens the file (e.g. a PDF in an Edge viewer) instead of delivering paths.
+ * The Go-side `runtime.OnFileDrop` only subscribes to the resulting event — it
+ * does NOT attach these listeners — so the frontend must register here.
+ *
+ * `useDropTarget=false` makes the entire window a drop zone, so no element needs
+ * the `--wails-drop-target: drop` CSS marker.
+ */
+export function onWailsFileDrop(
+  cb: (x: number, y: number, paths: string[]) => void
+): () => void {
+  const win = window as WailsWindow;
+  if (!isWailsContext() || !win.runtime?.OnFileDrop) {
+    return () => {};
+  }
+  win.runtime.OnFileDrop(cb, false);
+  return () => win.runtime?.OnFileDropOff?.();
 }

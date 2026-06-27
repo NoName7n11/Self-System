@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
+import { useTaskStore } from "../../stores/useTaskStore";
 import type { ResourceItem, ResourceType } from "../../types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -510,19 +512,26 @@ export default function GraphCanvas({ resources }: Props) {
   const linkCount = linksRef.current.length;
   const zoom = Math.round(trRef.current.scale * 100);
 
-  // map view: category → its resources
-  const mapGroups = useMemo(() => {
-    const groups = new Map<string, { name: string; color: string; items: ResourceItem[] }>();
-    for (const r of resources) {
-      const key = r.categoryId || "unsorted";
-      if (!groups.has(key)) groups.set(key, { name: r.categoryName || "Unsorted", color: CAT_COLORS[key] ?? "#5B9CF6", items: [] });
-      groups.get(key)!.items.push(r);
-    }
-    return [...groups.values()];
-  }, [resources]);
-
   // progress view: "recently completed" = a few recent resources
   const recentlyDone = useMemo(() => resources.slice(0, 6), [resources]);
+
+  // ── TASK MAP (map view): categories that have tasks → task leaves ──
+  const todos = useTaskStore((s) => s.todos);
+  const mapExpanded = useLayoutStore((s) => s.mapExpanded);
+  const mapAllExpanded = useLayoutStore((s) => s.mapAllExpanded);
+  const mapZoom = useLayoutStore((s) => s.mapZoom);
+  const toggleMapNode = useLayoutStore((s) => s.toggleMapNode);
+  const toggleMapAll = useLayoutStore((s) => s.toggleMapAll);
+  const mapZoomIn = useLayoutStore((s) => s.mapZoomIn);
+  const mapZoomOut = useLayoutStore((s) => s.mapZoomOut);
+  const mapZoomReset = useLayoutStore((s) => s.mapZoomReset);
+  const mapCats = useMemo(
+    () => DEMO_CATEGORIES
+      .map((c) => ({ ...c, tasks: todos.filter((t) => t.cat === c.id && !t.archived) }))
+      .filter((c) => c.tasks.length > 0),
+    [todos],
+  );
+  const statusColor = (s: string) => (s === "done" ? "#48C78E" : s === "in_progress" ? "#F0703C" : "#7A7A84");
 
   return (
     <div className="graph-zone">
@@ -544,24 +553,48 @@ export default function GraphCanvas({ resources }: Props) {
       )}
 
       {view === "map" && (
-        <div className="graph-overlay map-overlay">
-          {mapGroups.map((g) => (
-            <div key={g.name} className="map-group">
-              <div className="map-hub" style={{ borderColor: g.color }}>
-                <span className="map-hub-dot" style={{ background: g.color }} />
-                <span className="map-hub-name">{g.name}</span>
-                <span className="map-hub-count">{g.items.length}</span>
-              </div>
-              <div className="map-children">
-                {g.items.map((r) => (
-                  <button key={r.id} className="map-node" onClick={() => { selectResource(r.id); setRightOpen(true); }} type="button">
-                    <span className="map-node-dot" style={{ background: TYPE_COLORS[r.type ?? "link"] ?? "#9A9AA0" }} />
-                    <span className="map-node-label">{r.title || r.url}</span>
-                  </button>
-                ))}
-              </div>
+        <div className="task-map-overlay">
+          <div className="task-map" style={{ transform: `scale(${mapZoom})` }}>
+            <div className="tm-root">TASKS</div>
+            <div className="tm-cats">
+              {mapCats.map((c) => {
+                const exp = mapAllExpanded || mapExpanded[c.id];
+                return (
+                  <div key={c.id} className="tm-cat-row">
+                    <button className="tm-node tm-cat" onClick={() => toggleMapNode(c.id)} type="button">
+                      <span className="tm-dot" style={{ background: c.color }} />
+                      <span className="tm-name">{c.name}</span>
+                      <span className="tm-count">{c.tasks.length}</span>
+                      <span className="tm-chev">{exp ? "▾" : "▸"}</span>
+                    </button>
+                    {exp && (
+                      <div className="tm-tasks">
+                        {c.tasks.map((t) => (
+                          <div key={t.id} className="tm-node tm-task">
+                            <span className="tm-dot" style={{ background: statusColor(t.status) }} />
+                            <span className={`tm-name${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {mapCats.length === 0 && <div className="progress-empty">NO TASKS YET</div>}
             </div>
-          ))}
+          </div>
+
+          <div className="map-controls">
+            <button className="map-expand-btn" onClick={toggleMapAll} type="button">
+              {mapAllExpanded ? "COLLAPSE ALL" : "EXPAND ALL"}
+            </button>
+            <div className="zoom-controls map-zoom">
+              <button className="zoom-btn" onClick={mapZoomOut} type="button">−</button>
+              <button className="zoom-btn zoom-fit" onClick={mapZoomReset} type="button">FIT</button>
+              <button className="zoom-btn zoom-100" onClick={mapZoomReset} type="button">{Math.round(mapZoom * 100)}%</button>
+              <button className="zoom-btn" onClick={mapZoomIn} type="button">+</button>
+            </div>
+          </div>
         </div>
       )}
 

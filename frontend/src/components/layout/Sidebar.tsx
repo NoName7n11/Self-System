@@ -339,9 +339,11 @@ function RailChat() {
 // ── rail tasks (grouped columns) ──────────────────────────────────────────────
 function RailTasks() {
   const setLeftView = useLayoutStore((s) => s.setLeftView);
+  const openDockTab = useLayoutStore((s) => s.openDockTab);
   const todos = useTaskStore((s) => s.todos);
   const toggleTodo = useTaskStore((s) => s.toggleTodo);
-  const quickAddTask = useTaskStore((s) => s.quickAddTask);
+  const startTaskCreate = useTaskStore((s) => s.startTaskCreate);
+  const newTask = () => { openDockTab("tasks"); startTaskCreate(); };
   const cols: Array<{ key: string; label: string; color: string }> = [
     { key: "in_progress", label: "IN PROGRESS", color: "#F0703C" },
     { key: "open", label: "TO DO", color: "#5B9CF6" },
@@ -352,11 +354,11 @@ function RailTasks() {
       <div className="rail-view-head">
         <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
         <span className="rail-view-title">TASKS</span>
-        <button className="rail-new-chip" onClick={() => quickAddTask()} type="button"><IcoPlus />NEW</button>
+        <button className="rail-new-chip" onClick={newTask} type="button"><IcoPlus />NEW</button>
       </div>
       <div className="rail-tasks-body">
         {cols.map((col) => {
-          const items = todos.filter((t) => t.status === col.key);
+          const items = todos.filter((t) => t.status === col.key && !t.archived);
           return (
             <div key={col.key} className="rail-task-group">
               <div className="rail-task-group-head">

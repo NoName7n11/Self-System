@@ -34,5 +34,12 @@ Source: `dc.html` 678–753 (markup), 1930 (T/P/D segs), 1935 (draft status chip
         - due `flex:1; font-size:9px; color:#5C5C66` = `{t.due}`.
         - **T/P/D status segments** `display:flex; border:1px solid #26262C`: 3 buttons `18×16; font-size:8px; font-weight:700` — `T`(open) / `P`(in_progress) / `D`(done). Active = `background:{statusColor}; color:#0B0B0D`; inactive `transparent; color:#5C5C66`. `onClick → setTaskStatus(id, status)` (stopPropagation).
 
-## Build notes / current gaps
-- Build dock tasks = vertical columns w/ simple cards. Design: **horizontal-scroll** card rows per group, card `width:240`, plus **T/P/D segments**, ⋯ menu, and the **create form**. Add NEW TASK form + segments + horizontal scroll.
+## Implemented (this pass)
+- **Create form** (`taskCreating`/`taskDraft` in `useTaskStore`): TASK TITLE input + category chips (`setTaskDraft('cat')`) + status segmented (TO DO/IN PROGRESS/DONE) + DUE input + CREATE TASK (`createTaskFromDraft`) / CANCEL (`cancelTaskCreate`).
+- **NEW TASK** (dock) and **rail + NEW** both call `startTaskCreate()` → open dock Tasks tab + show form. (Rail NEW = `openDockTab('tasks') + startTaskCreate()`.)
+- **T/P/D segments** per card → `setTodoStatus(id, open|in_progress|done)`; active = status colour.
+- **⋯ menu** per card (hover) → Archive (`archiveTodo`) / Delete (`removeTodo`).
+- Checkbox → `toggleTodo`; columns filter `!archived`.
+- Verified live: rail + NEW opens dock create form; chips/status/DUE all interactive.
+
+## Deferred: drag-drop reorder between columns.

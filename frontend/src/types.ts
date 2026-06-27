@@ -71,6 +71,7 @@ export interface TodoItem {
   dueAt: string;
   resourceId: string;
   cat?: string;
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,7 @@
 import { IcoBell } from "../icons";
 import { DEMO_NOTIFS } from "../../lib/demoData";
 import { useLayoutStore } from "../../stores/useLayoutStore";
+import { useTaskStore } from "../../stores/useTaskStore";
 import type { GraphView } from "../../types";
 
 interface TopbarProps {
@@ -28,12 +29,27 @@ export default function Topbar({ resourceCount, connectionCount = 342 }: TopbarP
   const toggleNotif = useLayoutStore((s) => s.toggleNotif);
   const closeNotif = useLayoutStore((s) => s.closeNotif);
   const toggleMute = useLayoutStore((s) => s.toggleMute);
+  const todos = useTaskStore((s) => s.todos);
+
+  // per-view title/subtitle (matches dc.html)
+  let title = "KNOWLEDGE GRAPH";
+  let sub = `${resourceCount} RESOURCES · ${connectionCount} CONNECTIONS`;
+  if (view === "map") {
+    const ip = todos.filter((t) => t.status === "in_progress" && !t.archived).length;
+    const open = todos.filter((t) => t.status === "open" && !t.archived).length;
+    const done = todos.filter((t) => t.status === "done" && !t.archived).length;
+    title = "TASK MAP";
+    sub = `${ip} IN PROGRESS · ${open} TO DO · ${done} DONE`;
+  } else if (view === "progress") {
+    title = "PROCESSING";
+    sub = "0 PROCESSING · 0 COMPLETED";
+  }
 
   return (
     <header className="top-bar">
       <div>
-        <div className="top-bar-title-main">KNOWLEDGE GRAPH</div>
-        <div className="top-bar-title-sub">{resourceCount} RESOURCES · {connectionCount} CONNECTIONS</div>
+        <div className="top-bar-title-main">{title}</div>
+        <div className="top-bar-title-sub">{sub}</div>
       </div>
 
       <div className="top-bar-spacer" />

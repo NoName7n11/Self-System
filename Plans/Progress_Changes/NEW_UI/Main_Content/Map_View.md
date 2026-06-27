@@ -35,5 +35,10 @@ Layout constants: `COL = 232` (x = depth·COL), `ROW = 44` (vertical step). Node
 - **EXPAND ALL** toggle: `display:flex; gap:7px; height:30px; padding:0 12px; color:#F0703C; background:#121215; border:1px solid #2E2E36`, hover `border #F0703C`. icon `grid` + `{mapAllLabel}` ("EXPAND ALL"/"COLLAPSE ALL"). `onClick → mapToggleAll`.
 - **Zoom pill**: `background:#121215; border:1px solid #26262C; display:flex`. Buttons `−` (`32×30`) / `FIT` / `{mapZoomPct}` (label) / `+`; border-right `#1F1F25`; hover `color:#fff; background:#17171B`. → `mapZoomOut/mapFit/mapZoomIn`.
 
-## Build notes / current gaps
-- **Build MAP is wrong** — it shows category→resources. Must rebuild as the **task tree** (root→cat→task), horizontal bezier edges, expandable nodes, pan/zoom viewport, EXPAND ALL + zoom pill. topTitle "TASK MAP" + task-count subtitle.
+## Implemented (this pass)
+- Rebuilt MAP as the **TASK MAP**: orange `TASKS` root → category nodes (only cats with tasks) with count + chevron → task leaves (status-coloured dot, strike when done).
+- `mapExpanded`/`mapAllExpanded`/`mapZoom` in `useLayoutStore`; per-node chevron toggles (`toggleMapNode`), **EXPAND ALL/COLLAPSE ALL** (`toggleMapAll`), zoom pill (− / FIT / % / +) via `mapZoom`.
+- Top bar title switches to **"TASK MAP"** + `N IN PROGRESS · N TO DO · N DONE` subtitle (Topbar reads `view` + todos).
+- Verified live: collapsed cats expand to task leaves; counts + done strikethrough correct.
+
+## Deferred (polish): SVG bezier connector lines between columns (currently column gap only); pan-drag of the viewport.

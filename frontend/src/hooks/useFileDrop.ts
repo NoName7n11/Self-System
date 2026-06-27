@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { ipcCall, onWailsEvent } from "../lib/ipc";
+import { ipcCall, onWailsFileDrop } from "../lib/ipc";
 import { listResources } from "../api/client";
 import { useResourceStore } from "../stores/useResourceStore";
 
@@ -11,17 +11,15 @@ function basename(path: string): string {
 }
 
 /**
- * Subscribes to the native "files:dropped" event emitted by the Wails backend
- * (registered via runtime.OnFileDrop in Startup) and creates one resource per
- * dropped file by calling the CreateResource IPC binding. No-op in browser
- * mode, where Wails file-drop events never fire.
+ * Registers the native Wails file-drop handler and creates one resource per
+ * dropped file via the CreateResource IPC binding. No-op in browser mode, where
+ * Wails' runtime (and thus OnFileDrop) is absent.
  */
 export function useFileDrop(): void {
   const loadResources = useResourceStore((state) => state.loadResources);
 
   useEffect(() => {
-    const unsubscribe = onWailsEvent("files:dropped", (...data: unknown[]) => {
-      const paths = (data[0] as string[]) ?? [];
+    const unsubscribe = onWailsFileDrop((_x, _y, paths) => {
       if (!Array.isArray(paths) || paths.length === 0) {
         return;
       }

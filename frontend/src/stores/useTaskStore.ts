@@ -117,6 +117,16 @@ interface TaskState {
   resetReminderDraft: () => void;
   toggleTodo: (todoId: string) => void;
   quickAddTask: (cat?: string) => void;
+  setTodoStatus: (todoId: string, status: TodoStatus) => void;
+  archiveTodo: (todoId: string) => void;
+  removeTodo: (todoId: string) => void;
+  // dock create form
+  taskCreating: boolean;
+  taskDraft: { title: string; cat: string; status: TodoStatus; due: string };
+  startTaskCreate: () => void;
+  cancelTaskCreate: () => void;
+  setTaskDraft: (field: "title" | "cat" | "status" | "due", value: string) => void;
+  createTaskFromDraft: () => void;
   addTodo: () => Promise<void>;
   updateSelectedTodo: () => Promise<void>;
   deleteSelectedTodo: () => Promise<void>;
@@ -289,6 +299,38 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         { id: now, title: "New task", details: "", status: "open", dueAt: "—", resourceId: "", cat, createdAt: "", updatedAt: "" },
         ...state.todos,
       ],
+    }));
+  },
+
+  setTodoStatus: (todoId, status) => {
+    set((state) => ({ todos: state.todos.map((t) => (t.id === todoId ? { ...t, status } : t)) }));
+  },
+
+  archiveTodo: (todoId) => {
+    set((state) => ({ todos: state.todos.map((t) => (t.id === todoId ? { ...t, archived: true } : t)) }));
+  },
+
+  removeTodo: (todoId) => {
+    set((state) => ({ todos: state.todos.filter((t) => t.id !== todoId) }));
+  },
+
+  // ── dock create form (design openTaskCreate → form → createTask) ──
+  taskCreating: false,
+  taskDraft: { title: "", cat: "research", status: "open", due: "" },
+  startTaskCreate: () => set({ taskCreating: true, taskDraft: { title: "", cat: "research", status: "open", due: "" } }),
+  cancelTaskCreate: () => set({ taskCreating: false }),
+  setTaskDraft: (field, value) => set((s) => ({ taskDraft: { ...s.taskDraft, [field]: value } })),
+  createTaskFromDraft: () => {
+    const d = get().taskDraft;
+    const title = d.title.trim();
+    if (!title) return;
+    const id = `nt${Date.now()}`;
+    set((state) => ({
+      todos: [
+        { id, title, details: "", status: d.status, dueAt: d.due.trim() || "—", resourceId: "", cat: d.cat, createdAt: "", updatedAt: "" },
+        ...state.todos,
+      ],
+      taskCreating: false,
     }));
   },
 

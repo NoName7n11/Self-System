@@ -18,6 +18,9 @@ interface LayoutState {
   notifOpen: boolean;
   notifSeen: boolean;
   notifMuted: boolean;
+  mapExpanded: Record<string, boolean>;
+  mapAllExpanded: boolean;
+  mapZoom: number;
 
   toggleLeft: () => void;
   setLeftCollapsed: (v: boolean) => void;
@@ -42,6 +45,12 @@ interface LayoutState {
   toggleNotif: () => void;
   closeNotif: () => void;
   toggleMute: () => void;
+
+  toggleMapNode: (id: string) => void;
+  toggleMapAll: () => void;
+  mapZoomIn: () => void;
+  mapZoomOut: () => void;
+  mapZoomReset: () => void;
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
@@ -60,6 +69,9 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   notifOpen: false,
   notifSeen: false,
   notifMuted: false,
+  mapExpanded: {},
+  mapAllExpanded: false,
+  mapZoom: 1,
 
   toggleLeft: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
   setLeftCollapsed: (v) => set({ leftCollapsed: v }),
@@ -84,4 +96,10 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   toggleNotif: () => set((s) => ({ notifOpen: !s.notifOpen, notifSeen: true })),
   closeNotif: () => set({ notifOpen: false }),
   toggleMute: () => set((s) => ({ notifMuted: !s.notifMuted })),
+
+  toggleMapNode: (id) => set((s) => ({ mapExpanded: { ...s.mapExpanded, [id]: !s.mapExpanded[id] } })),
+  toggleMapAll: () => set((s) => ({ mapAllExpanded: !s.mapAllExpanded })),
+  mapZoomIn: () => set((s) => ({ mapZoom: Math.min(2, +(s.mapZoom + 0.1).toFixed(2)) })),
+  mapZoomOut: () => set((s) => ({ mapZoom: Math.max(0.4, +(s.mapZoom - 0.1).toFixed(2)) })),
+  mapZoomReset: () => set({ mapZoom: 1 }),
 }));
