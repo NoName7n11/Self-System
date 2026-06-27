@@ -44,6 +44,8 @@ interface ResourceState {
   selectedResourceId: string | null;
   filters: ResourceFilters;
   draft: ResourceDraft;
+  removedLib: Record<string, boolean>;
+  removeFromLibrary: (id: string) => void;
   setQuery: (query: string) => void;
   setCategoryFilter: (category: string) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -64,6 +66,12 @@ export const useResourceStore = create<ResourceState>((set, get) => ({
   selectedResourceId: null,
   filters: defaultFilters,
   draft: defaultDraft,
+  removedLib: {},
+
+  // remove from library (design removeLib) — hides from library lists, not a delete
+  removeFromLibrary: (id) => {
+    set((state) => ({ removedLib: { ...state.removedLib, [id]: true } }));
+  },
 
   setQuery: (query) => {
     set((state) => ({

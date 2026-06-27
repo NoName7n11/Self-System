@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoDots, IcoGear, IcoLibrary,
+  IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoCross, IcoDots, IcoGear, IcoLibrary,
   IcoLogo, IcoPlus, IcoSearch, IcoSend, IcoTasks, IcoTrend,
 } from "../icons";
 import { DEMO_CATEGORIES, DEMO_RECENT_IDS } from "../../lib/demoData";
@@ -398,7 +398,9 @@ function RailLibrary({ filter, setFilter, onSelect }: { filter: string; setFilte
   const setLeftView = useLayoutStore((s) => s.setLeftView);
   const openDockTab = useLayoutStore((s) => s.openDockTab);
   const resources = useResourceStore((s) => s.resources);
-  const rows = resources.filter((r) => filter === "all" || r.type === filter);
+  const removedLib = useResourceStore((s) => s.removedLib);
+  const removeFromLibrary = useResourceStore((s) => s.removeFromLibrary);
+  const rows = resources.filter((r) => !removedLib[r.id] && (filter === "all" || r.type === filter));
   return (
     <div className="rail-view">
       <div className="rail-view-head">
@@ -419,12 +421,17 @@ function RailLibrary({ filter, setFilter, onSelect }: { filter: string; setFilte
       </div>
       <div className="rail-list rail-lib-list">
         {rows.map((r) => (
-          <button key={r.id} className="rail-lib-row" onClick={() => onSelect(r.id)} type="button">
+          <div key={r.id} className="rail-lib-row ss-libitem" onClick={() => onSelect(r.id)}>
             <span className="rail-lib-badge" style={{ background: typeColor(r.type) }}>{(r.type ?? "link").toUpperCase()}</span>
             <span className="rail-recent-title">{r.title}</span>
-            <span className="rail-lib-date">{r.createdAt}</span>
-          </button>
+            <span className="rail-lib-date ss-lmeta">{r.createdAt}</span>
+            <button className="ss-lx" type="button" aria-label="Remove from library"
+              onClick={(e) => { e.stopPropagation(); removeFromLibrary(r.id); }}>
+              <IcoCross />
+            </button>
+          </div>
         ))}
+        {rows.length === 0 && <div className="rail-empty">NO ITEMS</div>}
       </div>
     </div>
   );

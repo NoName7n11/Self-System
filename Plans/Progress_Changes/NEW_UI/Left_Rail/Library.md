@@ -35,7 +35,11 @@ Body `flex:1; display:flex; flex-direction:column; min-height:0`.
   - remove (`ss-lx`) `16×16; color:#7A7A84` hover `#E06C75`, icon `cross`. Shown on hover (replaces date). `onClick → r.remove`. Title "Remove from library".
 - `r.select` → selects resource + opens inspector.
 
-## Build notes / current gaps
-- Build rail Library has chips + rows; verify badge `18×18` type-colour with `typeLabel` text (build currently uses a plain colour swatch, not a labelled badge → add the 7px bold type label).
-- Add hover swap date↔remove (`ss-libitem` behaviour) — deferred-OK but documented.
-- Chip inactive bg should be `#15151A`, active accent-tinted.
+## Implemented (this pass) — Fix 1: per-row remove
+- `useResourceStore`: `removedLib: Record<string,boolean>` + `removeFromLibrary(id)` (design `removeLib`). Library lists filter `!removedLib[id]`.
+- Rail Library rows (`ss-libitem`): hover hides date (`ss-lmeta`), reveals `ss-lx` ✕ → `removeFromLibrary`. Same applied to dock Library tab.
+- CSS: `.ss-libitem:hover .ss-lmeta{display:none}`, `.ss-libitem:hover .ss-lx{display:flex}`, `.ss-lx` hover `#E06C75`.
+- Verified live: hover reveals ✕; click removes (21→20) from rail + dock.
+
+## Deferred — Fix 2 (needs GRAPH)
+- Design also drops removed items from the **graph** (`removedLib` filtered in graph build, dc.html line ~1368). Wire once the GRAPH is reworked. Type badge already labelled (build uses 4-char type badge ✓).

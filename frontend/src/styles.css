@@ -735,6 +735,13 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 .archive-restore:hover { border-color: var(--type-link); background: rgba(72,199,142,0.1); }
 .archive-empty { border: 1px dashed var(--border); padding: 30px; text-align: center; font-size: 10px; letter-spacing: 0.5px; color: var(--text-faint); margin-top: 8px; }
 
+/* ─── Library row hover remove (ss-libitem) ──────────────────────────────────── */
+.ss-libitem { position: relative; }
+.ss-lx { display: none; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--text-mute); background: none; padding: 0; }
+.ss-lx:hover { color: var(--cat-archive); }
+.ss-libitem:hover .ss-lmeta { display: none; }
+.ss-libitem:hover .ss-lx { display: flex; }
+
 /* ─── Utility ────────────────────────────────────────────────────────────────── */
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }

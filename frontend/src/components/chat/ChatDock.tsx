@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { IcoChevDn, IcoChevUp, IcoDots, IcoGrid, IcoPlus, IcoSend } from "../icons";
+import { IcoChevDn, IcoChevUp, IcoCross, IcoDots, IcoGrid, IcoPlus, IcoSend } from "../icons";
 import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
@@ -291,14 +291,16 @@ function TasksTab() {
 function LibraryTab() {
   const resources = useResourceStore((s) => s.resources);
   const query = useResourceStore((s) => s.filters.query);
+  const removedLib = useResourceStore((s) => s.removedLib);
+  const removeFromLibrary = useResourceStore((s) => s.removeFromLibrary);
   const selectResource = useResourceStore((s) => s.selectResource);
   const setRightOpen = useLayoutStore((s) => s.setRightOpen);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const visible = resources.filter((r) => !isArchived(r));
+    const visible = resources.filter((r) => !isArchived(r) && !removedLib[r.id]);
     if (!q) return visible;
     return visible.filter((r) => r.title.toLowerCase().includes(q) || r.categoryName.toLowerCase().includes(q));
-  }, [resources, query]);
+  }, [resources, query, removedLib]);
 
   return (
     <div className="dock-library">
@@ -308,11 +310,15 @@ function LibraryTab() {
       </div>
       <div className="lib-list">
         {rows.map((r) => (
-          <button key={r.id} className="lib-row" onClick={() => { selectResource(r.id); setRightOpen(true); }} type="button">
+          <div key={r.id} className="lib-row ss-libitem" onClick={() => { selectResource(r.id); setRightOpen(true); }}>
             <span className="lib-row-badge" style={{ background: typeColor(r.type) }}>{(r.type ?? "link").toUpperCase()}</span>
             <span className="lib-row-title">{r.title || r.url}</span>
-            <span className="lib-row-meta">{r.categoryName} · {r.createdAt}</span>
-          </button>
+            <span className="lib-row-meta ss-lmeta">{r.categoryName} · {r.createdAt}</span>
+            <button className="ss-lx" type="button" aria-label="Remove from library"
+              onClick={(e) => { e.stopPropagation(); removeFromLibrary(r.id); }}>
+              <IcoCross />
+            </button>
+          </div>
         ))}
       </div>
     </div>
