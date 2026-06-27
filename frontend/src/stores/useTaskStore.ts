@@ -115,6 +115,8 @@ interface TaskState {
   updateReminderDraft: (field: keyof ReminderDraft, value: string) => void;
   resetTodoDraft: () => void;
   resetReminderDraft: () => void;
+  toggleTodo: (todoId: string) => void;
+  quickAddTask: (cat?: string) => void;
   addTodo: () => Promise<void>;
   updateSelectedTodo: () => Promise<void>;
   deleteSelectedTodo: () => Promise<void>;
@@ -268,6 +270,26 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   resetReminderDraft: () => {
     set({ selectedReminderId: null, reminderDraft: defaultReminderDraft, error: null });
+  },
+
+  // local optimistic toggle (done ↔ open) — works in demo mode; mirrors design toggleTask
+  toggleTodo: (todoId) => {
+    set((state) => ({
+      todos: state.todos.map((t) =>
+        t.id === todoId ? { ...t, status: t.status === "done" ? "open" : "done" } : t,
+      ),
+    }));
+  },
+
+  // local quick-add (design "+ NEW" / newTask) — prepends a blank task
+  quickAddTask: (cat = "research") => {
+    const now = `nt${Date.now()}`;
+    set((state) => ({
+      todos: [
+        { id: now, title: "New task", details: "", status: "open", dueAt: "—", resourceId: "", cat, createdAt: "", updatedAt: "" },
+        ...state.todos,
+      ],
+    }));
   },
 
   addTodo: async () => {

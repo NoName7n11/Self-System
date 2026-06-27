@@ -39,6 +39,19 @@ Each group:
 
 Seed tasks (6): Review hackathon requirements (done, sources, 12 JAN); Prepare project proposal (in_progress, sources, 18 JAN); Submit application (open, sources, 20 JAN); Read Raft paper §5 (open, research, 15 MAR); Summarize RAG tutorial (done, research, 10 MAR); Draft GBUS weighted-signal spec (in_progress, ai, 14 MAR).
 
-## Build notes / current gaps
-- Build rail Tasks view uses card layout close to this; verify checkbox `13×13`, card bg `#131318`/border `#22222A`, due text `#5C5C66`, group dot colours exact.
-- "DUE" prefix: design shows raw date in rail (e.g. "18 JAN"); dock shows "DUE 18 JAN". Keep rail as `{due}` only — confirm against screenshot when implementing.
+## Interactions (from dc.html — must work)
+- **+ NEW** (`newTask`): prepends `{title:'New task', due:'—', status:'open', cat:'research'}`.
+- **Checkbox** (`toggleTask`): toggles `done ↔ open`. Done → green `#48C78E` box with `✓`, title strike + `#5C5C66`.
+- **Back** → home.
+- (Rail has NO ⋯ menu and NO T/P/D segments — those are dock-only.)
+- Card due renders as `DUE {due}` (prefix included). Category dot = category colour.
+
+## Implemented (this pass)
+- `useTaskStore`: added local `toggleTodo(id)` (done↔open, optimistic) and `quickAddTask(cat?)` (prepend) — work in demo mode without backend, mirroring the design's pure-local task state.
+- `TodoItem` gained optional `cat`; `demoTasksAsTodos` carries it → category-coloured dots.
+- RailTasks: NEW wired to `quickAddTask`; checkbox is a real button → `toggleTodo`; dot uses `CAT_COLOR[t.cat]`; due shows `DUE …`.
+- Dock TasksTab checkbox + NEW TASK wired to the same actions.
+- `.task-checkbox` → `13×13`, border `#3A3A42`; `.is-done` → green `#48C78E` (was accent orange).
+- Verified live: NEW adds a card (6→7); done checkbox green + strikethrough.
+
+## Deferred (documented): dock create-form, T/P/D status segments, ⋯ archive/delete menu (Bottom_Deck pass).

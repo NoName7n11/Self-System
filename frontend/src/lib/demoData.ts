@@ -162,6 +162,7 @@ export function demoTasksAsTodos(): TodoItem[] {
     status: t.status,
     dueAt: t.due,
     resourceId: "",
+    cat: t.cat,
     createdAt: "",
     updatedAt: "",
   }));

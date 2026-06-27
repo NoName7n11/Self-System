@@ -12,6 +12,7 @@ const TYPE_COLOR: Record<ResourceType, string> = {
   pdf: "#F67373", link: "#48C78E", note: "#5B9CF6", doc: "#9B59F6", image: "#F6739B",
 };
 function typeColor(t?: ResourceType): string { return t ? TYPE_COLOR[t] : "#9A9AA0"; }
+const CAT_COLOR: Record<string, string> = Object.fromEntries(DEMO_CATEGORIES.map((c) => [c.id, c.color]));
 
 const TABS: Array<{ key: DockTab; label: string }> = [
   { key: "chat", label: "CHAT" },
@@ -161,6 +162,8 @@ function ChatTab() {
 // ── tasks (horizontal columns) ────────────────────────────────────────────────
 function TasksTab() {
   const todos = useTaskStore((s) => s.todos);
+  const toggleTodo = useTaskStore((s) => s.toggleTodo);
+  const quickAddTask = useTaskStore((s) => s.quickAddTask);
   const cols: Array<{ key: string; label: string; color: string }> = [
     { key: "in_progress", label: "IN PROGRESS", color: "#F0703C" },
     { key: "open", label: "TO DO", color: "#5B9CF6" },
@@ -170,7 +173,7 @@ function TasksTab() {
     <div className="dock-tasks-v2">
       <div className="dock-tasks-head">
         <div style={{ flex: 1 }} />
-        <button className="rail-new-chip" type="button"><IcoPlus />NEW TASK</button>
+        <button className="rail-new-chip" onClick={() => quickAddTask()} type="button"><IcoPlus />NEW TASK</button>
       </div>
       <div className="dock-tasks-cols">
         {cols.map((col) => {
@@ -186,12 +189,13 @@ function TasksTab() {
                 {items.map((t) => (
                   <div key={t.id} className="dock-task-card">
                     <div className="rail-task-card-top">
-                      <span className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}>{t.status === "done" && "✓"}</span>
+                      <button className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}
+                        onClick={() => toggleTodo(t.id)} type="button" aria-label="Toggle done">{t.status === "done" && "✓"}</button>
                       <span className={`rail-task-title${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
                     </div>
                     <div className="rail-task-card-meta">
-                      <span className="task-cat-dot" style={{ background: "#5B9CF6" }} />
-                      <span className="task-due-mini">{t.dueAt ? `DUE ${t.dueAt}` : "—"}</span>
+                      <span className="task-cat-dot" style={{ background: CAT_COLOR[t.cat ?? ""] ?? "#5B9CF6" }} />
+                      <span className="task-due-mini">DUE {t.dueAt || "—"}</span>
                     </div>
                   </div>
                 ))}

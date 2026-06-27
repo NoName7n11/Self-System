@@ -399,8 +399,8 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 .task-card-mini { background: var(--bg-card); border: 1px solid var(--border); padding: 7px 8px; cursor: pointer; transition: border-color 0.08s; }
 .task-card-mini:hover { border-color: var(--border-hover); }
 .task-card-mini-row { display: flex; align-items: flex-start; gap: 6px; }
-.task-checkbox { flex: none; width: 12px; height: 12px; border: 1px solid var(--border-hover); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
-.task-checkbox.is-done { background: var(--accent); border-color: var(--accent); color: var(--bg-app); }
+.task-checkbox { flex: none; width: 13px; height: 13px; border: 1px solid #3A3A42; background: none; display: flex; align-items: center; justify-content: center; margin-top: 1px; cursor: pointer; font-size: 9px; color: var(--bg-app); padding: 0; }
+.task-checkbox.is-done { background: #48C78E; border-color: #48C78E; color: var(--bg-app); }
 .task-title-mini { flex: 1; font-size: 11px; color: var(--text-dim); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .task-title-mini.is-done { text-decoration: line-through; color: var(--text-faint); }
 .task-meta-mini { display: flex; align-items: center; gap: 6px; margin-top: 5px; }

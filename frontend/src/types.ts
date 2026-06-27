@@ -70,6 +70,7 @@ export interface TodoItem {
   status: TodoStatus;
   dueAt: string;
   resourceId: string;
+  cat?: string;
   createdAt: string;
   updatedAt: string;
 }

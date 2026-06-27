@@ -340,6 +340,8 @@ function RailChat() {
 function RailTasks() {
   const setLeftView = useLayoutStore((s) => s.setLeftView);
   const todos = useTaskStore((s) => s.todos);
+  const toggleTodo = useTaskStore((s) => s.toggleTodo);
+  const quickAddTask = useTaskStore((s) => s.quickAddTask);
   const cols: Array<{ key: string; label: string; color: string }> = [
     { key: "in_progress", label: "IN PROGRESS", color: "#F0703C" },
     { key: "open", label: "TO DO", color: "#5B9CF6" },
@@ -350,7 +352,7 @@ function RailTasks() {
       <div className="rail-view-head">
         <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
         <span className="rail-view-title">TASKS</span>
-        <button className="rail-new-chip" type="button"><IcoPlus />NEW</button>
+        <button className="rail-new-chip" onClick={() => quickAddTask()} type="button"><IcoPlus />NEW</button>
       </div>
       <div className="rail-tasks-body">
         {cols.map((col) => {
@@ -365,12 +367,19 @@ function RailTasks() {
               {items.map((t) => (
                 <div key={t.id} className="rail-task-card">
                   <div className="rail-task-card-top">
-                    <span className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}>{t.status === "done" && "✓"}</span>
+                    <button
+                      className={`task-checkbox${t.status === "done" ? " is-done" : ""}`}
+                      onClick={() => toggleTodo(t.id)}
+                      type="button"
+                      aria-label={t.status === "done" ? "Mark open" : "Mark done"}
+                    >
+                      {t.status === "done" && "✓"}
+                    </button>
                     <span className={`rail-task-title${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
                   </div>
                   <div className="rail-task-card-meta">
-                    <span className="task-cat-dot" style={{ background: "#5B9CF6" }} />
-                    <span className="task-due-mini">{t.dueAt ? `DUE ${t.dueAt}` : ""}</span>
+                    <span className="task-cat-dot" style={{ background: CAT_COLOR[t.cat ?? ""] ?? "#5B9CF6" }} />
+                    <span className="task-due-mini">DUE {t.dueAt || "—"}</span>
                   </div>
                 </div>
               ))}
