@@ -2,8 +2,10 @@ import { create } from "zustand";
 
 import { createResource, deleteResource, listResources, normalizeResource, updateResource } from "../api/client";
 import { ipcCall } from "../lib/ipc";
-import { demoResourcesAsItems } from "../lib/demoData";
+import { demoResourcesAsItems, DEMO_RECENT_IDS } from "../lib/demoData";
 import type { ResourceDraft, ResourceFilters, ResourceItem, ViewMode } from "../types";
+
+const RECENT_CAP = 10; // holds up to 10; the list shows 5 then scrolls (CSS)
 
 const defaultDraft: ResourceDraft = {
   url: "",
@@ -46,6 +48,9 @@ interface ResourceState {
   draft: ResourceDraft;
   removedLib: Record<string, boolean>;
   removeFromLibrary: (id: string) => void;
+  recentIds: string[];
+  removeRecent: (id: string) => void;
+  pushRecent: (id: string) => void;
   setQuery: (query: string) => void;
   setCategoryFilter: (category: string) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -71,6 +76,15 @@ export const useResourceStore = create<ResourceState>((set, get) => ({
   // remove from library (design removeLib) — hides from library lists, not a delete
   removeFromLibrary: (id) => {
     set((state) => ({ removedLib: { ...state.removedLib, [id]: true } }));
+  },
+
+  // RECENT (design recentIds): holds up to 10; list shows 5 then scrolls
+  recentIds: [...DEMO_RECENT_IDS],
+  removeRecent: (id) => {
+    set((state) => ({ recentIds: state.recentIds.filter((x) => x !== id) }));
+  },
+  pushRecent: (id) => {
+    set((state) => ({ recentIds: [id, ...state.recentIds.filter((x) => x !== id)].slice(0, RECENT_CAP) }));
   },
 
   setQuery: (query) => {

@@ -4,7 +4,7 @@ import {
   IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoCross, IcoDots, IcoGear, IcoLibrary,
   IcoLogo, IcoPlus, IcoSearch, IcoSend, IcoTasks, IcoTrend,
 } from "../icons";
-import { DEMO_CATEGORIES, DEMO_RECENT_IDS } from "../../lib/demoData";
+import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
@@ -58,12 +58,14 @@ export default function Sidebar() {
   const query = useResourceStore((s) => s.filters.query);
   const setQuery = useResourceStore((s) => s.setQuery);
   const selectResource = useResourceStore((s) => s.selectResource);
+  const recentIds = useResourceStore((s) => s.recentIds);
+  const removeRecent = useResourceStore((s) => s.removeRecent);
 
   const byId = useMemo(() => new Map(resources.map((r) => [r.id, r])), [resources]);
   const recents = useMemo(() => {
-    const seeded = DEMO_RECENT_IDS.map((id) => byId.get(id)).filter(Boolean) as ResourceItem[];
+    const seeded = recentIds.map((id) => byId.get(id)).filter(Boolean) as ResourceItem[];
     return seeded.length > 0 ? seeded : deriveRecents(resources);
-  }, [byId, resources]);
+  }, [recentIds, byId, resources]);
 
   const select = (id: string) => { selectResource(id); setRightOpen(true); };
 
@@ -131,13 +133,17 @@ export default function Sidebar() {
             <span className="rail-section-count">{recents.length}</span>
           </button>
           {recentOpen && (
-            <div className="rail-list">
+            <div className="rail-list rail-recent-list">
               {recents.map((r) => (
-                <button key={r.id} className="rail-recent-row" onClick={() => select(r.id)} type="button">
+                <div key={r.id} className="rail-recent-row ss-recent" onClick={() => select(r.id)}>
                   <span className="rail-type-swatch" style={{ background: typeColor(r.type) }} />
                   <span className="rail-recent-title">{r.title || r.host || r.url}</span>
-                  <span className="rail-recent-type">{(r.type ?? "link").toUpperCase()}</span>
-                </button>
+                  <span className="rail-recent-type ss-rtype">{(r.type ?? "link").toUpperCase()}</span>
+                  <button className="ss-rx" type="button" aria-label="Remove from recent"
+                    onClick={(e) => { e.stopPropagation(); removeRecent(r.id); }}>
+                    <IcoCross />
+                  </button>
+                </div>
               ))}
               {recents.length === 0 && <div className="rail-empty">NO RECENT ITEMS</div>}
             </div>

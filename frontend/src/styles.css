@@ -735,6 +735,16 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 .archive-restore:hover { border-color: var(--type-link); background: rgba(72,199,142,0.1); }
 .archive-empty { border: 1px dashed var(--border); padding: 30px; text-align: center; font-size: 10px; letter-spacing: 0.5px; color: var(--text-faint); margin-top: 8px; }
 
+/* ─── Recent: cap-5-visible scroll + hover remove (ss-recent) ────────────────── */
+/* shows 5 rows (30px each + 1px gaps); >5 → scrolls, ≤5 → static */
+.rail-recent-list { max-height: 154px; overflow-y: auto; }
+.rail-recent-list::-webkit-scrollbar { width: 3px; }
+.rail-recent-list::-webkit-scrollbar-thumb { background: var(--border); }
+.ss-recent .ss-rx { display: none; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--text-mute); background: none; padding: 0; }
+.ss-recent .ss-rx:hover { color: var(--cat-archive); }
+.ss-recent:hover .ss-rtype { display: none; }
+.ss-recent:hover .ss-rx { display: flex; }
+
 /* ─── Library row hover remove (ss-libitem) ──────────────────────────────────── */
 .ss-libitem { position: relative; }
 .ss-lx { display: none; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--text-mute); background: none; padding: 0; }

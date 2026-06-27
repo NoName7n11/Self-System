@@ -30,5 +30,10 @@ Source: `dc.html` 96–122. Home view only. Collapsible. Hold-to-clear-all.
 ## Interaction
 - Row click → `r.select` → select resource + open inspector + `view:'graph'`.
 
-## Build notes / current gaps
-- Build: titles now left-aligned ✓. Still missing: hold-to-clear fill bar + clear, hover swap (type label ↔ remove ✕). Swatch `9×9` ✓, type label `8px #4E4E57` — verify (build uses 9px). Row height `30px`, gap `10px` — verify build values.
+## Implemented (this pass) — per-row remove + cap/scroll
+- `useResourceStore`: `recentIds` (seed `DEMO_RECENT_IDS`) + `removeRecent(id)` + `pushRecent(id)` (cap **10**, `RECENT_CAP`).
+- Rows (`ss-recent`): hover hides type label (`ss-rtype`), reveals `ss-rx` ✕ → `removeRecent`. CSS swap like library.
+- **Cap behaviour:** list (`.rail-recent-list`) `max-height:154px` (~5 rows × 30px + gaps) + `overflow-y:auto` → **≤5 static, >5 scrolls**. Holds up to 10 ids.
+- Verified live: remove 5→4; max-height 154px; static at 5, scrolls above 5.
+
+## Deferred (documented): hold-to-clear-all (press-and-hold fill bar) — design `startHoldRecent`/`clearRecent`.
