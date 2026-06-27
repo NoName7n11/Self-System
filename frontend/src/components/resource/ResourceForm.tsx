@@ -31,7 +31,8 @@ export default function Inspector() {
   const selectedId = useResourceStore((s) => s.selectedResourceId);
   const selectResource = useResourceStore((s) => s.selectResource);
   const deleteSelectedResource = useResourceStore((s) => s.deleteSelectedResource);
-  const sendMessage = useChatStore((s) => s.sendMessage);
+  const sendToConversation = useChatStore((s) => s.sendToConversation);
+  const dockConvId = useLayoutStore((s) => s.dockConvId);
 
   const [ask, setAsk] = useState("");
 
@@ -51,8 +52,8 @@ export default function Inspector() {
     const v = q.trim();
     if (!v) return;
     setAsk("");
-    await sendMessage(resource ? `[${resource.title}] ${v}` : v);
     openDockTab("chat");
+    await sendToConversation(dockConvId, resource ? `[${resource.title}] ${v}` : v);
   };
 
   return (

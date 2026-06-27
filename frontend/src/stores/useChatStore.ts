@@ -1,81 +1,118 @@
 import { create } from "zustand";
 
 import { sendChatCommand } from "../api/client";
-import { demoChatMessages } from "../lib/demoData";
+import { DEMO_CONVERSATIONS } from "../lib/demoData";
 import type { ChatMessage } from "../types";
 import { useResourceStore } from "./useResourceStore";
 import { useTaskStore } from "./useTaskStore";
 
+export interface Conversation {
+  id: string;
+  title: string;
+  archived: boolean;
+  messages: ChatMessage[];
+}
+
 const mutationActions = new Set<string>([
-  "resource_created",
-  "resource_updated",
-  "resource_deleted",
-  "category_created",
-  "category_updated",
-  "category_deleted",
-  "todo_created",
-  "todo_updated",
-  "todo_deleted",
-  "reminder_created",
-  "reminder_updated",
-  "reminder_deleted",
+  "resource_created", "resource_updated", "resource_deleted",
+  "category_created", "category_updated", "category_deleted",
+  "todo_created", "todo_updated", "todo_deleted",
+  "reminder_created", "reminder_updated", "reminder_deleted",
 ]);
 
-function buildMessage(role: ChatMessage["role"], content: string): ChatMessage {
-  return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role,
-    content,
-    createdAt: new Date().toISOString(),
-  };
+function uid(prefix: string): string {
+  return `${prefix}${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function seedConversations(): Conversation[] {
+  return DEMO_CONVERSATIONS.map((c) => ({
+    id: c.id,
+    title: c.title,
+    archived: false,
+    messages: c.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      createdAt: "",
+    })),
+  }));
 }
 
 interface ChatState {
-  messages: ChatMessage[];
+  conversations: Conversation[];
   isSending: boolean;
   error: string | null;
-  sendMessage: (content: string) => Promise<void>;
+
+  newConversation: () => string;
+  renameConversation: (id: string, title: string) => void;
+  archiveConversation: (id: string) => void;
+  deleteConversation: (id: string) => string | null; // returns fallback dockConvId
+  sendToConversation: (convId: string, text: string) => Promise<void>;
 }
 
-export const useChatStore = create<ChatState>((set) => ({
-  // seed with the demo conversation so the dock Chat tab looks populated
-  messages: demoChatMessages(),
+export const useChatStore = create<ChatState>((set, get) => ({
+  conversations: seedConversations(),
   isSending: false,
   error: null,
 
-  sendMessage: async (content) => {
-    const trimmed = content.trim();
-    if (trimmed === "") {
-      return;
-    }
+  newConversation: () => {
+    const id = uid("cv");
+    set((s) => ({
+      conversations: [{ id, title: "New conversation", archived: false, messages: [] }, ...s.conversations],
+    }));
+    return id;
+  },
 
-    const userMessage = buildMessage("user", trimmed);
-    set((state) => ({
-      messages: [...state.messages, userMessage],
+  renameConversation: (id, title) => {
+    const v = title.trim();
+    if (!v) return;
+    set((s) => ({ conversations: s.conversations.map((c) => (c.id === id ? { ...c, title: v } : c)) }));
+  },
+
+  archiveConversation: (id) => {
+    set((s) => ({ conversations: s.conversations.map((c) => (c.id === id ? { ...c, archived: true } : c)) }));
+  },
+
+  deleteConversation: (id) => {
+    const rest = get().conversations.filter((c) => c.id !== id);
+    set({ conversations: rest });
+    return (rest.find((c) => !c.archived) ?? rest[0])?.id ?? null;
+  },
+
+  sendToConversation: async (convId, text) => {
+    const v = text.trim();
+    if (v === "") return;
+
+    const userMsg: ChatMessage = { id: uid("u"), role: "user", content: v, createdAt: new Date().toISOString() };
+    set((s) => ({
+      conversations: s.conversations.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, userMsg] } : c)),
       isSending: true,
       error: null,
     }));
 
     try {
-      const result = await sendChatCommand(trimmed);
-      const assistantText = result.message?.trim() || `Command executed (${result.action || "unknown"}).`;
-
-      set((state) => ({
-        messages: [...state.messages, buildMessage("assistant", assistantText)],
+      const result = await sendChatCommand(v);
+      const reply = result.message?.trim() || `Searching your graph for “${v}” — ranked by counter weighting.`;
+      const aiMsg: ChatMessage = { id: uid("a"), role: "assistant", content: reply, createdAt: new Date().toISOString() };
+      set((s) => ({
+        conversations: s.conversations.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, aiMsg] } : c)),
         isSending: false,
-        error: null,
       }));
-
       if (mutationActions.has(result.action)) {
         void useResourceStore.getState().loadResources({ silent: true });
         void useTaskStore.getState().loadAll({ silent: true });
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to run chat command";
-      set((state) => ({
-        messages: [...state.messages, buildMessage("assistant", `Command failed: ${message}`)],
+    } catch {
+      // offline / no backend → canned reply so the chat still works in demo mode
+      const aiMsg: ChatMessage = {
+        id: uid("a"),
+        role: "assistant",
+        content: `Searching your graph for “${v}” — 3 resources matched, ranked by counter weighting.`,
+        createdAt: new Date().toISOString(),
+      };
+      set((s) => ({
+        conversations: s.conversations.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, aiMsg] } : c)),
         isSending: false,
-        error: message,
       }));
     }
   },

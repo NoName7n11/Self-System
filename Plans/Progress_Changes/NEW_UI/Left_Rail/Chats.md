@@ -57,6 +57,19 @@ Body: `flex:1; display:flex; flex-direction:column; min-height:0`. Two sub-state
 4. Dock Chat title should reflect `dockConvId` (build hardcodes "Raft consensus — Q&A").
 5. NEW CHAT "+" renders chunkier than design — same icon set; acceptable, low priority.
 
-## Build notes / current gaps
-- Still deferred (documented): NEW CHAT prepends a real conversation, inline rename, attach chips, drag-drop, citation-chip select.
-- Affordance colour/size: `#7A7A84`, `padding:3px;margin:-3px`, hover-only reveal.
+## Interactions (from dc.html handlers — must all work)
+- **NEW CHAT** (`newChat`): prepends `{title:'New conversation', messages:[]}` and **jumps into its thread** (`railConvId=id`).
+- **⋯ menu** (`openConvMenu` → popup at row's right/bottom): 4 items —
+  - **Edit name** (`startRename`): row title becomes an inline input (`border:1px #F0703C; bg #0B0B0D`); Enter commits (`commitRename`), Esc cancels.
+  - **Open in dock** (`menuOpenDock`/`openConvInDock`): `dockConvId=id; dockOpen; dockTab='chat'` → row dot turns accent.
+  - **Archive** (`archiveConv`): sets `archived:true`, drops from list (restorable in Archive tab).
+  - **Delete** (`deleteConv`): removes; if it was the dock conv, dockConvId falls back to first non-archived.
+- **Send** (`doSendRailChat`/`doSendDockChat`): appends user msg + a canned AI reply (with `Raft Consensus Paper`/`r1` citation). Enter or send button. Clears input, autoscrolls.
+- Conversations are **mutable state** → must live in a store (seed from `DEMO_CONVERSATIONS`), shared by rail list/thread + dock chat + inspector ask.
+
+## Implemented (this pass)
+- `useChatStore` rewritten to be conversation-based: `conversations[]` (seed demo) + `newConversation / renameConversation / archiveConversation / deleteConversation / sendToConversation`.
+- RailChat: NEW CHAT creates+enters thread; ⋯ opens a context menu (Edit name inline / Open in dock / Archive / Delete); thread send works.
+- Dock ChatTab + Inspector ask route through `sendToConversation(dockConvId, …)`.
+
+## Deferred (documented): attach chips, drag-drop, citation-chip → resource select, conversation menu "Open in dock" smart-scroll.

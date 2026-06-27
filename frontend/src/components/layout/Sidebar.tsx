@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoDots, IcoGear, IcoLibrary,
   IcoLogo, IcoPlus, IcoSearch, IcoSend, IcoTasks, IcoTrend,
 } from "../icons";
-import { DEMO_CATEGORIES, DEMO_CONVERSATIONS, DEMO_RECENT_IDS } from "../../lib/demoData";
+import { DEMO_CATEGORIES, DEMO_RECENT_IDS } from "../../lib/demoData";
+import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
 import { useTaskStore } from "../../stores/useTaskStore";
@@ -212,42 +213,104 @@ export default function Sidebar() {
 function RailChat() {
   const setLeftView = useLayoutStore((s) => s.setLeftView);
   const openConvInDock = useLayoutStore((s) => s.openConvInDock);
+  const setDockConvId = useLayoutStore((s) => s.setDockConvId);
   const dockConvId = useLayoutStore((s) => s.dockConvId);
-  const [convId, setConvId] = useState<string | null>(null);
-  const conv = DEMO_CONVERSATIONS.find((c) => c.id === convId) ?? null;
 
+  const conversations = useChatStore((s) => s.conversations);
+  const newConversation = useChatStore((s) => s.newConversation);
+  const renameConversation = useChatStore((s) => s.renameConversation);
+  const archiveConversation = useChatStore((s) => s.archiveConversation);
+  const deleteConversation = useChatStore((s) => s.deleteConversation);
+  const sendToConversation = useChatStore((s) => s.sendToConversation);
+
+  const [convId, setConvId] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [input, setInput] = useState("");
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  const visible = conversations.filter((c) => !c.archived);
+  const conv = conversations.find((c) => c.id === convId) ?? null;
+
+  useEffect(() => {
+    if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
+  }, [conv?.messages.length]);
+
+  const newChat = () => { const id = newConversation(); setConvId(id); };
+  const commitRename = () => { if (renameId) renameConversation(renameId, renameVal); setRenameId(null); };
+  const doArchive = (id: string) => { archiveConversation(id); setMenuId(null); if (convId === id) setConvId(null); };
+  const doDelete = (id: string) => {
+    const fallback = deleteConversation(id);
+    setMenuId(null);
+    if (convId === id) setConvId(null);
+    if (dockConvId === id && fallback) setDockConvId(fallback);
+  };
+  const send = async () => {
+    const v = input.trim();
+    if (!v || !conv) return;
+    setInput("");
+    await sendToConversation(conv.id, v);
+  };
+
+  // ── conversation list ──
   if (!conv) {
     return (
       <div className="rail-view">
         <div className="rail-view-head">
           <button className="rail-back" onClick={() => setLeftView("home")} type="button"><IcoChevL /></button>
           <span className="rail-view-title">CHATS</span>
-          <button className="rail-new-chip" type="button"><IcoPlus />NEW CHAT</button>
+          <button className="rail-new-chip" onClick={newChat} type="button"><IcoPlus />NEW CHAT</button>
         </div>
         <div className="rail-conv-list">
-          {DEMO_CONVERSATIONS.map((c) => (
-            <button key={c.id} className="rail-conv-row" onClick={() => setConvId(c.id)} type="button">
+          {visible.map((c) => (
+            <div key={c.id} className="rail-conv-row" onClick={() => renameId !== c.id && setConvId(c.id)}>
               {/* dot is accent only for the conversation open in the dock, else grey */}
               <span className="rail-conv-dot" style={{ background: c.id === dockConvId ? "#F0703C" : "#3C3C44" }} />
               <div className="rail-conv-main">
-                <div className="rail-conv-title">{c.title}</div>
-                <div className="rail-conv-preview">{c.messages[c.messages.length - 1]?.content}</div>
+                {renameId === c.id ? (
+                  <input
+                    className="rail-conv-rename"
+                    value={renameVal}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") commitRename(); else if (e.key === "Escape") setRenameId(null); }}
+                    onBlur={commitRename}
+                  />
+                ) : (
+                  <>
+                    <div className="rail-conv-title">{c.title}</div>
+                    <div className="rail-conv-preview">{c.messages[c.messages.length - 1]?.content ?? "No messages yet"}</div>
+                  </>
+                )}
               </div>
-              <span
-                className="rail-conv-dots"
-                role="button"
-                aria-label="Open in dock"
-                onClick={(e) => { e.stopPropagation(); openConvInDock(c.id); }}
-              >
+              <span className="rail-conv-dots" role="button" aria-label="Options"
+                onClick={(e) => { e.stopPropagation(); setMenuId(menuId === c.id ? null : c.id); }}>
                 <IcoDots />
               </span>
-            </button>
+
+              {menuId === c.id && (
+                <>
+                  <div className="ctx-scrim" onClick={(e) => { e.stopPropagation(); setMenuId(null); }} />
+                  <div className="ctx-menu" onClick={(e) => e.stopPropagation()}>
+                    <button className="ctx-item" onClick={() => { setRenameId(c.id); setRenameVal(c.title); setMenuId(null); }} type="button">Edit name</button>
+                    <button className="ctx-item" onClick={() => { openConvInDock(c.id); setMenuId(null); }} type="button">Open in dock</button>
+                    <button className="ctx-item" onClick={() => doArchive(c.id)} type="button">Archive</button>
+                    <div className="ctx-divider" />
+                    <button className="ctx-item is-danger" onClick={() => doDelete(c.id)} type="button">Delete</button>
+                  </div>
+                </>
+              )}
+            </div>
           ))}
+          {visible.length === 0 && <div className="rail-empty">NO CONVERSATIONS</div>}
         </div>
       </div>
     );
   }
 
+  // ── conversation thread ──
   return (
     <div className="rail-view">
       <div className="rail-view-head">
@@ -255,18 +318,19 @@ function RailChat() {
         <span className="rail-view-title ellipsis">{conv.title}</span>
         <button className="rail-icon-btn" onClick={() => openConvInDock(conv.id)} type="button" aria-label="Open in dock"><IcoTrend /></button>
       </div>
-      <div className="rail-chat-thread">
+      <div className="rail-chat-thread" ref={threadRef}>
         {conv.messages.map((m) => (
           <div key={m.id} className={`chat-bubble ${m.role === "user" ? "is-user" : "is-ai"}`}>
             {m.content}
-            {m.cite && <div className="chat-cite"><span className="chat-cite-dot" />{m.cite}</div>}
           </div>
         ))}
+        {conv.messages.length === 0 && <div className="rail-empty">Start the conversation below.</div>}
       </div>
       <div className="rail-composer">
         <button className="chat-plus-btn" type="button"><IcoPlus /></button>
-        <input className="chat-composer-input" placeholder="MESSAGE…" />
-        <button className="chat-send-btn" type="button" aria-label="Send"><IcoSend /></button>
+        <input className="chat-composer-input" value={input} onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void send(); } }} placeholder="MESSAGE…" />
+        <button className="chat-send-btn" onClick={() => void send()} type="button" aria-label="Send"><IcoSend /></button>
       </div>
     </div>
   );

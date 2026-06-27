@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { IcoChevDn, IcoChevUp, IcoGrid, IcoPlus, IcoSend } from "../icons";
-import { DEMO_CATEGORIES, DEMO_CONVERSATIONS } from "../../lib/demoData";
+import { DEMO_CATEGORIES } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
@@ -114,20 +114,22 @@ function CategoriesTab() {
 
 // ── chat ──────────────────────────────────────────────────────────────────────
 function ChatTab() {
-  const messages = useChatStore((s) => s.messages);
+  const conversations = useChatStore((s) => s.conversations);
   const isSending = useChatStore((s) => s.isSending);
-  const sendMessage = useChatStore((s) => s.sendMessage);
+  const sendToConversation = useChatStore((s) => s.sendToConversation);
   const dockConvId = useLayoutStore((s) => s.dockConvId);
-  const convTitle = DEMO_CONVERSATIONS.find((c) => c.id === dockConvId)?.title ?? "Conversation";
+  const conv = conversations.find((c) => c.id === dockConvId) ?? conversations[0];
+  const messages = conv?.messages ?? [];
+  const convTitle = conv?.title ?? "Conversation";
   const [input, setInput] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [messages]);
 
   const send = async () => {
     const v = input.trim();
-    if (!v) return;
+    if (!v || !conv) return;
     setInput("");
-    await sendMessage(v);
+    await sendToConversation(conv.id, v);
   };
 
   return (
