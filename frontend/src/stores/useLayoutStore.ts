@@ -7,6 +7,7 @@ interface LayoutState {
   rightOpen: boolean;
   dockOpen: boolean;
   dockTab: DockTab;
+  dockConvId: string;
   view: GraphView;
   leftView: LeftView;
   selectedCat: string | null;
@@ -28,6 +29,7 @@ interface LayoutState {
   setLeftView: (v: LeftView) => void;
   openDockTab: (tab: DockTab) => void;
   setDockTab: (tab: DockTab) => void;
+  openConvInDock: (convId: string) => void;
   setView: (v: GraphView) => void;
 
   setSelectedCat: (catId: string | null) => void;
@@ -46,6 +48,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   rightOpen: true,
   dockOpen: true,
   dockTab: "categories",
+  dockConvId: "cv1",
   view: "graph",
   leftView: "home",
   selectedCat: null,
@@ -67,6 +70,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   setLeftView: (v) => set({ leftCollapsed: false, leftView: v }),
   openDockTab: (tab) => set({ dockOpen: true, dockTab: tab }),
   setDockTab: (tab) => set({ dockTab: tab }),
+  openConvInDock: (convId) => set({ dockOpen: true, dockTab: "chat", dockConvId: convId }),
   setView: (v) => set({ view: v }),
 
   setSelectedCat: (catId) => set({ selectedCat: catId }),

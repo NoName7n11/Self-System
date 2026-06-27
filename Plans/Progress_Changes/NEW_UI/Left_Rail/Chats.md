@@ -50,6 +50,13 @@ Body: `flex:1; display:flex; flex-direction:column; min-height:0`. Two sub-state
     - text input `flex:1; font-size:11px; height:28px;` placeholder `MESSAGE…`.
     - send button `28×28; background:#F0703C; color:#0B0B0D;` icon `send` (`[1,1][1,2][2,2][1,3][2,3][3,3][1,4][2,4][1,5]`). `onClick → sendRailChat`.
 
+## Verified differences (screenshot diff, this pass)
+1. **Conversation dot = "open in dock" indicator.** The `7×7` dot is **accent `#F0703C` only for the conversation currently open in the bottom dock** (`dockConvId`, default `cv1`); all other rows use a **grey dot `#3C3C44`**. Build had every dot blue `#5B9CF6` → fix to dock-driven accent/grey. Requires shared `dockConvId` (add to `useLayoutStore`, default `'cv1'`).
+2. **Composer send icon wrong.** Build used `IcoTrend` (↗) for the thread composer send button — design uses the `send` triangle (`IcoSend`, `[1,1][1,2][2,2][1,3][2,3][3,3][1,4][2,4][1,5]`). Same fix needed in the **dock** Chat composer. (↗ `trend` is only the "open in dock" affordance, never send.)
+3. **Conversation rows miss the ⋯ options button** (`ss-dots`, hover-reveal) → its menu is how a conversation gets opened in the dock (sets `dockConvId`), which gives the dot (#1) its meaning. Add a hover ⋯ that opens the dock to that conversation.
+4. Dock Chat title should reflect `dockConvId` (build hardcodes "Raft consensus — Q&A").
+5. NEW CHAT "+" renders chunkier than design — same icon set; acceptable, low priority.
+
 ## Build notes / current gaps
-- Build's rail chat view exists but lacks: NEW CHAT prepends, ⋯ menu, rename, attach chips, drag-drop, citation-chip select. Visual bubble + cite styling close. Multi-conv list present (from demo).
-- Affordance currently mis-coloured/sized — match `#7A7A84`, `padding:3px;margin:-3px`, hover-only reveal.
+- Still deferred (documented): NEW CHAT prepends a real conversation, inline rename, attach chips, drag-drop, citation-chip select.
+- Affordance colour/size: `#7A7A84`, `padding:3px;margin:-3px`, hover-only reveal.

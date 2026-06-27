@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { IcoChevDn, IcoChevUp, IcoGrid, IcoPlus, IcoTrend } from "../icons";
-import { DEMO_CATEGORIES } from "../../lib/demoData";
+import { IcoChevDn, IcoChevUp, IcoGrid, IcoPlus, IcoSend } from "../icons";
+import { DEMO_CATEGORIES, DEMO_CONVERSATIONS } from "../../lib/demoData";
 import { useChatStore } from "../../stores/useChatStore";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
@@ -117,6 +117,8 @@ function ChatTab() {
   const messages = useChatStore((s) => s.messages);
   const isSending = useChatStore((s) => s.isSending);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const dockConvId = useLayoutStore((s) => s.dockConvId);
+  const convTitle = DEMO_CONVERSATIONS.find((c) => c.id === dockConvId)?.title ?? "Conversation";
   const [input, setInput] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [messages]);
@@ -132,7 +134,7 @@ function ChatTab() {
     <div className="dock-chat">
       <div className="dock-chat-head">
         <span className="dock-chat-dot" />
-        <span className="dock-chat-title">Raft consensus — Q&amp;A</span>
+        <span className="dock-chat-title">{convTitle}</span>
         <span className="dock-chat-sub">SELECTED CONVERSATION</span>
       </div>
       <div className="chat-thread" ref={ref}>
@@ -148,7 +150,7 @@ function ChatTab() {
         <input className="chat-composer-input" value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void send(); } }}
           placeholder="ASK ABOUT YOUR KNOWLEDGE GRAPH…" disabled={isSending} />
-        <button className="chat-send-btn" onClick={() => void send()} type="button" aria-label="Send"><IcoTrend /></button>
+        <button className="chat-send-btn" onClick={() => void send()} type="button" aria-label="Send"><IcoSend /></button>
       </div>
     </div>
   );

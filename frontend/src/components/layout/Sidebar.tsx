@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 
 import {
-  IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoGear, IcoLibrary,
-  IcoLogo, IcoPlus, IcoSearch, IcoTasks, IcoTrend,
+  IcoChevDn, IcoChevL, IcoChevR, IcoChat, IcoDots, IcoGear, IcoLibrary,
+  IcoLogo, IcoPlus, IcoSearch, IcoSend, IcoTasks, IcoTrend,
 } from "../icons";
 import { DEMO_CATEGORIES, DEMO_CONVERSATIONS, DEMO_RECENT_IDS } from "../../lib/demoData";
 import { useLayoutStore } from "../../stores/useLayoutStore";
@@ -211,7 +211,8 @@ export default function Sidebar() {
 // ── rail chat (conversation list → thread) ────────────────────────────────────
 function RailChat() {
   const setLeftView = useLayoutStore((s) => s.setLeftView);
-  const openDockTab = useLayoutStore((s) => s.openDockTab);
+  const openConvInDock = useLayoutStore((s) => s.openConvInDock);
+  const dockConvId = useLayoutStore((s) => s.dockConvId);
   const [convId, setConvId] = useState<string | null>(null);
   const conv = DEMO_CONVERSATIONS.find((c) => c.id === convId) ?? null;
 
@@ -226,11 +227,20 @@ function RailChat() {
         <div className="rail-conv-list">
           {DEMO_CONVERSATIONS.map((c) => (
             <button key={c.id} className="rail-conv-row" onClick={() => setConvId(c.id)} type="button">
-              <span className="rail-conv-dot" style={{ background: "#5B9CF6" }} />
+              {/* dot is accent only for the conversation open in the dock, else grey */}
+              <span className="rail-conv-dot" style={{ background: c.id === dockConvId ? "#F0703C" : "#3C3C44" }} />
               <div className="rail-conv-main">
                 <div className="rail-conv-title">{c.title}</div>
                 <div className="rail-conv-preview">{c.messages[c.messages.length - 1]?.content}</div>
               </div>
+              <span
+                className="rail-conv-dots"
+                role="button"
+                aria-label="Open in dock"
+                onClick={(e) => { e.stopPropagation(); openConvInDock(c.id); }}
+              >
+                <IcoDots />
+              </span>
             </button>
           ))}
         </div>
@@ -243,7 +253,7 @@ function RailChat() {
       <div className="rail-view-head">
         <button className="rail-back" onClick={() => setConvId(null)} type="button"><IcoChevL /></button>
         <span className="rail-view-title ellipsis">{conv.title}</span>
-        <button className="rail-icon-btn" onClick={() => openDockTab("chat")} type="button" aria-label="Open in dock"><IcoTrend /></button>
+        <button className="rail-icon-btn" onClick={() => openConvInDock(conv.id)} type="button" aria-label="Open in dock"><IcoTrend /></button>
       </div>
       <div className="rail-chat-thread">
         {conv.messages.map((m) => (
@@ -256,7 +266,7 @@ function RailChat() {
       <div className="rail-composer">
         <button className="chat-plus-btn" type="button"><IcoPlus /></button>
         <input className="chat-composer-input" placeholder="MESSAGE…" />
-        <button className="chat-send-btn" type="button" aria-label="Send"><IcoTrend /></button>
+        <button className="chat-send-btn" type="button" aria-label="Send"><IcoSend /></button>
       </div>
     </div>
   );
