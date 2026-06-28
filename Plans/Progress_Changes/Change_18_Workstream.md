@@ -116,5 +116,16 @@ Panels render inline `width/height` from store; `transition:none` while resizing
 
 **Rework (fidelity fix):** Left rail + dock appeared to have *no* resize option and handles looked misplaced. Root cause — `.left-rail`, `.dock`, `.right-rail` lacked `position: relative`, so the absolutely-positioned `.resize-handle*` (top/right/left: 0) anchored to the viewport, not the panel: the left handle landed over the right rail, the dock handle at the page top, etc. Fix: added `position: relative` to all three panel containers in `styles.css`. Verified via Playwright — handles now sit exactly on each panel edge (left@258, dock-top@776, right@1798) and drag resizes correctly (left 264→344 on +80px). Matches design (`Self Systems.dc.html` wraps each panel relative with a 5px `ss-handle`).
 
+### GRAPH rework (fidelity fix) ✅
+`frontend/src/components/graph/GraphCanvas.tsx`, ref `Redesign_from_scratch_8/Self Systems.dc.html` §10 + `Self_Systems_UI_Build_Spec.md`. User report: graph "very glitchy" + nodes "too rigidly symmetrical". Root causes + fixes:
+
+- **Rigid symmetry** — hub↔hub links were *all-pairs* (15 edges for 6 cats), forcing a perfect symmetric polygon; resource→hub were the only other links so clusters were perfectly radial. Replaced with the design's **sparse 7-edge `CATLINKS`** + added the missing **resource↔resource `con` links** (from `connections`, deduped `a<b`, len 78/k 0.015). Node radii now vary `5 + counter*0.7` (were fixed 5). Result: organic, asymmetric layout.
+- **Glitch (jump)** — `fitNodes` ran on *every* ResizeObserver tick, so the graph re-framed/jumped whenever any panel was dragged or collapsed. ResizeObserver now only updates the DPR backing-store size + centers once; refit happens solely on warm-up settle and the FIT/100% buttons.
+- **Blur/jitter** — added DPR handling (`canvas.width = cssW*dpr`, `ctx.setTransform(dpr,…)`) and switched the renderer to **screen-space projection** (world→screen per point, constant-px line widths and fonts) instead of `ctx.scale()` — crisp at all zooms, matches design `w2s`.
+- **Cross-zone bug** — graph hub id was `cat:<name>` but the dock cat-cards and left-rail CATEGORY NODES key off `categoryId`. Switched hub id to `categoryId`, so a hub click and a dock card now drive the *same* `selectedCat` → graph isolation + left-rail node list + inspector stay in sync.
+- **HUD** now drawn on canvas every frame (live `NODES·EDGES·ZOOM%`); the stale React HUD div was removed. Added hover highlight + cursor feedback. Zoom buttons use the design's 1.2 factor.
+
+Verified (Playwright, demo fallback): NODES 27 · EDGES 37 (21 res→cat + 7 CATLINKS + 9 con); dock RESEARCH card → left rail shows RESEARCH + 9 node rows + graph isolates the research cluster; dock resize 264→344 with no graph jump; DPR backing store correct. Build clean.
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.

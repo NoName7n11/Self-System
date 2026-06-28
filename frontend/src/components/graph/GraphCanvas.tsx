@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { DEMO_CATEGORIES } from "../../lib/demoData";
+import { DEMO_CATEGORIES, DEMO_RESOURCES } from "../../lib/demoData";
 import { useLayoutStore } from "../../stores/useLayoutStore";
 import { useResourceStore } from "../../stores/useResourceStore";
 import { useTaskStore } from "../../stores/useTaskStore";
@@ -55,14 +55,28 @@ const TYPE_COLORS: Record<ResourceType, string> = {
   image: "#F6739B",
 };
 
-function catColor(name: string): string {
-  const key = name.trim().toLowerCase();
+function catColor(id: string): string {
+  const key = id.trim().toLowerCase();
   if (CAT_COLORS[key]) return CAT_COLORS[key];
-  // deterministic hash fallback
+  // deterministic hash fallback for user-created categories
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
   return `hsl(${175 + (h % 120)} 78% 63%)`;
 }
+
+// Sparse weighted hub↔hub relations (matches design §10.1 CATLINKS). Only the
+// edges between categories that actually have a relationship — NOT all-pairs —
+// so the hub layout is organic, not a rigid symmetric polygon.
+const CATLINKS: Array<[string, string]> = [
+  ["research", "ai"], ["research", "sources"], ["ai", "finance"],
+  ["ai", "sources"], ["people", "research"], ["finance", "people"],
+  ["archive", "sources"],
+];
+
+// counter (share count → node size) + connections (res↔res edges), keyed by
+// resource id. Real backend resources fall back to counter 1 / no connections.
+const COUNTER_BY_ID = new Map(DEMO_RESOURCES.map((r) => [r.id, r.counter]));
+const CONNS_BY_ID = new Map(DEMO_RESOURCES.map((r) => [r.id, r.connections]));
 
 // ─── Sim builder ─────────────────────────────────────────────────────────────
 
@@ -72,31 +86,29 @@ export function buildSimData(resources: ResourceItem[]): { nodes: SimNode[]; lin
   const links: SimLink[] = [];
 
   for (const r of resources) {
-    const catName = r.categoryName.trim() || "Unsorted";
-    const catKey = catName.toLowerCase();
+    const catId = r.categoryId.trim() || "unsorted";
 
-    if (!catMap.has(catKey)) {
-      const catNode: SimNode = {
-        id: `cat:${catKey}`,
+    if (!catMap.has(catId)) {
+      catMap.set(catId, {
+        id: catId,
         kind: "cat",
         mass: 4,
         r: 13,
-        color: catColor(catName),
-        label: catName,
-        catId: `cat:${catKey}`,
+        color: catColor(catId),
+        label: r.categoryName.trim() || catId,
+        catId,
         x: 0, y: 0, vx: 0, vy: 0, fixed: false,
-      };
-      catMap.set(catKey, catNode);
+      });
     }
 
-    const hub = catMap.get(catKey)!;
-    const resColor = TYPE_COLORS[r.type ?? "link"] ?? "#5B9CF6";
+    const hub = catMap.get(catId)!;
+    const counter = COUNTER_BY_ID.get(r.id) ?? 1;
     const resNode: SimNode = {
       id: r.id,
       kind: "res",
       mass: 1,
-      r: 5,
-      color: resColor,
+      r: 5 + counter * 0.7,
+      color: TYPE_COLORS[r.type ?? "link"] ?? "#5B9CF6",
       label: r.title.trim() || r.host.trim() || r.url.trim() || "Resource",
       catId: hub.id,
       resourceId: r.id,
@@ -105,38 +117,38 @@ export function buildSimData(resources: ResourceItem[]): { nodes: SimNode[]; lin
     };
     resNodes.push(resNode);
 
-    links.push({
-      a: resNode, b: hub,
-      len: 90, k: 0.04, strong: true, color: hub.color,
-    });
+    // resource → category (strong, solid, category color)
+    links.push({ a: resNode, b: hub, len: 90, k: 0.04, strong: true, color: hub.color });
   }
 
   const catNodes = [...catMap.values()];
+  const byId = new Map<string, SimNode>([...catMap, ...resNodes.map((n) => [n.id, n] as const)]);
 
-  // seed hubs on circle
+  // seed hubs evenly on a circle, resources radially around their hub
   const hubR = 170;
   catNodes.forEach((hub, i) => {
-    const angle = (i / catNodes.length) * Math.PI * 2;
-    hub.x = Math.cos(angle) * hubR;
-    hub.y = Math.sin(angle) * hubR;
+    const a = (i / catNodes.length) * Math.PI * 2;
+    hub.x = Math.cos(a) * hubR;
+    hub.y = Math.sin(a) * hubR;
   });
-
-  // seed resources near hub
   resNodes.forEach((node) => {
-    const hub = catNodes.find((c) => c.id === node.catId);
-    if (hub) {
-      node.x = hub.x + (Math.random() - 0.5) * 110;
-      node.y = hub.y + (Math.random() - 0.5) * 110;
-    }
+    const hub = byId.get(node.catId);
+    const a = Math.random() * Math.PI * 2;
+    node.x = (hub?.x ?? 0) + Math.cos(a) * 55;
+    node.y = (hub?.y ?? 0) + Math.sin(a) * 55;
   });
 
-  // weak hub-hub links
-  for (let i = 0; i < catNodes.length; i++) {
-    for (let j = i + 1; j < catNodes.length; j++) {
-      links.push({
-        a: catNodes[i], b: catNodes[j],
-        len: 230, k: 0.02, strong: false, color: "#3A3A42",
-      });
+  // weak hub↔hub links (sparse, from CATLINKS)
+  for (const [a, b] of CATLINKS) {
+    const na = byId.get(a), nb = byId.get(b);
+    if (na && nb) links.push({ a: na, b: nb, len: 230, k: 0.02, strong: false, color: "#3A3A42" });
+  }
+
+  // weak resource↔resource links (from connections, deduped a<b)
+  for (const r of resNodes) {
+    for (const c of CONNS_BY_ID.get(r.id) ?? []) {
+      const other = byId.get(c.to);
+      if (other && r.id < c.to) links.push({ a: r, b: other, len: 78, k: 0.015, strong: false, color: "#2E2E36" });
     }
   }
 
@@ -212,96 +224,107 @@ function fitNodes(width: number, height: number, nodes: SimNode[], tr: Transform
 
 // ─── Renderer ─────────────────────────────────────────────────────────────────
 
+function hexA(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+const ACC = "#F0703C";
+
+// Draws in *screen space* (world→screen projection per point), like the design.
+// Constant screen-px line widths and font sizes → no jitter/blur while zooming.
 function draw(
   ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
+  dpr: number,
+  cssW: number,
+  cssH: number,
   nodes: SimNode[],
   links: SimLink[],
   tr: Transform,
   selectedId: string | null,
   selectedCat: string | null,
+  hoverId: string | null,
   query: string,
 ) {
-  ctx.clearRect(0, 0, w, h);
-  ctx.save();
-  ctx.translate(tr.tx, tr.ty);
-  ctx.scale(tr.scale, tr.scale);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
 
-  const hasFilter = query.trim() !== "" || selectedCat !== null;
+  const sc = tr.scale;
+  const w2sx = (x: number) => x * sc + tr.tx;
+  const w2sy = (y: number) => y * sc + tr.ty;
+
   const q = query.trim().toLowerCase();
-
-  const matchesFilter = (n: SimNode): boolean => {
-    if (!hasFilter) return true;
-    if (selectedCat && n.catId !== selectedCat && n.id !== selectedCat) return false;
-    if (q && !n.label.toLowerCase().includes(q)) return false;
-    return true;
+  const ms = q
+    ? new Set(
+        nodes
+          .filter((n) => n.label.toLowerCase().includes(q) || n.catId.toLowerCase().includes(q))
+          .map((n) => n.id),
+      )
+    : null;
+  const dimmed = (n: SimNode): boolean => {
+    if (ms) return !ms.has(n.id) && !(n.kind === "res" && ms.has(n.catId));
+    if (selectedCat) return n.id !== selectedCat && n.catId !== selectedCat;
+    return false;
   };
 
   // edges
   for (const lk of links) {
-    const dimA = hasFilter && !matchesFilter(lk.a);
-    const dimB = hasFilter && !matchesFilter(lk.b);
-    const alpha = dimA && dimB ? 0.03 : lk.strong ? 0.32 : 0.6;
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = lk.color;
-    ctx.lineWidth = lk.strong ? 1.5 / tr.scale : 1 / tr.scale;
-    if (!lk.strong) {
-      ctx.setLineDash([2 / tr.scale, 3 / tr.scale]);
-    } else {
-      ctx.setLineDash([]);
-    }
+    const dm = dimmed(lk.a) && dimmed(lk.b);
     ctx.beginPath();
-    ctx.moveTo(lk.a.x, lk.a.y);
-    ctx.lineTo(lk.b.x, lk.b.y);
+    ctx.moveTo(w2sx(lk.a.x), w2sy(lk.a.y));
+    ctx.lineTo(w2sx(lk.b.x), w2sy(lk.b.y));
+    ctx.strokeStyle = lk.strong ? hexA(lk.color, dm ? 0.04 : 0.32) : hexA(lk.color, dm ? 0.03 : 0.6);
+    ctx.lineWidth = lk.strong ? 1.1 : 1;
+    ctx.setLineDash(lk.strong ? [] : [2, 3]);
     ctx.stroke();
   }
   ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
 
   // nodes
+  ctx.textAlign = "center";
   for (const n of nodes) {
-    const dim = hasFilter && !matchesFilter(n);
-    const alpha = dim ? 0.22 : 1;
-    ctx.globalAlpha = alpha;
+    const px = w2sx(n.x), py = w2sy(n.y);
+    const dm = dimmed(n);
+    const alpha = dm ? 0.22 : 1;
+    const isSel = n.resourceId === selectedId || n.id === selectedId;
+    const isHov = n.id === hoverId;
 
     if (n.kind === "cat") {
-      const sz = Math.max(10, n.r * tr.scale) / tr.scale;
-      ctx.fillStyle = n.color;
-      ctx.fillRect(n.x - sz / 2, n.y - sz / 2, sz, sz);
-      const inner = sz * 0.45;
-      ctx.fillStyle = "#0B0B0D";
-      ctx.fillRect(n.x - inner / 2, n.y - inner / 2, inner, inner);
-      ctx.fillStyle = "#E9E9EC";
-      ctx.font = `${11 / tr.scale}px 'JetBrains Mono', monospace`;
-      ctx.textAlign = "center";
-      ctx.fillText(n.label, n.x, n.y + sz / 2 + 14 / tr.scale);
+      const s = Math.max(10, n.r * sc);
+      ctx.fillStyle = hexA(n.color, alpha);
+      ctx.fillRect(Math.round(px - s), Math.round(py - s), Math.round(s * 2), Math.round(s * 2));
+      const inner = s * 0.4;
+      ctx.fillStyle = hexA("#0B0B0D", alpha);
+      ctx.fillRect(Math.round(px - inner), Math.round(py - inner), Math.round(inner * 2), Math.round(inner * 2));
+      ctx.font = '700 10px "JetBrains Mono", monospace';
+      ctx.fillStyle = hexA("#E9E9EC", dm ? 0.3 : 0.92);
+      ctx.fillText(n.label, px, py + s + 13);
     } else {
-      const isSelected = n.resourceId === selectedId;
-      const sz = Math.max(4, n.r * tr.scale * 0.95) / tr.scale;
-
-      if (isSelected) {
-        ctx.fillStyle = "rgba(240,112,60,0.12)";
-        ctx.fillRect(n.x - sz / 2, n.y - sz / 2, sz, sz);
-        ctx.strokeStyle = "#F0703C";
-        ctx.lineWidth = 2 / tr.scale;
-        ctx.strokeRect(n.x - sz / 2, n.y - sz / 2, sz, sz);
-      } else {
-        ctx.fillStyle = n.color;
-        ctx.fillRect(n.x - sz / 2, n.y - sz / 2, sz, sz);
+      const s = Math.max(4, n.r * sc * 0.95);
+      if (isSel) {
+        ctx.strokeStyle = ACC;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px - s - 4, py - s - 4, (s + 4) * 2, (s + 4) * 2);
+        ctx.fillStyle = hexA(ACC, 0.12);
+        ctx.fillRect(px - s - 4, py - s - 4, (s + 4) * 2, (s + 4) * 2);
       }
-
-      if (tr.scale > 1.35) {
-        ctx.fillStyle = "#9A9AA0";
-        ctx.font = `${9 / tr.scale}px 'JetBrains Mono', monospace`;
-        ctx.textAlign = "center";
-        ctx.fillText(n.label.slice(0, 20), n.x, n.y + sz / 2 + 10 / tr.scale);
+      ctx.fillStyle = n.color === "#5C5C66" ? hexA("#5C5C66", alpha) : hexA(n.color, isHov ? 1 : alpha);
+      ctx.fillRect(Math.round(px - s), Math.round(py - s), Math.round(s * 2), Math.round(s * 2));
+      if (isSel || isHov || sc > 1.35) {
+        ctx.font = '500 9px "JetBrains Mono", monospace';
+        ctx.fillStyle = hexA("#C9C9CF", dm ? 0.3 : isSel ? 1 : 0.7);
+        ctx.fillText(n.label, px, py + s + 11);
       }
     }
   }
 
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  // HUD (live, every frame)
+  ctx.textAlign = "left";
+  ctx.font = '500 9px "JetBrains Mono", monospace';
+  ctx.fillStyle = "#46464E";
+  ctx.fillText(`NODES ${nodes.length}  ·  EDGES ${links.length}  ·  ZOOM ${Math.round(sc * 100)}%`, 14, 20);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -315,6 +338,11 @@ export default function GraphCanvas({ resources }: Props) {
   const trRef       = useRef<Transform>({ scale: 1, tx: 0, ty: 0 });
   const rafRef      = useRef<number>(0);
   const warmRef     = useRef(false);
+  const dprRef      = useRef(1);
+  const cssWRef     = useRef(0);
+  const cssHRef     = useRef(0);
+  const tfInitRef   = useRef(false);
+  const hoverRef    = useRef<string | null>(null);
 
   // interaction refs
   const dragNode    = useRef<SimNode | null>(null);
@@ -359,23 +387,22 @@ export default function GraphCanvas({ resources }: Props) {
     const nodes = nodesRef.current;
     const links = linksRef.current;
     const tr    = trRef.current;
-    const w     = canvas.width;
-    const h     = canvas.height;
+    const cssW  = cssWRef.current;
+    const cssH  = cssHRef.current;
 
-    // warm-up: 260 silent steps on first run
-    if (!warmRef.current && nodes.length > 0) {
+    // warm-up: 260 silent steps once the canvas has a real size, then fit
+    if (!warmRef.current && nodes.length > 0 && cssW > 0) {
       for (let i = 0; i < 260; i++) tick(nodes, links);
-      fitNodes(w, h, nodes, tr);
+      fitNodes(cssW, cssH, nodes, tr);
       warmRef.current = true;
-
-      // schedule re-fits to settle nicely
-      setTimeout(() => fitNodes(w, h, nodesRef.current, trRef.current), 60);
-      setTimeout(() => fitNodes(w, h, nodesRef.current, trRef.current), 360);
-      setTimeout(() => fitNodes(w, h, nodesRef.current, trRef.current), 900);
+      // a few delayed re-fits to settle the framing (matches design)
+      setTimeout(() => fitNodes(cssWRef.current, cssHRef.current, nodesRef.current, trRef.current), 60);
+      setTimeout(() => fitNodes(cssWRef.current, cssHRef.current, nodesRef.current, trRef.current), 360);
+      setTimeout(() => fitNodes(cssWRef.current, cssHRef.current, nodesRef.current, trRef.current), 900);
     }
 
     tick(nodes, links);
-    draw(ctx, w, h, nodes, links, tr, selIdRef.current, selCatRef.current, queryRef.current);
+    draw(ctx, dprRef.current, cssW, cssH, nodes, links, tr, selIdRef.current, selCatRef.current, hoverRef.current, queryRef.current);
 
     rafRef.current = requestAnimationFrame(loop);
   }, []);
@@ -385,15 +412,29 @@ export default function GraphCanvas({ resources }: Props) {
     return () => cancelAnimationFrame(rafRef.current);
   }, [loop]);
 
-  // canvas resize
+  // canvas resize — update backing-store size for DPR only. Do NOT refit:
+  // refitting here makes the graph jump every time a panel is dragged/collapsed.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ro = new ResizeObserver(() => {
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      fitNodes(canvas.width, canvas.height, nodesRef.current, trRef.current);
-    });
+    const apply = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const cssW = canvas.clientWidth || 800;
+      const cssH = canvas.clientHeight || 500;
+      dprRef.current = dpr;
+      cssWRef.current = cssW;
+      cssHRef.current = cssH;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      // center the world once, the first time we know our size
+      if (!tfInitRef.current) {
+        trRef.current.tx = cssW / 2;
+        trRef.current.ty = cssH / 2;
+        tfInitRef.current = true;
+      }
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
     ro.observe(canvas);
     return () => ro.disconnect();
   }, []);
@@ -428,6 +469,7 @@ export default function GraphCanvas({ resources }: Props) {
         panStartX.current = e.offsetX - tr.tx;
         panStartY.current = e.offsetY - tr.ty;
       }
+      canvas.style.cursor = "grabbing";
     };
 
     const onMove = (e: MouseEvent) => {
@@ -442,6 +484,11 @@ export default function GraphCanvas({ resources }: Props) {
       } else if (isPanning.current) {
         tr.tx = e.offsetX - panStartX.current;
         tr.ty = e.offsetY - panStartY.current;
+      } else {
+        // idle hover: highlight + cursor feedback
+        const hit = hitTest(e.offsetX, e.offsetY);
+        hoverRef.current = hit ? hit.id : null;
+        canvas.style.cursor = hit ? "pointer" : "grab";
       }
     };
 
@@ -460,6 +507,7 @@ export default function GraphCanvas({ resources }: Props) {
         dragNode.current = null;
       }
       isPanning.current = false;
+      canvas.style.cursor = "grab";
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -484,33 +532,24 @@ export default function GraphCanvas({ resources }: Props) {
     };
   }, [selectResource, setRightOpen, setSelectedCat]);
 
-  // zoom control callbacks
-  const doFit = () => {
-    const canvas = canvasRef.current;
-    if (canvas) fitNodes(canvas.width, canvas.height, nodesRef.current, trRef.current);
-  };
+  // zoom control callbacks (operate in CSS px, like the design)
+  const doFit = () => fitNodes(cssWRef.current, cssHRef.current, nodesRef.current, trRef.current);
   const do100 = () => {
-    const canvas = canvasRef.current;
-    if (canvas) { trRef.current.scale = 1; trRef.current.tx = canvas.width / 2; trRef.current.ty = canvas.height / 2; }
+    trRef.current.scale = 1;
+    trRef.current.tx = cssWRef.current / 2;
+    trRef.current.ty = cssHRef.current / 2;
   };
   const doZoom = (delta: number) => {
     const tr = trRef.current;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const factor = delta > 0 ? 1.1 : 1 / 1.1;
+    const cx = cssWRef.current / 2;
+    const cy = cssHRef.current / 2;
+    const factor = delta > 0 ? 1.2 : 1 / 1.2;
     const wx = (cx - tr.tx) / tr.scale;
     const wy = (cy - tr.ty) / tr.scale;
     tr.scale = Math.min(2.6, Math.max(0.3, tr.scale * factor));
     tr.tx = cx - wx * tr.scale;
     tr.ty = cy - wy * tr.scale;
   };
-
-  // derive HUD values from last render (approximate)
-  const nodeCount = nodesRef.current.length;
-  const linkCount = linksRef.current.length;
-  const zoom = Math.round(trRef.current.scale * 100);
 
   // progress view: "recently completed" = a few recent resources
   const recentlyDone = useMemo(() => resources.slice(0, 6), [resources]);
@@ -538,10 +577,6 @@ export default function GraphCanvas({ resources }: Props) {
       {view === "graph" && (
         <>
           <canvas ref={canvasRef} className="graph-canvas" />
-
-          <div className="graph-hud">
-            {`NODES ${nodeCount} · EDGES ${linkCount} · ZOOM ${zoom}%`}
-          </div>
 
           <div className="zoom-controls">
             <button className="zoom-btn" onClick={() => doZoom(-1)} type="button">−</button>
