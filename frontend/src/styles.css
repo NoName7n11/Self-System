@@ -80,6 +80,7 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 
 /* ─── Left Rail ──────────────────────────────────────────────────────────────── */
 .left-rail {
+  position: relative;
   flex: none;
   width: var(--left-w);
   height: 100vh;
@@ -290,6 +291,7 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 
 /* ─── Dock ───────────────────────────────────────────────────────────────────── */
 .dock {
+  position: relative;
   flex: none; height: var(--dock-h-col);
   display: flex; flex-direction: column;
   background: var(--bg-panel); border-top: 1px solid var(--border-soft);
@@ -422,6 +424,7 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 
 /* ─── Right Rail / Inspector ─────────────────────────────────────────────────── */
 .right-rail {
+  position: relative;
   flex: none; width: var(--right-w-col); height: 100vh;
   display: flex; flex-direction: column;
   background: var(--bg-panel); border-left: 1px solid var(--border-softer);

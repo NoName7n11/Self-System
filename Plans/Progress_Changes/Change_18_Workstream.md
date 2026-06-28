@@ -114,5 +114,7 @@ Deferred (documented in NEW_UI): resize handle, hold-to-clear recent, hover swap
 - Dock: floor 90, **collapseAt 160** (def 264) — design feel.
 Panels render inline `width/height` from store; `transition:none` while resizing. Verified: moderate drag resizes without collapse; aggressive drag snaps collapsed.
 
+**Rework (fidelity fix):** Left rail + dock appeared to have *no* resize option and handles looked misplaced. Root cause — `.left-rail`, `.dock`, `.right-rail` lacked `position: relative`, so the absolutely-positioned `.resize-handle*` (top/right/left: 0) anchored to the viewport, not the panel: the left handle landed over the right rail, the dock handle at the page top, etc. Fix: added `position: relative` to all three panel containers in `styles.css`. Verified via Playwright — handles now sit exactly on each panel edge (left@258, dock-top@776, right@1798) and drag resizes correctly (left 264→344 on +80px). Matches design (`Self Systems.dc.html` wraps each panel relative with a 5px `ss-handle`).
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.
