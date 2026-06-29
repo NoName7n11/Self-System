@@ -127,5 +127,23 @@ Panels render inline `width/height` from store; `transition:none` while resizing
 
 Verified (Playwright, demo fallback): NODES 27 · EDGES 37 (21 res→cat + 7 CATLINKS + 9 con); dock RESEARCH card → left rail shows RESEARCH + 9 node rows + graph isolates the research cluster; dock resize 264→344 with no graph jump; DPR backing store correct. Build clean.
 
+### GRAPH stability + drag fluidity (fidelity fix 2) ✅
+`frontend/src/components/graph/GraphCanvas.tsx` + `frontend/src/stores/useResourceStore.ts`. User report (round 2): nodes "constantly moving in a circle", "flickering as if refreshing", and per-node drag "rough/irregular, not smooth" vs the design's fluid drag. Two distinct root causes:
+
+- **Phantom 12s refresh** — with no backend, `useSyncStore` falls to offline polling (`fallbackPollIntervalMs` 12s) → `loadResources({silent})` → `demoResourcesAsItems()` builds a *fresh array of fresh objects* every poll → store sets a new `resources` reference → filter memo + GraphCanvas `[resources]` rebuild effect fire → `warmRef=false` → nodes snap back to the seed circle and re-explode. Every 12s. Fix in `useResourceStore.loadResources`: added `resourcesSignature()` (id:url:title:cat:summary) and on a **silent** reload, if the signature equals the current one, early-return without `set()` — keeps the same array reference so nothing downstream rebuilds. Applied to both the success and catch (backend-unreachable) branches.
+- **Diverged physics → rough drag** — an earlier attempt added d3-style **alpha decay** (tick scaled by a decaying alpha, stop at <0.001, reheat to 0.3 on drag). That diverged from the design, which runs `step()` at **full force every frame, forever** — the system reaches equilibrium (repulsion≈spring+gravity) and 0.9 damping kills residual velocity, so it's visually static at rest yet *immediately* fluid on drag because forces are always at full strength. Reverted alpha entirely; `tick()` now mirrors the design `step()` exactly (incl. coincident-node random nudge, gravity-before-fixed-check ordering, ±14 velocity clamp). Also switched the event model to match the design: `mousedown`/`wheel`/hover bound on the **canvas**, but `mousemove`/`mouseup` bound on the **window** so a drag keeps tracking when the cursor leaves the canvas; coords via `getBoundingClientRect`+clientX (design `evPos`); circular `hypot` hit test (was square AABB).
+
+Verified (Playwright, programmatic, demo fallback): after warm-up the canvas is **pixel-perfect static** (0 changed px across repeated 400ms samples); dragging a node moved 23,843 px (node follows cursor + neighbours react = fluid); after release the sim **re-converges to 0** changed px over ~3-4s (no limit-cycle/orbit). Build clean.
+
+### Left_Rail interaction fixes (fidelity pass) ✅
+`frontend/src/components/layout/Sidebar.tsx`, `frontend/src/styles.css`, `frontend/src/stores/useResourceStore.ts`. Four user-reported fixes that mostly conclude the Left_Rail:
+
+- [x] **Library "open in dock" tab** — `RailLibrary` open-in-dock called `openDockTab("categories")`; now `openDockTab("library")` so the dock lands on the LIBRARY tab. Verified: dock active tab reads `LIBRARY`.
+- [x] **RECENT hold-to-clear** — added `clearRecents()` to `useResourceStore` and tap/hold handlers on the RECENT toggle (mirrors design `startHoldRecent`: mousedown animates a `.rail-recent-fill` bar over 1.5s → `clearRecents()`; release <400ms → `toggleRecent`; mouseleave cancels). Also removed the `deriveRecents` fallback in the `recents` memo — it re-invented a list from arbitrary resources and masked the clear (cleared list still showed 5). Verified: hold 5→0 ("NO RECENT ITEMS"); quick tap collapses.
+- [x] **CATEGORY NODES compaction** — removed the per-row colored type badge (`rail-catnode-badge`); rows are now title-only with tighter padding so long node lists need less scrolling. Verified: 0 badges, row markup is just the title.
+- [x] **Uniform "open in dock" icons** — restyled `.nav-affordance` (home CHAT/TASKS/LIBRARY rows) to a 24×24 bordered box matching `.rail-icon-btn` (the LIBRARY-section icon), keeping the hover-reveal. Verified: affordance is 24×24 with a 1px border.
+
+Deferred to UI finishing (user): remaining minor Left_Rail polish items.
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.
