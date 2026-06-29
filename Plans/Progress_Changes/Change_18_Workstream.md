@@ -170,5 +170,14 @@ Deferred to UI finishing (user): remaining minor Left_Rail polish items.
 
 Workspace housekeeping: verification screenshots now live in `Plans/New_UI/References/verification_shots/` (kept, not deleted).
 
+### Dock/Rail polish — ingest center, dropdown anchor, chat gaps, row scroll, uniform scrollbars, MAP trail ✅
+`frontend/src/components/chat/ChatDock.tsx`, `frontend/src/styles.css`.
+
+- [x] **CATEGORIES ingest centered + dropdown anchored** (design §6.2, img_6 vs img_7) — wrapped ingest contents in `.ingest-inner` (`max-width:560px; margin:0 auto`) and made `.ingest-bar` `width:100%`; the `.ingest-add-menu` now right-aligns to the ADD/caret and drops 4px below the bar instead of opening far away (verified `menu.right==bar.right`, `menu.top==bar.bottom+4`).
+- [x] **CHAT message gaps** (§6.3) — `.chat-thread` gap `6→12px` + padding `14×18`, `.chat-bubble` `max-width 80→74%`, padding `9×12`, font `11→12px`; bubbles no longer vertically cramped or over-stretched.
+- [x] **Left_Rail LIBRARY/RECENT constant row size + scroll** (img_7) — added `flex:none` to `.rail-lib-row`/`.rail-recent-row`/`.rail-catnode-row` so they stop flex-shrinking in a small window; rows hold design height and the list scrolls (verified at 900×560: 21 rows @ 34px, list scrolls 734>463).
+- [x] **Uniform scrollbars** (§1.7, img_8) — one global `::-webkit-scrollbar` rule (8px, transparent track, square `#26262C`→`#34343C` thumb); removed the six per-section `3px` overrides and the standard `scrollbar-width:thin` line (it overrode webkit in Chromium/WebView2). Verified all scroll zones now 8px.
+- [x] **MAP pan trail (root node) — definitive fix** (img_9) — added `will-change: transform` to `.map-node` so every node moves on its own compositor layer and never leaves stale residue in the viewport-layer tiles (the bright root was the only visible offender). Chrome rasters promoted layers at effective screen scale → no blur regression (verified sharp at 160% max upscale and 45%).
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.
