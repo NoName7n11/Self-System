@@ -646,3 +646,9 @@ Continuation of the Change 18 Instrument-UI rebuild. CSS-only; no logic/store ch
 
 - Step 01: Updated `frontend/src/styles.css` `.notif-row`/`.notif-x` — added `position:relative` to the row and made `.notif-x` `position:absolute` (top-right, opacity-revealed) overlaying `.notif-time` (which fades on hover) `because` the `×` previously toggled `display:none→flex`, adding width and resizing/reflowing each notification on hover. Row now holds a fixed box (verified 314×69 px stable on hover) while still wrapping long bodies.
 - Step 02: Updated `frontend/src/styles.css` `.map-world` — removed `will-change:transform` and `backface-visibility:hidden` `because` they promoted the map world to a cached GPU layer that rasterized once at the idle transform, rendering the scaled node text blurry until an interaction (pan/zoom) forced a re-raster; without the hints every paint re-rasterizes crisply. Verified via Playwright (`will-change:auto`) + screenshot.
+
+## Session 64 - Change 18: MAP pan-trail fix (interaction-only GPU promotion)
+
+Continuation of the Change 18 Instrument-UI rebuild. Frontend-only.
+
+- Step 01: Updated `frontend/src/components/graph/GraphCanvas.tsx` — added a `mapBoost` state that sets inline `willChange:'transform'` on `.map-world` only while interacting: `true` on `mapPanStart` (cleared on mouseup) and on `mapWheel` (cleared 220ms after the last wheel via a timer), `false`/`auto` at rest `because` fast panning while zoomed out left repaint "trails" smearing from the root node when the world had no compositing layer, but a permanent layer reintroduced the Session 63 idle blur. Promoting only during interaction gives a composited (trail-free) layer while moving and an un-promoted (sharp) layer at rest — resolving both coupled bugs. Verified via Playwright: `willChange` = `auto` at rest → `transform` during drag/wheel → `auto` after.
