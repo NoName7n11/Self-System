@@ -179,5 +179,15 @@ Workspace housekeeping: verification screenshots now live in `Plans/New_UI/Refer
 - [x] **Uniform scrollbars** (§1.7, img_8) — one global `::-webkit-scrollbar` rule (8px, transparent track, square `#26262C`→`#34343C` thumb); removed the six per-section `3px` overrides and the standard `scrollbar-width:thin` line (it overrode webkit in Chromium/WebView2). Verified all scroll zones now 8px.
 - [x] **MAP pan trail (root node) — definitive fix** (img_9) — added `will-change: transform` to `.map-node` so every node moves on its own compositor layer and never leaves stale residue in the viewport-layer tiles (the bright root was the only visible offender). Chrome rasters promoted layers at effective screen scale → no blur regression (verified sharp at 160% max upscale and 45%).
 
+### Notifications + chat attachments + Right_Rail (PREVIEW · archive · category badge) ✅
+`frontend/src/components/layout/Topbar.tsx`, `frontend/src/components/chat/ChatDock.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/components/resource/ResourceForm.tsx`, `frontend/src/stores/useChatStore.ts`, `frontend/src/stores/useResourceStore.ts`, `frontend/src/hooks/useFilteredResources.ts`, `frontend/src/types.ts`, `frontend/src/styles.css`.
+
+- [x] **Notifications expand in place** (§9.3) — click a notif to toggle `is-expanded`; `.notif-text` clamps to 2 lines by default and un-clamps with `max-height:160px; overflow-y:auto` (title wraps); the `×` stops propagation. Verified line-clamp 2→none, overflow auto.
+- [x] **Chat attachments reflect + "+N more" tooltip** (§7/§9.5) — `ChatMessage.atts` + `sendToConversation(atts)`; shared `MsgAtts` renders 2 inline chips + a `+N more` hover tooltip listing all; wired into both dock ChatTab and Left_Rail RailChat (rail got a real file picker too). Verified: 3 files → 2 chips + "+1 more" tooltip with all 3.
+- [x] **Right_Rail OPEN→PREVIEW** (§8.2c/§8.3) — links keep OPEN; other types show a PREVIEW toggle (accent `is-active`) that swaps AI SUMMARY for an inline `InlinePreview` mock (PDF/DOC page · NOTE card · IMAGE frame). Verified PDF→toggle swaps section + accent fill.
+- [x] **Remove "ASK ABOUT THIS RESOURCE…" composer** — `.inspector-footer` block + `ask` state removed (suggested-Q chips still route into dock chat). Verified footer gone.
+- [x] **ARCHIVE + DELETE functional** — `archivedLib`/`archiveResource`/`restoreResource` in the resource store; ARCHIVE clears selection + opens ARCHIVE tab + hides from library/graph; RESTORE un-archives; DELETE uses existing delete. EDIT left as no-op per user. Verified archive (2→3) + restore (3→2).
+- [x] **Category-node badge instead of type** — Inspector meta badge shows the category name in the category color (type already in the preview well); duplicate category tag chip dropped. Verified badge=RESEARCH (category blue).
+
 ## Deferred (post-18, documented)
-Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · per-type inline preview rendering · add-menu best-match/new-category · hold-to-clear recent.
+Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · add-menu best-match/new-category · hold-to-clear recent · Inspector EDIT action · RESTORE for demo category-archived seed (r20/r21).
