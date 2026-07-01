@@ -189,5 +189,9 @@ Workspace housekeeping: verification screenshots now live in `Plans/New_UI/Refer
 - [x] **ARCHIVE + DELETE functional** — `archivedLib`/`archiveResource`/`restoreResource` in the resource store; ARCHIVE clears selection + opens ARCHIVE tab + hides from library/graph; RESTORE un-archives; DELETE uses existing delete. EDIT left as no-op per user. Verified archive (2→3) + restore (3→2).
 - [x] **Category-node badge instead of type** — Inspector meta badge shows the category name in the category color (type already in the preview well); duplicate category tag chip dropped. Verified badge=RESEARCH (category blue).
 
+### PREVIEW sticky fix + confirmation notification (Session 68)
+- [x] **PREVIEW sticky across nodes** — narrowed the `useEffect` in `ResourceForm.tsx` from resetting on every `selectedId` change to resetting only when the selected type is `link`; PREVIEW now persists as the user clicks through previewable nodes and auto-ends only on a link selection (links show OPEN, never PREVIEW). User re-enables PREVIEW by clicking again.
+- [x] **Confirmation notification** — prepended `n0` ("UI changes deployed", long body) to `DEMO_NOTIFS` in `demoData.ts` as a visible deploy confirmation and a functional test of the Session 67 click-to-expand/scroll notification behavior.
+
 ## Deferred (post-18, documented)
 Resize handles + persistence · conversation rename · task create form + T/P/D segments · drag-drop ingest/attach · add-menu best-match/new-category · hold-to-clear recent · Inspector EDIT action · RESTORE for demo category-archived seed (r20/r21).
