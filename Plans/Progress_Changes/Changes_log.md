@@ -697,3 +697,11 @@ Continuation of the Change 18 Instrument-UI rebuild. Frontend-only. Two targeted
 
 - Step 01: Updated `frontend/src/components/resource/ResourceForm.tsx` — changed the `useEffect` that resets `previewActive` to only fire when `isLink` becomes true (i.e., a link resource is selected), rather than firing on every `selectedId` change `because` the previous implementation reset PREVIEW on every node click, which contradicts the intended sticky behavior — PREVIEW should persist across previewable nodes and auto-end only when the user lands on a link (which has no inline preview and shows OPEN instead). The user explicitly re-enables PREVIEW by clicking the button again.
 - Step 02: Updated `frontend/src/lib/demoData.ts` — prepended a new notification `n0` ("UI changes deployed") with a long multi-sentence body to `DEMO_NOTIFS` `because` the user requested a visible confirmation notification and the long body doubles as a functional test of the click-to-expand/scroll behavior added in Session 67.
+
+## Session 69 - Repo housekeeping: docs-only remote, push discipline
+
+No Change N or Phase advanced. Repo configuration only.
+
+- Step 01: Updated `.gitignore` — replaced the broad code whitelist (`!/cmd/`, `!/internal/`, `!/frontend/`, `!/config/`, `!/api/`, `!/scripts/`, `!/test/`, `!/.github/`, `!/go.mod`, `!/go.sum`, `!/Makefile`, `!/.env.example`) with a docs-only exception list (`!/Plans/`, `!/DEPLOYMENT.md`, `!/README.md`, `!/CHANGELOG.md`) `because` the user decided the remote repo should contain only planning and design docs, keeping all code tracked locally only.
+- Step 02: Ran `git rm --cached -r` on `cmd/`, `internal/`, `frontend/`, `config/`, `api/`, `scripts/`, `test/`, `.github/`, `go.mod`, `go.sum`, `Makefile`, `Old_Context/`, `.env.example` `because` already-tracked files are not removed from the remote by `.gitignore` alone; explicit cache removal stages the deletions without touching the local working tree (276 files removed from remote, 0 deleted locally). Committed and pushed as `bb4157b`.
+- Step 03: Added `feedback_push_after_commit.md` to the Claude memory store `because` user asked that every commit be followed immediately by a `git push` — saved as a persistent rule so it applies to all future sessions.
