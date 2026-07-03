@@ -114,18 +114,18 @@ Validate IPC bindings and desktop build correctness with automated checks.
 
 Key tasks:
 - [x] Unit tests for IPC method signatures (verify correct service delegation).
-- [ ] Smoke test: `wails build` succeeds, binary starts, `/health` responds (for the embedded HTTP server path).
+- [x] Smoke test: `wails build` succeeds, binary starts and stays running. (The desktop app has no embedded HTTP server — `cmd/desktop/main.go` wires `wails.Run` directly with no Gin server, so there is no `/health` to hit. New `desktop-smoke` job in `.github/workflows/ci.yml` and a "Smoke test desktop binary" step in `.github/workflows/release.yml`'s `build-desktop` job: `wails build -platform linux/amd64`, launch the binary under `xvfb-run`, wait 5s, fail if the process exited (crash on startup), else kill it — proves the built binary launches cleanly.)
 - [x] Frontend Vitest tests: IPC mock → verify stores use IPC path when `window.go` is set.
 - [x] Frontend Vitest tests: REST fallback → verify stores use fetch when not in Wails context.
 
 Deliverables:
 - [x] `internal/desktop/app_test.go` — IPC method unit tests.
 - [x] Updated `frontend/src/stores/*.test.ts` — IPC/REST toggle coverage for task/reminder stores.
-- [ ] CI smoke gate proven green.
+- [ ] CI smoke gate proven green. (`desktop-smoke` job added to `ci.yml` this session — not yet run on CI; flip to `[x]` once it passes on the next push/PR.)
 
 Done criteria:
 - [x] All Go IPC unit tests pass.
-- [ ] Frontend store tests cover both IPC and REST transport paths for all stores.
+- [x] Frontend store tests cover both IPC and REST transport paths for all stores. (`useResourceStore` and `useTaskStore` are the only stores with `ipcCall`-backed App methods — `app.go` exposes Resource/Category and Todo/Reminder CRUD only, no chat/layout/sync IPC bindings exist. Both stores have `describe("IPC mode (window.go)")` blocks covering load/create/update/delete via IPC, plus existing REST-path tests. 76 tests pass across both files.)
 - [x] CI build gate succeeds for Windows and Linux targets.
 
 ## Planned Milestones

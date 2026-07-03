@@ -124,12 +124,40 @@ Main_Content is the Knowledge Graph canvas + a bottom **Split_Section** dock. It
 - **Hover-state variant** for the nav "open-in-split" affordance — currently a static 0.4-opacity ghost; needs a real 0→1 hover reveal (variant/prototype).
 - **Resize handle** for the Split_Section (user-adjustable height beyond the ¼ default) — conceptual only, not designed.
 - **Split_Section tab content depth** — current Chat/Tasks/Library tab bodies are compact mockups; flesh out empty/loading/overflow states.
-- **Prototype wiring** for Main_Content: nav affordance → expand + that tab; up/down arrow → toggle; tab close; Categories toggle.
+- **Prototype wiring** for Main_Content: nav affordance → expand + that tab; up/down arrow → toggle; tab close; Categories toggle. Cross-component wiring deferred to code (§8B).
 - Decide whether a persistent "home" affordance (separate from `← Back`) is needed in Left_Rail.
 - Right_Rail default visibility rules (collapsed vs expanded on load) need confirming against real resource-selection flow.
 - Main_Content view-switch tabs (List / Timeline) are placeholders — no corresponding designs yet.
+- Tasks tab not in collapsed Split_Section strip (only Categories, Consensus chat, Library shown) — add Tasks to Default collapsed strip in a future session.
 
-## 8. Components & Interactivity (Session 59)
+## 9. Visual Polish (Session 61)
+
+A full audit and polish pass was applied. Tokens:
+- **Type color palette** (shared across Recent, Library, Search results): `PDF` = #F67373 (red), `Note` = #5B9CF6 (blue), `Link` = #48C78E (green), `Doc` = #9B59F6 (purple), `Image/Note` = #F673 9B (pink).
+
+### Changes applied
+
+| Area | Component | Issue fixed |
+|---|---|---|
+| All Left_Rail expanded variants | `Collapse_Toggle` (all 5) | Replaced iOS-style toggle switch instance with `chevron_left` SVG (16×16, 0.55 opacity, stroke-based) centered in 28×28 frame |
+| Right_Rail Expanded | `Collapse_Toggle` (670:13) | Replaced RECTANGLE with `chevron_right` SVG — same spec |
+| Right_Rail Collapsed | `Toggle_Panel` (706:12) | Replaced RECTANGLE with `chevron_left` SVG — indicates "click to expand toward left" |
+| Left_Rail Default | `Recent` section | Changed `primaryAxisSizingMode` FIXED → AUTO (HUG content); added `Content_Spacer` flex frame (layoutGrow=1) between Recent and Footer to keep Footer pinned while Recent shrinks to content height |
+| Right_Rail Expanded | `AI_Panel` | Added `Suggested_Questions` section (3 borderless chips: "How does leader election work here?", "Key differences from Paxos?", "Which open questions need follow-up?") inserted between summary text and the flex Spacer — significantly reduces dead space |
+| Left_Rail Chat | `Chat_Thread` | Added 4 more message bubbles before Spacer (user→AI×2 pairs on safety guarantees + task creation) — fills dead space, thread now shows 8 messages |
+| Left_Rail Default | `Recent` items | Replaced uniform gray RECTANGLE File_Icons with type-colored rounded squares (`cornerRadius=3`) per type-color palette above |
+| Left_Rail Library | Library list items | Same type-color treatment applied to 8 list item icons (PDF/Note/Link/Doc detected from meta text) |
+
+### Verified consistent (no change needed)
+
+| Item | Finding |
+|---|---|
+| Tab_Bar height across all 4 expanded MC variants | Consistent at 48px |
+| `cornerRadius` on Search_Bar vs New_Task_Button | Both 8px |
+| "Orphan rectangle" top-right Main_Content | Confirmed as Right_Rail Collapsed Toggle_Panel — not a stray node |
+| Section label count rules | Already consistent: static sections no count, dynamic lists have count |
+
+## 8. Components & Interactivity (Sessions 59–61)
 
 All states converted into Figma **Components** / **Component Sets** (page **UI**), so the prototype is built from reusable, variant-driven pieces. Maps 1:1 to a future `state` prop in React.
 
@@ -137,23 +165,136 @@ All states converted into Figma **Components** / **Component Sets** (page **UI**
 |---|---|---|---|
 | **Left_Rail** | `705:16` | `State` | `Default` (705:11), `Search` (705:12), `Chat` (753:178, redesigned Session 59), `Tasks` (705:14), `Library` (705:15), `Collapsed` (707:24) |
 | **Right_Rail** | `706:18` | `State` | `Collapsed` (706:16), `Expanded`/Inspector (706:17) |
-| **Main_Content** | `905:291` | `State` *(Session 60)* | `Default` (Split collapsed, 905:190), `Categories`, `Chat`, `Tasks`, `Library` (Split expanded ¼ height, active tab per variant). Old single component `707:25` retained but superseded. |
+| **Main_Content** | `905:291` | `State` *(Session 60)* | `Default` (Split collapsed, 905:190), `Categories` (905:191), `Chat` (905:192), `Tasks` (905:193), `Library` (905:194). Old single component `707:25` retained but superseded. |
 
 A componentized "Desktop - Minimal" frame (`708:11`) assembles instances: Left_Rail=Default (`708:12`) + Main_Content (`708:80`) + Right_Rail=Collapsed (`708:177`), horizontal auto-layout, 1440x1024.
 
-### Prototype wiring — STATUS: Left_Rail Chat connections need re-wiring (variant node replaced, Session 59 part 2); all other connections done
+---
 
-### Prototype wiring (manual — Figma Plugin API can't script reactions)
+### 8A. Intra-component wiring — Figma-prototypable ✓
 
-Open `708:11` in Figma's **Prototype** tab and drag-connect the following (On Tap → Change to variant, animation: Smart Animate, ~200ms):
+These connections live entirely within one component set's instances. Wire in Figma Prototype tab (On Tap → Change to, Smart Animate ~200ms) on the `708:11` composed frame.
 
-- **Left_Rail, Default → Search**: tap `Search_Bar` (in Header) → `Left_Rail.State = Search`.
-- **Left_Rail, Default → Chat / Tasks / Library**: tap respective `Primary_Nav` row → `Left_Rail.State = Chat/Tasks/Library`.
-- **Left_Rail, Default → Library** (alt entry): tap `View_All_Link` (in Categories) → `Left_Rail.State = Library`.
-- **Left_Rail, any non-Default → Default**: tap `Back_Row` (`← Back`) → `Left_Rail.State = Default`.
-- **Left_Rail, Default → Collapsed**: tap `Collapse_Toggle` (Header) → `Left_Rail.State = Collapsed`.
-- **Left_Rail, Collapsed → Default**: tap logo / any nav icon → `Left_Rail.State = Default`.
-- **Right_Rail, Collapsed → Expanded**: tap `Toggle_Panel` icon, or tap a node in `Main_Content`'s `Canvas_Area` → `Right_Rail.State = Expanded`.
-- **Right_Rail, Expanded → Collapsed**: tap `Collapse_Toggle` (Inspector header) → `Right_Rail.State = Collapsed`.
+#### Left_Rail (`705:16`)
 
-`Main_Content` instance stays fixed — no reactions needed on it (per §5, never swaps).
+| From variant | Trigger element | → To variant |
+|---|---|---|
+| `Default` | `Search_Bar` (Header) | `Search` |
+| `Default` | `Nav_Chat` row | `Chat` |
+| `Default` | `Nav_Tasks` row | `Tasks` |
+| `Default` | `Nav_Library` row | `Library` |
+| `Default` | `Collapse_Toggle` (Header) | `Collapsed` |
+| `Search` | `Back_Row` (← Back) | `Default` |
+| `Chat` | `Back_Row` (← Back) | `Default` |
+| `Tasks` | `Back_Row` (← Back) | `Default` |
+| `Library` | `Back_Row` (← Back) | `Default` |
+| `Collapsed` | Logo or any nav icon | `Default` |
+
+#### Right_Rail (`706:18`)
+
+| From variant | Trigger element | → To variant |
+|---|---|---|
+| `Collapsed` | `Toggle_Panel` icon | `Expanded` |
+| `Collapsed` | Any node tap in `Canvas_Area` | `Expanded` |
+| `Expanded` | `Collapse_Toggle` (Inspector header) | `Collapsed` |
+
+#### Main_Content — Split_Section (`905:291`)
+
+| From variant | Trigger element | → To variant |
+|---|---|---|
+| `Default` | `Up_Arrow` | `Categories` |
+| `Default` | `Categories_Toggle` (grid icon) | `Categories` |
+| `Default` | Tab "Consensus chat" | `Chat` |
+| `Default` | Tab "Library" | `Library` |
+| `Categories` | `Down_Arrow` | `Default` |
+| `Categories` | Tab "Consensus chat" | `Chat` |
+| `Categories` | Tab "Tasks" | `Tasks` |
+| `Categories` | Tab "Library" | `Library` |
+| `Chat` | `Down_Arrow` | `Default` |
+| `Chat` | Tab "Categories" | `Categories` |
+| `Chat` | Tab "Tasks" | `Tasks` |
+| `Chat` | Tab "Library" | `Library` |
+| `Tasks` | `Down_Arrow` | `Default` |
+| `Tasks` | Tab "Categories" | `Categories` |
+| `Tasks` | Tab "Consensus chat" | `Chat` |
+| `Tasks` | Tab "Library" | `Library` |
+| `Library` | `Down_Arrow` | `Default` |
+| `Library` | Tab "Categories" | `Categories` |
+| `Library` | Tab "Consensus chat" | `Chat` |
+| `Library` | Tab "Tasks" | `Tasks` |
+| Any expanded | `×` (close) on active tab | `Default` |
+
+Total intra-component connections: ~34.
+
+---
+
+### 8B. Cross-component wiring — code-only ✗ (Figma limitation)
+
+**Why not Figma:** Figma reactions on a component instance can only change **that instance's own variant** — cannot trigger a variant swap on a sibling component in the same frame. The Left_Rail affordance → Main_Content split open is cross-component shared state; no Figma prototype mechanism supports this cleanly.
+
+**Decision (Session 61):** Defer all cross-component interactions to React. Do not build composed snapshot frames. Document as code spec below.
+
+#### Triggers and their React effect
+
+| User action | Source element | React state change | Visual result |
+|---|---|---|---|
+| Tap `Split_Affordance_R` on `Nav_Chat` row | `Left_Rail` → `Primary_Nav` → `Nav_Chat` → right-end icon | `splitSection.open = true`, `splitSection.activeTab = 'chat'` | Main_Content Split_Section expands; Chat tab active |
+| Tap `Split_Affordance_R` on `Nav_Tasks` row | `Left_Rail` → `Primary_Nav` → `Nav_Tasks` → right-end icon | `splitSection.open = true`, `splitSection.activeTab = 'tasks'` | Main_Content Split_Section expands; Tasks tab active |
+| Tap `Split_Affordance_R` on `Nav_Library` row | `Left_Rail` → `Primary_Nav` → `Nav_Library` → right-end icon | `splitSection.open = true`, `splitSection.activeTab = 'library'` | Main_Content Split_Section expands; Library tab active |
+| Tap `Down_Arrow` or close last tab | `Main_Content` → Split_Section dock | `splitSection.open = false` | Split collapses to 48px strip; Left_Rail affordance glow clears |
+| Hover `Nav_*` row | `Left_Rail` → any `Primary_Nav` row | (no state change) CSS hover class on row | `Split_Affordance_R` opacity 0→1 on hovered row only |
+
+#### React state model
+
+```ts
+// Shared state — lives in the Desktop layout component (parent of Left_Rail + Main_Content)
+interface SplitSectionState {
+  open: boolean;                              // false = collapsed 48px strip
+  activeTab: 'categories' | 'chat' | 'tasks' | 'library';
+  openTabs: string[];                         // browser-style tab list (closeable)
+}
+
+// Left_Rail receives a callback prop:
+type LeftRailProps = {
+  onSplitOpen: (tab: SplitSectionState['activeTab']) => void;
+};
+
+// Main_Content receives the state as props:
+type MainContentProps = {
+  splitSection: SplitSectionState;
+  onSplitTabChange: (tab: SplitSectionState['activeTab']) => void;
+  onSplitClose: () => void;
+};
+```
+
+Nav affordance click handler:
+```ts
+// In Left_Rail, each Nav row's Split_Affordance_R:
+<SplitAffordanceR onClick={() => props.onSplitOpen('chat')} />  // Nav_Chat
+<SplitAffordanceR onClick={() => props.onSplitOpen('tasks')} /> // Nav_Tasks
+<SplitAffordanceR onClick={() => props.onSplitOpen('library')} /> // Nav_Library
+```
+
+Hover reveal (CSS — no JS state needed):
+```css
+.nav-row .split-affordance-r { opacity: 0; transition: opacity 150ms; }
+.nav-row:hover .split-affordance-r { opacity: 1; }
+```
+
+#### Why this is the right call
+
+- Cross-rail sync is fundamentally shared state — belongs in a parent component, not a Figma prototype.
+- Composed snapshot frames would be static (no internal interactivity) and require manual sync whenever a variant changes.
+- The intra-component Figma wiring (§8A) still gives full demo fidelity for Left_Rail and Main_Content independently; the cross-rail link is the only gap and is low-cost to implement in code.
+
+---
+
+### Prototype wiring status
+
+| Component | Figma prototype | Code |
+|---|---|---|
+| Left_Rail state transitions | Wire manually per §8A table | Mirror as `leftRailState` prop |
+| Right_Rail expand/collapse | Wire manually per §8A table | Mirror as `rightRailOpen` prop |
+| Main_Content Split_Section tabs + arrows | Wire manually per §8A table | Mirror as `splitSection` state |
+| Left_Rail `Split_Affordance_R` → Main_Content | **Not wirable in Figma** | `onSplitOpen(tab)` callback (§8B) |
+| Affordance hover reveal | Static opacity in mock | CSS `.nav-row:hover .split-affordance-r` |
