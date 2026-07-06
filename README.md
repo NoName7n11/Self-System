@@ -2,7 +2,13 @@
 
 Self Systems is a local-first knowledge system backend that captures resources, classifies them, and exposes structured APIs for resources, categories, reminders, todos, graph data, and unified chat commands.
 
-Current repository status: Phase 1 backend and operations closeout are in place (Go + Gin + SQLite, integration tests, CI, and release automation).
+Current repository status: Phase 1 backend and operations closeout are in place (Go + Gin + SQLite, integration tests, CI, and release automation). The frontend is now a Wails desktop app (React + TypeScript) with IPC bindings, system tray, and OS notifications.
+
+## Current UI
+
+![Self Systems knowledge-graph UI — graph view with inspector and library dock](Plans/New_UI/References/verification_shots/s67-inspector-preview.png)
+
+Dark-mode-first desktop app: knowledge graph (Graph / Map / Progress views), left rail with Chat / Tasks / Library, a right-hand Inspector (resource preview, connections, AI summary), and a bottom dock for categories / ingest / library.
 
 ## Architecture Snapshot
 
@@ -189,5 +195,5 @@ Branch protection setup (requires GITHUB_TOKEN with admin rights):
 
 ## Near-Term Next Focus
 
-- Add frontend scaffolding (Wails + React) when Phase 2 UI work begins
-- Add E2E coverage once frontend routes are available
+- Local-file drag-and-drop ingestion pipeline (drop capture works; file → resource conversion pending)
+- Expand E2E coverage for the Wails desktop app flows
