@@ -25,22 +25,6 @@ Dark-mode-first desktop app: knowledge graph (Graph / Map / Progress views), lef
 - Docker Desktop (optional, for PostgreSQL and Redis)
 - GNU Make (optional, convenience commands)
 
-## Quick Start
-
-1. Install dependencies:
-   - go mod tidy
-2. Create local environment file:
-   - PowerShell: Copy-Item .env.example .env
-   - Bash: cp .env.example .env
-3. Start development environment:
-   - make dev
-4. API starts on http://127.0.0.1:8080 by default.
-
-If you do not use Make, run:
-
-- docker compose up -d
-- go run ./cmd/server
-
 ## Frontend UI Preview
 
 The Workstream 8 UI lives in `frontend/` and can run independently while the Go API is running.
@@ -79,33 +63,6 @@ Example override:
 
 - SS_APP_PORT=9090
 - SS_DATABASE_PATH=./data/local.db
-
-## Common Commands
-
-Windows note: if `make` is not found but MinGW is installed, use `mingw32-make` with the same targets.
-
-| Task | Command |
-|---|---|
-| Setup dependencies | make dev-setup |
-| Start API + local infra | make dev |
-| Start only API | make run |
-| Start Docker services | make docker-up |
-| Stop Docker services | make docker-down |
-| Start VPS runtime topology | make vps-up |
-| Stop VPS runtime topology | make vps-down |
-| Tail VPS runtime logs | make vps-logs |
-| Run all tests | make test |
-| Run integration tests | make integration-test |
-| Run distributed sync/replay gate | make distributed-test |
-| Generate distributed gate evidence report | make distributed-report |
-| Verify deployed sync runtime reachability | make verify-sync-runtime SYNC_RUNTIME_BASE_URL=https://api.example.com |
-| Format Go files | make lint |
-| CI-equivalent local checks | make ci |
-| CI-equivalent distributed checks | make ci-distributed |
-| Start only PostgreSQL service | make docker-up-postgres |
-| Run PostgreSQL central data integration gate | make test-postgres |
-| Build server binary | make build |
-| Clean Go cache outputs | make clean |
 
 ## Testing
 
