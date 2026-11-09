@@ -15,6 +15,17 @@ Four things it handles:
 - **Tasks** — a to-do list that can be derived from what you've saved, not just typed in.
 - **Assistant** — a chat interface over all of it: ask questions, find related resources, manage tasks.
 
+### It manages things over time, not just stores them
+
+Once you hand something over, the app keeps track of it so you don't have to:
+
+- **Alerts that actually fire** — reminders and to-do deadlines arrive as in-app and Windows notifications, with a heads-up the evening before. Done, snooze, or open them straight from the alert. Anything due while the app was closed shows up when you return, never lost.
+- **No spam** — quiet hours are asked once, then the app suggests better ones from when you're actually active (it never changes them on its own). Several alerts at once arrive as one.
+- **Learn a big thing in small pieces** — pick "Learn this" on a saved book or PDF and it's split into chapters and delivered one piece per day on your schedule, remembering where you are. Miss a few days and you get the next piece, not a pile.
+- **Weekly summary** — what you finished, what's still open or overdue, what's coming up, and how far along each learning plan is.
+
+Next: AI-written summaries and quiz questions for each piece, and plain-language requests in chat ("remind me one chapter a day from this book").
+
 ## How it fits together
 
 ```mermaid
@@ -36,8 +47,8 @@ flowchart TB
 
     subgraph Surface["Desktop app"]
         G[Knowledge Graph]
-        H[Reminders]
-        I[Tasks]
+        H[Reminders + notifications]
+        I[Tasks + learning plans]
         J[AI Assistant]
     end
 
@@ -45,6 +56,8 @@ flowchart TB
     B --> E
     C --> E
     D --> E
+    K["Scheduler\n(alerts, quiet hours,\npieces, weekly summary)"]
+    E --> K --> H
     E --> F
     E --> G & H & I & J
     F -. multi-device sync .-> E
